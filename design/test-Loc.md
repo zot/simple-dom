@@ -32,8 +32,10 @@ combinations all unfaithful
 **Refs:** crc-Loc.md
 **Code:** sdom/loc_test.go
 **Alarm:** 1
-**Fire alarm:** Key `mergeLocs` on `Altered()` rather than on `Faithful()`. Red: merging a faithful node with a **synthesized** one yields a location claiming faithfulness at an offset whose bytes it does not render — four of the nine table entries flip. This is the injection worth having, because the altered cases keep passing and only the no-provenance ones fail.
+**Fire alarm:** Key `mergeLocs` on `Altered()` rather than on `Faithful()`. Red: merging a faithful node with a **synthesized** one yields a location claiming faithfulness at an offset whose bytes it does not render — the two no-provenance cells of the nine flip. This is the injection worth having, because the altered cases keep passing and only the no-provenance ones fail.
 **Inject:** sdom/loc.go:mergeLocs
+**Pulled:** 2026-08-30 — rang. Only this test failed, at `(faithful, none)` and
+`(none, faithful)`; the other seven cells and the other 29 tests held.
 
 ## Test: merged offset takes the leftmost provenance
 **Purpose:** R35
@@ -51,8 +53,22 @@ patterns; merged left-to-right and right-to-left
 **Refs:** crc-Loc.md
 **Code:** sdom/loc_test.go
 **Alarm:** 2
-**Fire alarm:** In `mergeLocs`, prefer `b`'s offset when both operands have provenance. Red: the two groupings disagree for the patterns where the first operand has provenance. Violating this is otherwise silent — every individual merge still returns a plausible offset.
+**Fire alarm:** In `mergeLocs`, when **both** operands have provenance take the
+offset of the one with the greater length, ties to `a`; keep taking the only
+available offset when just one has provenance. Red: this test, because the
+groupings compare different lengths — `merge(merge(a,b),c)` weighs an 8-byte left
+against a 4-byte right, while `merge(a,merge(b,c))` weighs 4 against 8. Violating
+associativity is otherwise silent: every individual merge still returns a
+plausible offset, and only comparing two groupings can see it.
+*Superseded 2026-08-30.* The first injection here — prefer `b`'s offset — did not
+ring: rightmost-provenance-wins is associative for exactly the reason
+leftmost-wins is, so it broke the leftmost rule (caught elsewhere) and left this
+property untested. An injection has to be non-associative to reach it.
 **Inject:** sdom/loc.go:mergeLocs
+**Pulled:** 2026-08-30 — rang, on patterns 011, 101 and 111. Crucially
+`TestMergedOffsetTakesLeftmostProvenance` **passed**, which is what proves the
+injection reached associativity itself rather than the leftmost rule beneath it —
+the discriminator the superseded injection lacked.
 
 ## Test: adjacency is checked exactly where it can be
 **Purpose:** R33 — checked for a faithful pair at the call site, not checked otherwise
@@ -64,6 +80,8 @@ an altered node's offset is historical and proves nothing
 **Alarm:** 3
 **Fire alarm:** Drop the `la.Faithful() && lb.Faithful()` guard so `Merge` checks adjacency unconditionally. Red: the altered-operand case is refused, because an altered node's historical offset proves nothing. The happy path never exercises this, so nothing else objects.
 **Inject:** sdom/mutate.go:Doc.Merge
+**Pulled:** 2026-08-30 — rang. Only this test failed, refusing the altered pair
+with `Merge: 0+2 is not adjacent to 90`; the other 29 held.
 
 ## Test: split then merge is the identity
 **Purpose:** R30, R36 — re-granulation moves boundaries and nothing else

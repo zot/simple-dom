@@ -20,6 +20,10 @@ second
 **Alarm:** 1
 **Fire alarm:** Bump unconditionally in `Doc.rebuild`, dropping the `d.dirty` test. Red: the content-edit half of this test. Over-bumping is the invisible failure — every layer simply rebuilds more often, the answers stay correct, and only a test that asserts the *absence* of a bump can see it.
 **Inject:** sdom/doc.go:Doc.rebuild
+**Pulled:** 2026-08-30 — rang. Only this test failed. `TestStaleStampDrivesTheRebuild`
+held, because two refreshes with no mutation between them still read the same
+generation — over-bumping is invisible to everything except an assertion that a
+bump did *not* happen.
 
 ## Test: a stale stamp is what a layer sees, with no registration
 **Purpose:** R45, R46 — the layer pulls; `Doc` pushes nothing
@@ -41,6 +45,9 @@ process does not die
 **Alarm:** 2
 **Fire alarm:** Make `Doc.guard` return without panicking. Red: all six reads return stale answers instead of refusing. Violated, this is silent by construction — a stale index answers plausibly, and a removed node's -1 is indistinguishable from end-of-document.
 **Inject:** sdom/mutate.go:Doc.guard
+**Pulled:** 2026-08-30 — rang. Only this test failed, and it failed six times —
+once for each of `IndexOf`, `Next`, `Prev`, `Line`, `LineCount` and `Generation`.
+The other 29 held.
 
 ## Test: a foreign panic is re-raised unchanged
 **Purpose:** R51 — the guard must not swallow real bugs
@@ -52,6 +59,9 @@ rather than arriving as an error
 **Alarm:** 3
 **Fire alarm:** In `Doc.Mutate`, convert every recovered value to an error instead of re-panicking on anything that is not the sentinel. Red: the panic never reaches the test's deferred recover. Swallowing panics reads as robustness and breaks nothing visible, which is why it needs its own alarm.
 **Inject:** sdom/mutate.go:Doc.Mutate
+**Pulled:** 2026-08-30 — rang. Only this test failed;
+`TestEscapingFailurePoisons` held, so the two `Doc.Mutate` alarms are
+independent rather than one property counted twice.
 
 ## Test: a nested Mutate is a pass-through
 **Purpose:** R53 — save-and-restore rather than counting
@@ -60,6 +70,29 @@ rather than arriving as an error
 window is closed exactly once — after the outer call returns
 **Refs:** crc-MutationWindow.md
 **Code:** sdom/doc_test.go
+
+## Test: a nested Mutate keeps the outer window open
+**Purpose:** R53 — the window belongs to the *outermost* call, which is the half
+of the pass-through that node counts and generation bumps cannot see
+**Input:** an outer mutation that runs an inner `Mutate` to completion and then,
+still inside the outer function, reads the structural generation
+**Expected:** the read still refuses, so `Mutate` returns the sentinel as an error
+**Refs:** crc-MutationWindow.md
+**Code:** sdom/doc_test.go
+**Alarm:** 6
+**Fire alarm:** Delete the `if d.mutating { return f() }` early return from
+`Doc.Mutate`, so a nested call opens and closes its own window. Red: this test,
+because the inner close sets `d.mutating = false` while the outer function is
+still running and the guard lifts for the rest of it.
+*Found by probing past the alarm list, 2026-08-30.* Before this test existed that
+same injection left **all 30 tests green**, `TestNestedMutateIsAPassThrough`
+included — it asserts five nodes and one generation bump, and both still hold: the
+inner close rebuilds and bumps, then the outer close finds `d.dirty` already
+cleared and does not bump again. The arithmetic survives while the guard silently
+lifts, which is why the property needed an assertion of its own.
+**Inject:** sdom/mutate.go:Doc.Mutate
+**Pulled:** 2026-08-30 — rang. Only this test failed, on `got <nil>` where the
+sentinel error was required; the other 30 held.
 
 ## Test: an escaping failure poisons the document
 **Purpose:** R54, R55 — no rollback, and no reset
@@ -72,6 +105,9 @@ and the document refuses further use rather than offering recovery
 **Alarm:** 4
 **Fire alarm:** Remove the `d.poisoned = true` assignments from `Doc.Mutate`'s deferred close. Red: the document keeps answering after a failed mutation. Nothing else in the suite touches a failed document, so the whole guard can vanish while the suite stays green.
 **Inject:** sdom/mutate.go:Doc.Mutate
+**Pulled:** 2026-08-30 — rang. Only this test failed, four times —
+both the error path and the panic path, each failing on Render and on the
+follow-up Mutate.
 
 ## Test: Line rejects offsets outside the document
 **Purpose:** R39 — the contract says 0 for an offset outside the rendered
@@ -89,6 +125,8 @@ every past-the-end offset returns `LineCount()` instead of 0, because
 originally shipped — the surrounding test only probed `[0, len(rendered))`, so a
 plausible wrong answer at the boundary broke nothing visible.
 **Inject:** sdom/doc.go:Doc.Line
+**Pulled:** 2026-08-30 — rang. Only this test failed, on all three
+past-the-end offsets and on the empty document, which returned line 1 for offset 0.
 
 ## Test: the indices are correct after the window closes
 **Purpose:** R52 — one rebuild at the exit, and it is a *correct* rebuild

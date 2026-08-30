@@ -62,3 +62,8 @@ source with exactly that span excised
 **Alarm:** 1
 **Fire alarm:** Make `Doc.Render` return `d.source` instead of concatenating the nodes' renders. Red: **only this test.** The byte round-trip over the entire corpus stays green, the tiling test stays green, and every faithful-span check stays green — a Render that hands back retained source satisfies all of them no matter how little was modelled. This is the alarm that decides the shape of the suite.
 **Inject:** sdom/doc.go:Doc.Render
+**Pulled:** 2026-08-30 — rang. **Only this test failed, out of 30.**
+The byte round-trip over the whole corpus, the tiling test, every faithful-span
+check, the structural round-trip and the one-field delta all stayed green against
+a `Render` that models nothing at all. This is the measurement the carve
+predicted, and it is why this test cannot be folded into the corpus test.

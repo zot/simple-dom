@@ -34,7 +34,7 @@
 - **R25:** A faithful node renders exactly the source span at its offset.
 - **R26:** The zero value of a location means "no provenance", and never "offset 0".
 - **R27:** A node that has been changed keeps its offset.
-- **R28:** A compound is altered if any of its children is, computed on read rather than stamped at edit time and propagated upward.
+- **R28:** A compound is altered if any of its children is, computed on read rather than stamped at edit time and propagated upward. *(Provisional — see gap O1. The implementation also requires the children's spans to run contiguously from the compound's own offset; closing O1 rewrites this requirement and the spec sentence behind it.)*
 - **R29:** For an altered node the offset is historical while the length is current, so the pair names a span the node never owned; a consumer uses the offset alone unless the node is faithful.
 - **R30:** `Split` divides one node's span into two, each keeping the provenance of the part of the source it now covers.
 - **R31:** `Merge` joins two adjacent nodes into one.

@@ -62,8 +62,14 @@ func (d *Doc) Merge(a, b Node) (Node, error)
   would not.
 - The derived indices rebuild **once**, at the exit.
 
-The document is never observably half-edited because inside the window there is
-nothing that can observe it. That is the whole of the mechanism.
+The document is never observably half-edited because **every index-backed read
+refuses** while the window is open. That is the whole of the mechanism: there is
+no deferral behind it.
+
+What is *not* guarded is deliberate. `Doc.Render`, and a node's own accessors,
+stay open — under direct edits, reading what you just wrote is the point of them.
+The guard protects the **derived** state, which an edit invalidates and nothing
+rebuilds until the exit.
 
 **Why refusal rather than a stale answer.** Rebuilding an index mid-window would
 not rescue the caller: if the node they hold has been removed, a position lookup

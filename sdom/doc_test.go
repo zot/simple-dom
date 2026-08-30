@@ -164,6 +164,29 @@ func TestNestedMutateIsAPassThrough(t *testing.T) {
 	}
 }
 
+// CRC: crc-MutationWindow.md | R53
+//
+// The window belongs to the OUTERMOST call, which is the half of the
+// pass-through that node counts and generation bumps cannot see: an inner call
+// that closed its own window would leave both of those correct while the guard
+// silently lifted for the rest of the outer function.
+func TestNestedMutateKeepsTheOuterWindowOpen(t *testing.T) {
+	d, n := threeNodes()
+	err := d.Mutate(func() error {
+		if ierr := d.Mutate(func() error {
+			_, _, e := d.Split(n[0], 1)
+			return e
+		}); ierr != nil {
+			return ierr
+		}
+		d.Generation() // the outer window is still open, so this must refuse
+		return nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "not available inside a mutation window") {
+		t.Fatalf("after a nested Mutate returns, the outer window must still be open; got %v", err)
+	}
+}
+
 // CRC: crc-MutationWindow.md | Seq: seq-mutate.md#3.3 | R54, R55
 // No rollback, and no reset.
 func TestEscapingFailurePoisons(t *testing.T) {
