@@ -128,18 +128,33 @@ per the decision above. Navigation is `d.Prev(n)` / `d.Next(n)`.
 faithfulness**: `Offset` of −1 is no provenance, `Altered` means read from
 `Offset` but no longer rendering it, `Length` is derived. `Split` and `Merge` are
 **re-granulation** — boundaries move, bytes and provenance do not — and `Merge`
-requires adjacency, which the two locations prove on their own.
+requires adjacency, which the two locations prove on their own **when both are
+faithful — see the `Doc.Merge` decision below for the rest.**
 
 Edits **resolve outside** the mutation window and apply as **one rebuild** of
 `dom`, so the document is never observably half-edited. Ops are keyed by node
 identity, never by index.
 
-@undecided: does this item also land concrete node kinds? The protocol cannot be
-built or tested without at least one leaf and one composite, which argues for
-`Text` here and the rest in Item 2. **If a composite is added for testing, it must
-not be a bracket group and must not be named one** — see the group-is-not-a-node
-decision; a kind called `Group` invites exactly the reading that decision forbids.
-Settled by whether Item 1's tests can be written against `Text` alone.
+**DECIDED (Bill, 2026-08-27): Item 1 lands `Text` and `Compound`.** Settled by its
+own criterion — the tests cannot be written against `Text` alone. The one-field
+delta requires *a node and its ancestors* to lose faithfulness, and `Text` has no
+ancestors, so the derived-`Altered` decision would ship untested and `Kids()`
+would never be exercised by anything.
+
+`Compound` is not a test fixture. It is a node whose children **tile its span**,
+rendering by concatenation, summing their extents and propagating their
+alteration — and doing no parsing. That is exactly what remains of Item 3's regex
+compound, Item 4's declaration and Item 6's traceability comment once you subtract
+*how each computes its children*, so it is defined once here and embedded by all
+three. It is not a bracket group and must never be used or named as one.
+
+**Every concrete kind declares its own `Equals`**, minimum body a type check that
+delegates: `o, ok := other.(*T); return ok && t.Compound.Equals(&o.Compound)`. Go
+embedding promotes without dispatching, so a promoted `Equals` cannot see the
+outer type — but **forgetting to declare one is loud rather than silent**: the
+inherited assertion fails against the new kind, two identical nodes of it compare
+unequal, and the structural round-trip goes red on the first document containing
+one.
 
 ### Item 1's decisions
 
@@ -196,17 +211,16 @@ so the nested call is a pass-through, and it has **no rollback**. Partial rollba
 would be worse than none: restoring the node array would not undo content written
 through node doors, producing a plausible wrong state rather than an obvious one.
 
-@undecided: do content edits route through the edit plan, or apply directly? A
-content edit does not move any index, but it does change a render and therefore
-the line index.
+**DECIDED (Bill, 2026-08-27): edits are direct, and navigation is not allowed
+inside a mutation.** A content edit writes the node; nothing is queued. The second
+rule this fork was weighing — *when does your own edit become readable* — does not
+arise, because inside the window you cannot navigate to read anything.
 
-*The deciding cost is not index invalidation* — that dissolves either way, since
-the window's exit can rebuild unconditionally. It is **when your own edit becomes
-readable**: applying directly makes that answer depend on the edit kind, which is
-a second rule. Routing through the plan also lets Item 6's guarded write validate
-at queue time, which would remove the need for its rollback — and that is a
-supersede-in-place on an existing `DECIDED`, so it is Bill's call and not a
-drafting choice. Settled by whichever gives one door without a second rule.
+**The navigation guard is what makes the document never observably half-edited.**
+Deferring edits would be a second mechanism for the same property, and a plan with
+queue-time validation and rollback is a transaction engine inside a document model
+whose whole point is being *simple*. Item 6's guarded write therefore keeps its own
+rollback, and that `DECIDED` stands unsuperseded.
 
 **DECIDED (Bill, 2026-08-27): `Parse` is not on the interface.** During parsing
 you construct a *concrete* node and then send `Parse` to it, so the interface is
@@ -217,6 +231,24 @@ Its consequence is worth more than the method: **it removed the reason for a
 whole abstraction.** `Node` becomes purely about document structure, parsing is
 not part of the contract, and the parse context stops needing to be an interface
 at all — see the decision above. The two were coupled and nothing said so.
+
+**DECIDED (Bill, 2026-08-27): `Merge` and `Split` are `Doc` methods because they
+change node membership, and `Merge` checks adjacency by offset arithmetic when
+both operands are faithful and not at all otherwise.** The arithmetic is free and
+catches the ordinary mistake at the call site. `d.Next(a) == b` is not the basis:
+navigation panics inside the mutation window, so it cannot run at the call, and
+running it when the plan resolves would mean deciding adjacency against a `dom`
+the other queued ops are about to change. Following adjacency through mutation is
+unjustifiably expensive and baroque for what it buys, so past that point the rule
+is stated and left unenforced. `Split` needs no adjacency at all.
+
+**DECIDED (Bill, 2026-08-27): a merged node is faithful only if both operands are,
+and takes the first operand's offset when it has one and the second's otherwise.**
+Keying the rule on *unfaithful* rather than on *altered* also catches an operand
+with no provenance at all, which would otherwise merge into a node claiming
+faithfulness at an offset whose bytes it does not render. Leftmost-provenance-wins
+makes the offset rule associative, so merging a run of nodes gives the same answer
+however the merges are grouped.
 
 **A standing note for every part.** Four methods have already left this interface,
 each added for a reason that was real when written and quietly stopped being true,
