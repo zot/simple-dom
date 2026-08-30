@@ -62,14 +62,11 @@ func (d *Doc) Merge(a, b Node) (Node, error)
   would not.
 - The derived indices rebuild **once**, at the exit.
 
-The document is never observably half-edited because **every index-backed read
-refuses** while the window is open. That is the whole of the mechanism: there is
-no deferral behind it.
-
-What is *not* guarded is deliberate. `Doc.Render`, and a node's own accessors,
-stay open — under direct edits, reading what you just wrote is the point of them.
-The guard protects the **derived** state, which an edit invalidates and nothing
-rebuilds until the exit.
+**The derived indices are updated only after a mutation completes.** That is why
+every index-backed read refuses while the window is open — there is nothing
+correct for it to return. `Doc.Render` and a node's own accessors stay open,
+because they consult no index: under direct edits, what you have written is
+simply there.
 
 **Why refusal rather than a stale answer.** Rebuilding an index mid-window would
 not rescue the caller: if the node they hold has been removed, a position lookup
@@ -98,6 +95,5 @@ wrote to it.
 
 There is no operation log, no queued edit plan, no transaction and no undo. A
 later layer is free to build any of them **on top of** this: the mutation window
-is the seam it would attach to, no caller can have come to depend on seeing
-intermediate state, and edits keyed by node identity rather than position are
-already the primitive such a system needs.
+is the seam it would attach to, and edits keyed by node identity rather than
+position are already the primitive such a system needs.

@@ -56,9 +56,8 @@ func (d *Doc) guard(op string) {
 //
 // There is no operation log, no queued plan, no transaction and no undo — and
 // none of them is prevented. This window is the seam a later layer would attach
-// one to, no caller can have come to depend on seeing intermediate state, and
-// edits keyed by node identity rather than position are already the primitive
-// such a system needs.
+// one to, and edits keyed by node identity rather than position are already the
+// primitive such a system needs.
 func (d *Doc) Mutate(f func() error) (err error) {
 	if d.poisoned {
 		return ErrPoisoned

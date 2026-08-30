@@ -33,9 +33,8 @@ mechanism is that nothing can observe the document while they land.
   a caller whose node was removed: a position lookup returning −1 and a `Next`
   returning nothing are indistinguishable from end-of-document
 - **No operation log, queued plan, transaction or undo** — and none of them is
-  prevented. This window is the seam a later layer would attach one to, no caller
-  can depend on seeing intermediate state, and identity-keyed edits are already
-  the primitive such a system needs
+  prevented. This window is the seam a later layer would attach one to, and
+  identity-keyed edits are already the primitive such a system needs
 
 ## Collaborators
 - Doc: the document it brackets, and whose indices it rebuilds
