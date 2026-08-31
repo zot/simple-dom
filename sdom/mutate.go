@@ -135,7 +135,15 @@ func (d *Doc) Merge(a, b Node) (Node, error) {
 	if i+1 >= len(d.dom) || d.dom[i+1] != b {
 		return nil, errors.New("sdom: Merge: nodes are not adjacent in this document")
 	}
-	merged := &Text{text: ta.text + tb.text, loc: mergeLocs(la, lb)}
+	// R120: when both operands are faithful the merged text is already a
+	// contiguous span of the document's source, so slice it rather than building a
+	// new string. When either is altered its bytes are not in the source at all and
+	// a new string is unavoidable. Which path ran is not observable in the result.
+	text := ta.text + tb.text
+	if la.Faithful() && lb.Faithful() {
+		text = d.source[la.Offset() : lb.Offset()+lb.Length()]
+	}
+	merged := &Text{text: text, loc: mergeLocs(la, lb)}
 	d.dom = slices.Replace(d.dom, i, i+2, Node(merged))
 	d.dirty = true
 	return merged, nil

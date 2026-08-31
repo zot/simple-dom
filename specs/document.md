@@ -21,6 +21,33 @@ needs a position in the outer document adds the base itself. See
 - two derived indices over `dom` and nothing else: one from **node to position**,
   one over **lines**
 
+## One document, one parse
+
+**Every node in a document comes from the same parse**, and building one from nodes
+of different parses **panics**. It is checked once, when the document is built:
+`Split` inherits the origin, `Merge` refuses a mismatch already, and `Remove` takes
+nothing in — so no structural edit can break what construction established.
+
+What it buys is that the whole array shares a coordinate system, which is what lets
+`Merge` trust a node's own claim about itself.
+
+**And what it does not catch, stated because nothing will.** A document built over
+*one* source from nodes uniformly attributed to a *different* one is undetectable:
+verifying it would mean comparing the very bytes the check exists to avoid copying.
+So a document **requires** its nodes to describe its source, and enforces only the
+half of that which is cheap. Under a violation nothing works — the array does not
+tile, faithful nodes do not render their spans, the round-trip fails — so the
+failure is loud even though the guard is absent.
+
+## Merging reuses the source when it can
+
+When both operands are faithful, the merged text is already a contiguous span of
+the document's source, so `Merge` **slices** it rather than building a new string.
+When either is altered its bytes are not in the source at all, so a new string is
+unavoidable and `Merge` concatenates.
+
+Which path ran is not observable: the result is the same node either way.
+
 ## Navigation
 
 ```go

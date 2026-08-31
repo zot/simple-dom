@@ -19,6 +19,8 @@ consume the lexical half.
   and the mutation window.
 - [bracket-lexer.md](bracket-lexer.md) — the table-driven scanner, its two mode
   fields, and the pairing links the lexicon's context owns.
+- [stencils.md](stencils.md) — compounds that parse by regex: the builder a schema
+  drives, computed glue, and bound values.
 
 ## Summary specs
 

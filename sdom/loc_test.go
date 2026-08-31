@@ -333,14 +333,39 @@ func TestMergingAcrossOriginsPanics(t *testing.T) {
 	mergeLocs(a, b)
 }
 
+// CRC: crc-Doc.md | R118
+// One document, one parse — checked once, where nothing else can break it.
+func TestMixedParsesPanicAtConstruction(t *testing.T) {
+	a := NewText("aa", Source(0, 2).In(&Origin{Name: "one"}))
+	b := NewText("bb", Source(2, 2).In(&Origin{Name: "two"}))
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatalf("building a document from two parses must panic")
+		}
+		if !strings.Contains(fmt.Sprint(r), "comes from") {
+			t.Fatalf("the panic must name the offending node; got %v", r)
+		}
+	}()
+	New("aabb", 0, a, b)
+}
+
 // CRC: crc-Loc.md | R95
+//
 // Not the mutation-window sentinel, so Mutate re-raises it with its stack rather
 // than handing back an ordinary error.
+//
+// Reaching this requires CORRUPTING a document from inside the package, because
+// New now refuses mixed parses and no structural edit can introduce one. That the
+// fixture has to cheat is itself the finding: through the public API this panic is
+// unreachable, and it survives as the inner of two guards.
 func TestCrossOriginPanicEscapesMutate(t *testing.T) {
 	one, two := &Origin{Name: "one"}, &Origin{Name: "two"}
 	a := NewText("aa", Source(0, 2).In(one))
-	b := NewText("bb", Source(2, 2).In(two))
+	b := NewText("bb", Source(2, 2).In(one))
 	d := New("aabb", 0, a, b)
+	b.loc = b.loc.In(two) // corruption: no public path produces this
+
 	defer func() {
 		if recover() == nil {
 			t.Fatalf("a cross-parse merge must escape Mutate rather than arrive as an error")

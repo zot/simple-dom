@@ -75,6 +75,9 @@
 - **R54:** A mutation window provides no rollback.
 - **R55:** An error or a panic escaping the mutation function poisons the document; there is no reset, and recovery is to re-parse.
 - **R56:** `sdom` provides no operation log, queued edit plan, transaction or undo.
+- **R118:** Every node in a document comes from the same parse; building a document from nodes of different parses panics.
+- **R119:** A document's nodes must describe its source. Beyond the shared-parse check this is not verified, because the guard would cost more than the failure, which is loud in every other test.
+- **R120:** `Merge` produces its text by slicing the document's source when both operands are faithful, and by concatenating when either is altered; which path ran is not observable in the result.
 
 ## Feature: bracket lexer
 **Source:** specs/bracket-lexer.md
@@ -110,3 +113,29 @@
 - **R85:** The pairing links are owned by the parse context and never by `Doc`.
 - **R86:** The pairing links are a derived index: the context stamps itself with the document's structural generation and rebuilds when that stamp is stale.
 - **R87:** A forward scan that skips whole bracket pairs finds a node's enclosing opener independently, and must agree with the index.
+
+## Feature: stencils
+**Source:** specs/stencils.md
+
+- **R96:** A stencil is a compound that parses itself from text with a regex whose named groups are the fields its schema binds.
+- **R97:** `NewStencilBuilder` reports whether the regex matched; what a non-match means is the schema's decision, not the builder's.
+- **R98:** On construction the builder lays out a `Text` for the head of the match, one for every gap between consecutive participating named groups, and one for the tail.
+- **R99:** Each participating named group starts as a nil slot for the schema to fill, rather than defaulting to a `Text`.
+- **R100:** A named group that did not participate in the match is given no slot and no glue, and owes nothing.
+- **R101:** `Group` returns a participating group's matched text and its provenance, and the zero location for a group that did not participate.
+- **R102:** `Put` patches a node the schema built into its group's slot.
+- **R103:** `Omit` folds a participating group's span into the surrounding glue, so a schema need not bind a group it does not want as a field.
+- **R104:** `Done` returns the children and the text the match did not consume.
+- **R105:** `Done` panics when a group's slot was left nil.
+- **R106:** `Done` panics when a plugged node's span does not match its group's.
+- **R107:** The builder returns no name-to-node map; a schema keeps references to the nodes it built as it builds them.
+- **R108:** Binding is by group name, never by position.
+- **R109:** Nested capture groups are skipped rather than rejected.
+- **R110:** A stencil's group indices are half-open, and a zero-length group is a valid `[k,k)` needing no special case.
+- **R111:** `Bool` is a typed view over a `Text` node and stores no value of its own.
+- **R112:** `Bool.Value` derives the value from the text on every read.
+- **R113:** `Bool.Set` writes through to the text, which keeps its offset and becomes altered.
+- **R114:** A bound value points at the node already in the child list rather than replacing it.
+- **R115:** Only what a tool writes into is a bound field; minimality constrains a stencil's span, never the number of children within it.
+- **R116:** Stenciled parts separated by text become several stencil nodes rather than one span wide enough to swallow the text between them.
+- **R117:** `Done` leaves no two adjacent children that are both plain glue: an omitted group's text is merged with its neighbours, so omitting a group produces the identical child list to a regex that never named it.

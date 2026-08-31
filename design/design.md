@@ -27,12 +27,16 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-Marker.md → `sdom/marker.go`
 - [x] crc-Lexer.md → `sdom/lexer.go`
 - [x] crc-BracketContext.md → `sdom/context.go`
+- [x] crc-StencilBuilder.md → `sdom/stencil.go`
+- [x] crc-Bool.md → `sdom/bound.go`
+- [x] crc-TodoItem.md → `sdom/todo.go`
 
 ### Sequences
 - [x] seq-mutate.md → `sdom/mutate.go`, `sdom/doc.go`
 - [x] seq-stamp.md → `sdom/doc.go`
 - [x] seq-scan.md → `sdom/lexer.go`
 - [x] seq-pair.md → `sdom/context.go`
+- [x] seq-stencil.md → `sdom/stencil.go`
 
 ### Test Designs
 - [x] test-Node.md → `sdom/node_test.go`
@@ -42,6 +46,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] test-Lexer.md → `sdom/lexer_test.go`
 - [x] test-BracketContext.md → `sdom/context_test.go`
 - [x] test-Languages.md → `sdom/lang_test.go`
+- [x] test-Stencil.md → `sdom/stencil_test.go`
 
 ## Gaps
 

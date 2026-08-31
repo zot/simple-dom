@@ -1,6 +1,7 @@
 package sdom
 
 import (
+	"fmt"
 	"slices"
 	"sort"
 	"strings"
@@ -46,9 +47,37 @@ type Doc struct {
 // The nodes are expected to tile the source (R3). That is not checked here:
 // stating the rule is enough, and the corpus tests are where it is proven.
 func New(source string, base int, nodes ...Node) *Doc {
+	oneParse(nodes)
 	d := &Doc{source: source, base: base, dom: nodes}
 	_ = d.rebuild() // no node kind in this package can fail to render
 	return d
+}
+
+// CRC: crc-Doc.md | R118, R119
+//
+// oneParse requires every node to come from the same parse, and panics otherwise.
+// Checked once here because nothing else can break it: Split inherits the origin,
+// Merge refuses a mismatch already, and Remove takes nothing in. What it buys is
+// that the whole array shares a coordinate system, which is what lets Merge trust
+// a node's own claim about itself.
+//
+// What it does NOT catch, stated because nothing will: a document built over one
+// source from nodes uniformly attributed to a different one. Verifying that would
+// mean comparing the very bytes the check exists to avoid copying. So a document
+// REQUIRES its nodes to describe its source and enforces only the cheap half —
+// under a violation the array does not tile, faithful nodes do not render their
+// spans, and the round-trip fails, so the failure is loud even unguarded.
+func oneParse(nodes []Node) {
+	if len(nodes) == 0 {
+		return
+	}
+	want := nodes[0].Location().Origin()
+	for i, n := range nodes[1:] {
+		if got := n.Location().Origin(); got != want {
+			panic(fmt.Sprintf("sdom: node %d comes from %s, but the document is %s",
+				i+1, got, want))
+		}
+	}
 }
 
 // CRC: crc-Doc.md | R37
