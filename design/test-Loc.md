@@ -80,8 +80,10 @@ an altered node's offset is historical and proves nothing
 **Alarm:** 3
 **Fire alarm:** Drop the `la.Faithful() && lb.Faithful()` guard so `Merge` checks adjacency unconditionally. Red: the altered-operand case is refused, because an altered node's historical offset proves nothing. The happy path never exercises this, so nothing else objects.
 **Inject:** sdom/mutate.go:Doc.Merge
-**Pulled:** 2026-08-30 — rang. Only this test failed, refusing the altered pair
-with `Merge: 0+2 is not adjacent to 90`; the other 29 held.
+**Pulled:** 2026-08-31 — re-pulled and rang again. Its earlier proof expired when
+`Doc.Merge` grew the source-slicing branch; re-earned against the function as it
+now stands, failing alone with the same refusal. Previously 2026-08-30, when it
+also rang alone against 29 other tests.
 
 ## Test: split then merge is the identity
 **Purpose:** R30, R36 — re-granulation moves boundaries and nothing else

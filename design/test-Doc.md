@@ -114,6 +114,13 @@ concatenation and then discarded it in the faithful case; this test stayed green
 through that, because the discarded string still left a correct slice behind. That
 half of the claim is gap O12, and it is not asserted here.
 **Inject:** sdom/mutate.go:Doc.Merge
+**Pulled:** 2026-08-31 — rang, and **alone out of 79**. The puller checked the
+value-comparing tests exhaustively and every one stayed green: both corpus
+round-trips, the array tiling, the stencil child tiling, every faithful-span
+check, the structural round-trip through a re-parse, split-then-merge, merge
+associativity, and the todo-list round-trip. Not one byte changes under this
+injection, so nothing that compares bytes can see it. This is the sharpest
+measurement in the project of what a round-trip does not prove.
 
 ## Test: an escaping failure poisons the document
 **Purpose:** R54, R55 — no rollback, and no reset

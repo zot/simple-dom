@@ -146,3 +146,31 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   knowing and neither is established. Repair: a careful benchmark that isolates `Merge` from the
   window's index rebuild, or an inspection of the generated code. Until then the requirement
   claims only what has been observed.
+- [ ] O13: `StencilBuilder.Omit` has no caller outside its own test. Measured 2026-08-31 during
+  an alarm pull: `grep -rn "Omit" sdom/` finds only the definition, its doc comment, the
+  `Put it or Omit it` panic string, and `stencil_test.go`. `todo.go` never calls it, because the
+  todo schema binds both of its groups. It exists because a schema will want a group it does not
+  bind — carve Items 4 and 6 both have shapes that need it — but until one of them lands it
+  is API justified by a plan rather than by a consumer. Not a defect: the alternative was
+  forcing a schema to `Put` a `Text` it does not want purely to satisfy the nil check, which
+  would make the child list claim a field where there is none. Revisit when Item 4 or 6 lands:
+  if neither calls it, it should go.
+- [ ] O14: `TodoItem` binds `label` for a test-shape reason rather than an editability one,
+  which is a knowing deviation from the minimality rule the same item establishes. The rule says
+  only what a tool *writes into* is a bound field; a tool working on todo lists almost certainly
+  toggles the checkbox and may never rewrite the label. `label` is bound because a fixture needs
+  two named groups to prove the **gap between them** is computed — with one group only the
+  head and tail spans are exercised. The CRC card records this, but it means the worked example
+  a reader learns from demonstrates a binding its own rule would reject. Repair when a real
+  consumer exists: either something writes labels, and the binding is justified, or the fixture
+  grows a second genuinely-written field and `label` becomes glue.
+- [ ] O15: Two guards now cover one property, and the inner one is unreachable. `mergeLocs`
+  panics when two locations carry different origins; `New` panics when a document is built from
+  nodes of two parses. Since `New` is the only way foreign nodes enter a document — `Split`
+  inherits the origin, `Merge` refuses a mismatch, `Remove` takes nothing in — `Doc.Merge` can
+  never present `mergeLocs` with a cross-origin pair. R95's test can only be built by corrupting
+  a document from inside the package, and it says so. The inner guard is kept because
+  `mergeLocs` guards a **function** rather than a path and could acquire a second caller, but
+  this is the fourth guard added in three days and the density is worth watching: a codebase is
+  a prompt, and a reader will take it as the local idiom. Revisit if a fifth appears, or if
+  `mergeLocs` still has one caller when the readers land.
