@@ -40,7 +40,7 @@ corpus round-trips stayed green.
 **Alarm:** 2
 **Fire alarm:** Make `matchAnyClose` always return no match. Red: the unmatched `}` becomes text instead of a `Closer`. Nothing else objects — no byte moves and the array still tiles — which is why a fallback that quietly stops firing needs its own assertion.
 **Inject:** sdom/parser.go:parser.matchAnyClose
-**Pulled:** 2026-08-30 — rang. This test failed, and so did
+**Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestWordMarkersRespectBoundaries`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang. This test failed, and so did
 `TestWordMarkersRespectBoundaries`, whose fixture ends with an `end` that only
 the fallback can recognize. **The recognition count did not catch it**, and
 neither corpus round-trip did.
@@ -100,7 +100,7 @@ case must differ, or the escape is doing nothing
 **Alarm:** 4
 **Fire alarm:** In `scanRestricted`, advance past the escape sequence without consuming the byte after it. Red: the escaped quote closes the string, so one string becomes two plus stray text. The round-trip survives intact, because every byte is still emitted somewhere.
 **Inject:** sdom/parser.go:parser.scanRestricted
-**Pulled:** 2026-08-30 — rang, on this test and `TestLangGo`. Both of this
+**Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestLangGo`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, on this test and `TestLangGo`. Both of this
 test's messages fired, including *disabling the escape changed nothing, so the
 escape does nothing* — the second assertion earning its place. The recognition
 count and both corpus round-trips stayed green.

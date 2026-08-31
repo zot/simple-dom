@@ -19,7 +19,7 @@ level report none
 **Alarm:** 1
 **Fire alarm:** In `parser.open`, push the opener onto the stack *before* emitting it rather than after. Red: an opener records **itself** as its own enclosing opener instead of the one containing it. Nothing about the bytes, the tiling or the pairing changes, so this is silent everywhere else — and it would quietly corrupt any layer walking enclosure to find scope.
 **Inject:** sdom/parser.go:parser.open
-**Pulled:** 2026-08-30 — rang, and wider than designed. This test failed and so
+**Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, on the same two tests — this one and the cross-check. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and wider than designed. This test failed and so
 did the cross-check, **in the opposite column** from the alarm above: pairs equal
 at 316, enclosings 974 vs 962. The blast radius is larger than predicted, because
 `take` flushes pending text *before* emitting: pushing first means the text

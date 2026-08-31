@@ -102,10 +102,14 @@ source, and each renders exactly the source at its own offset with no adjustment
 **Code:** sdom/loc_test.go
 **Alarm:** 4
 **Fire alarm:** In `Scan`, thread the base into the parser and add it in `at`, so
-locations come out base-relative. Red: this test, and the tiling assertions with
-it. Loud rather than silent — recorded so the coverage is deliberate.
-**Inject:** sdom/parser.go:Scan
-**Pulled:** 2026-08-30 — rang, and less loudly than predicted. **Only this test
+locations come out base-relative. Red: **only this test** — measured twice, on
+2026-08-30 and 2026-08-31. Every offset in the document is wrong by the base and
+nothing else objects, because `Render` never consults an offset. ~~and the tiling
+assertions with it, loud rather than silent~~ — that prediction was wrong both
+times it was checked, and the tiling tests scan at base 0, where the injection
+changes nothing at all.
+**Inject:** sdom/parser.go:Scan, sdom/parser.go:parser.at
+**Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, and again **only this test failed** — the second measurement agreeing with the first, and with neither agreeing with the prescription above. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and less loudly than predicted. **Only this test
 failed**, out of 64. Every offset in the document was wrong by 500 and the corpus
 round-trip, the tiling test and the faithful-span check all stayed green, because
 `Render` never consults an offset. The prediction of "loud" was wrong.
@@ -158,7 +162,7 @@ Red: only this test. Everything else works exactly as well without origins — t
 bytes, the tiling, the pairing, the round-trips are all untouched — which is why
 attribution needs an assertion of its own.
 **Inject:** sdom/parser.go:parser.at
-**Pulled:** 2026-08-30 — rang, and **alone**: 63 of 64 tests passed with the
+**Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, and again alone. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and **alone**: 63 of 64 tests passed with the
 parser attributing nothing at all. The bytes, the tiling, the bracket pairing, the
 cross-derivation check and every corpus round-trip are all indifferent to
 provenance, which is why attribution needs an assertion of its own.
