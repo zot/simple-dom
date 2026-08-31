@@ -222,3 +222,41 @@ func TestAnOpenerKnowsItsSeparators(t *testing.T) {
 		}
 	}
 }
+
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#1.5 | R86, R152
+//
+// Separators refreshes like every other accessor. Found by injection rather than by
+// design: TestAnOpenerKnowsItsSeparators calls rebuild itself, so removing the
+// refresh from Separators left the whole suite green.
+//
+// A missing refresh only gives a WRONG answer once the document genuinely differs,
+// which is why this removes a separator rather than making some unrelated edit: the
+// scan's record still lists it, and only the rebuild the accessor is supposed to
+// trigger can notice it is gone.
+func TestSeparatorsRefreshesLikeEveryOtherAccessor(t *testing.T) {
+	d, ctx := Scan("for x in a b; do echo $x; done\n", 0, &LangShell)
+	var opener, sep Node
+	for _, n := range d.Nodes() {
+		if o, ok := n.(*Opener); ok && opener == nil {
+			opener = o
+		}
+		if s, ok := n.(*Separator); ok && sep == nil {
+			sep = s
+		}
+	}
+	if opener == nil || sep == nil {
+		t.Fatal("expected an opener and a separator in this parse")
+	}
+	if got := len(ctx.Separators(opener)); got != 2 {
+		t.Fatalf("before the edit: %d separators, want 2", got)
+	}
+
+	if err := d.Mutate(func() error { return d.Remove(sep) }); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	// No explicit rebuild: the accessor's own refresh is what must notice.
+	if got := len(ctx.Separators(opener)); got != 1 {
+		t.Errorf("after removing one separator: %d, want 1 — the accessor answered "+
+			"from an index the document has moved past", got)
+	}
+}

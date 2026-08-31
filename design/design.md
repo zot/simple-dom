@@ -223,3 +223,41 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   `TestCommentsAnywhereInASignature` — so this is not a coverage hole; it is a naming and
   design one, and it was invisible until an injection was aimed at the site the alarm named.
   Worth repairing by splitting the test so each half is asserted where it lives.
+- [ ] O20: **The alarm census cannot see a change made on the same day as the pull that preceded
+  it.** It compares a `**Pulled:**` date against the date git last changed the `**Inject:**`
+  symbol, and says so itself — *"compared by date until re-pulled"*. So a symbol pulled in the
+  morning and rewritten in the afternoon reports **verified** while its proof is void. Measured
+  2026-08-31: `test-Declaration.md#4` was pulled that morning against
+  `BracketContext.Declarations`; the afternoon's index consolidation rewrote that function's
+  body (`bc.declaration[kw]` → `bc.info[kw].declaration`, visible in commit `70f13e6`); the
+  census still listed it among the verified, and only knowing what had been edited caught it.
+  Three other alarms on the same rewrite *were* reported stale, because their previous pulls
+  were dated 2026-08-30 — so the blind spot is exactly one day wide and opens whenever a pass
+  pulls and then keeps working, which is the normal shape of a mini-spec item. The fix belongs
+  in the mini-spec tool rather than here, and it is the same shape as the `unsealed` note the
+  census already prints: a pull record that named its commit could be compared against a commit
+  rather than a date, and the census would not need to guess. Like `O10` and `O16`, this records
+  the hole and the evidence rather than proposing a repair in this repository.
+- [ ] O21: `Separators` and `Declarations` return the context's **own slice**, so a caller that
+  appends to or writes through the returned value corrupts the index in place, and the
+  corruption survives until a rebuild happens to overwrite it. This is `O2`'s problem in a
+  second location — there it is `Doc.Nodes()` returning the live backing array with "must not
+  be modified" stated only in prose — and the options are the same: `slices.Clone` at an
+  allocation per call, or an `iter.Seq[Node]` which enforces it for free and changes the API.
+  The aliasing predates this item for the declaration links and is new for the separators, and
+  deciding it in one place for both is better than twice. Worth settling once real call sites
+  exist, since the right answer depends on whether consumers iterate once or hold the result.
+- [ ] O22: The consolidated index costs about **2.3× the heap** of the three maps it replaced,
+  and that was accepted deliberately rather than overlooked. *Measured 2026-08-31 over `sdom`'s
+  own 14 files, 15,747 nodes:* three maps 1,067 KB against one map of flat structs 2,463 KB, and
+  the struct has since grown from 72 to 96 bytes with the declaration links folded in, so the
+  real figure is higher. What decided it was **allocations, not size** — 111 against the three
+  maps' 275, and against 15,858 for a boxed `NodeInfo` hierarchy, on an index `rebuild`
+  recreates at every structural change. The cost comes from mixing two kinds of fact: `opener`,
+  `closer` and `separators` are properties of a **group**, of which there are 4,557, while
+  `enclosing` is a property of **any node**, of which there are 8,965 — so every plain text
+  node carries 96 bytes to hold one 16-byte field. If the heap ever matters, the levers in order
+  are: key a group-shaped index by its opener and keep `enclosing` separate (≈1.6× rather
+  than 2.3×), or move `separators` to a side map, since `LangGo` produces **zero** separators
+  and pays 24 bytes an entry for them regardless. Measure before optimising; 1 MB of index for
+  100 KB of source is not a constraint mini-spec or microfts2 will feel.

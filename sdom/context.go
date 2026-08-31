@@ -79,6 +79,12 @@ func (bc *BracketContext) pair(opener, closer Node) {
 
 // enclose records that n sits inside open. A separator also learns its opener,
 // and the opener learns the separator — the direction R152 adds.
+//
+// A separator therefore stores the same node in BOTH enclosing and opener, and that
+// redundancy is deliberate: it is what lets Opener() and Enclosing() answer for a
+// separator without either growing a case for it. Collapsing the two fields looks
+// like an easy 16 bytes and would break Opener(separator) silently, since nothing
+// else asks that question yet.
 func (bc *BracketContext) enclose(n, open Node) {
 	if _, isSep := n.(*Separator); !isSep {
 		bc.with(n, func(i *BracketInfo) { i.enclosing = open })

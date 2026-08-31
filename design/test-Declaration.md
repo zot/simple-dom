@@ -88,7 +88,16 @@ from a document that has changed underneath it. An empty answer would be worse t
 a wrong one — it reads identically to *this keyword declares nothing* — which is
 exactly why `IndexOf` refuses rather than returning `-1`.
 **Inject:** sdom/context.go:BracketContext.Declarations
-**Pulled:** 2026-08-31 — rang, and alone. Dropping the stamp comparison failed only
+**Pulled:** 2026-08-31 — **re-pulled** after the index consolidation rewrote this
+accessor's body, and rang again: *got <nil>, want ErrDeclarationsStale*, with only
+this test failing.
+
+*The re-pull was not prompted by the census, which is the point.* This alarm's first
+pull and the rewrite that voided it fall on the same date, and the census compares by
+date — so it reported **verified** while the proof was void, and only knowing what had
+been edited caught it. Three alarms on the same rewrite *were* reported stale, their
+previous pulls being a day older. Banked as `O20`. Originally, that same day — rang,
+and alone. Dropping the stamp comparison failed only
 `TestStaleDeclarationsRefuse`, with *got <nil>, want ErrDeclarationsStale* — the
 accessor answering happily from a document that had changed underneath it.
 
@@ -109,6 +118,15 @@ keyword declares nothing*. Note `TestStaleDeclarationsRefuse` stays **green** un
 this injection: it edits after recording, so the stamps differ and it refuses
 correctly. The hole is a rebuild firing while they agree.
 **Inject:** sdom/context.go:BracketContext.SetDeclarations
+**Pulled:** 2026-08-31 — rang: *got 0 names after a rebuild, want 1 — a silent wipe
+reads as 'this keyword declares nothing'*.
+
+**And it confirmed the half worth confirming: `TestStaleDeclarationsRefuse` stayed
+green.** Only this test failed. So the older test genuinely could not have caught the
+regression — it edits *after* recording, so the two stamps differ and its refusal is
+correct. The hole was a rebuild firing while they agree, and nothing already written
+was looking there. That claim was a prediction when this alarm was designed; it is
+now evidence.
 
 ## Test: SetDeclarations replaces rather than merges
 **Purpose:** R126 — the second regression, and the one no caller would have hit yet
@@ -122,3 +140,7 @@ keyword keeps its old names. Nothing fails today without this test — no caller
 a second pass over one context — which is why it is written down rather than left to
 the first consumer that does.
 **Inject:** sdom/context.go:BracketContext.SetDeclarations
+**Pulled:** 2026-08-31 — rang: *a keyword absent from the second call kept 1 names;
+SetDeclarations replaces, it does not merge*. Nothing else failed, which is the
+expected shape — no caller runs a second pass over one context, so this assertion is
+the only thing standing between the behaviour and its own documentation.

@@ -46,7 +46,11 @@ thing that catches them drifting apart.
 **Alarm:** 2
 **Fire alarm:** Remove the `bc.closes(o, n)` condition from `rebuild`, so the stack walk pairs any closer with whatever opener is on top. **This is the real defect, hit while implementing:** on `( { )` the scan emits `)` unpaired via the any-close fallback while the walk pairs it with `{`. Red: the two derivations disagree, on most corpus files under most languages. Every other test stays green, because each derivation is individually self-consistent.
 **Inject:** sdom/context.go:BracketContext.rebuild
-**Pulled:** 2026-08-30 — rang. **Only this test failed**, out of 56, and the
+**Pulled:** 2026-08-31 — re-pulled after the index consolidation and rang again,
+disagreeing at the first corpus file it reached: *the scan recorded 192 entries; the
+independent walk found 194*. The message reads differently from the 2026-08-30 pull
+because the comparison is now over whole `BracketInfo` entries rather than two
+separate maps. Originally 2026-08-30 — rang. **Only this test failed**, out of 56, and the
 message named the divergence exactly: `doc.go under shell: scan recorded 268
 enclosings / 77 pairs; the independent walk found 268 / 86`. Enclosings equal,
 pairs differing by nine — the stray closers the fallback leaves unpaired. Each
@@ -65,11 +69,26 @@ confusion
 **Code:** sdom/context_test.go
 **Alarm:** 3
 **Fire alarm:** Record separators only from the scan and drop them from `rebuild`'s
-independent walk. Red: **not immediately** — the links are right until a structural
-edit makes the stamp stale, and then the rebuilt index has none. That is the whole
-hazard of a representation change, and it is why this test must force a rebuild
-rather than read the freshly scanned index.
+independent walk. ~~Red: **not immediately** — the links are right until a structural
+edit makes the stamp stale, and then the rebuilt index has none.~~ — **corrected
+2026-08-31 by pulling it:** red **immediately**, and in two places at once. See below.
 **Inject:** sdom/context.go:BracketContext.rebuild
+**Pulled:** 2026-08-31 — rang, and **more loudly than predicted, which is the
+widened cross-derivation paying off.**
+
+This test failed as designed — `separators [], want [in do]` — and so did
+`TestIndexAgreesWithTheIndependentDerivation`, immediately, at 43 entries against 42.
+The prediction of a *delayed* failure assumed separators sat outside `R87`'s
+cross-check and would only surface once a stale stamp forced a rebuild. They do not:
+the corpus comparison is over whole `BracketInfo` entries, so a separator recorded by
+the scan and not by the walk is a disagreement the corpus test sees at once, with no
+stale stamp needed.
+
+*That is the change worth keeping from this item.* Comparing the entry rather than
+two chosen maps is what put separators inside the cross-derivation **by
+construction**, and it is why this alarm could not stay quiet. A field added to
+`BracketInfo` later is covered the same way, without anyone remembering to extend
+anything.
 
 ## Test: a stale stamp rebuilds, and a fresh one does not
 **Purpose:** R86 — the context is a derived index like any other
@@ -95,3 +114,27 @@ contains no guard of its own
 **Expected:** the document is all `Text`, and no link storage is allocated
 **Refs:** crc-BracketContext.md
 **Code:** sdom/context_test.go
+
+## Test: Separators refreshes like every other accessor
+**Purpose:** R86, R152 — found by injecting past the alarm list, not by design
+**Input:** `for x in a b; do echo $x; done`, then remove one separator inside a
+mutation window and ask the opener again **without** forcing a rebuild
+**Expected:** one separator, not two
+**Refs:** crc-BracketContext.md, seq-pair.md#1.5
+**Code:** sdom/context_test.go
+**Alarm:** 4
+**Fire alarm:** Remove `bc.refresh()` from `Separators`. Red: the accessor answers
+from an index the document has moved past — *2, want 1*.
+
+**This test exists because that injection was silent.** After the seven recorded
+alarms were pulled, the same injection was tried against the suite as it then stood
+and **nothing failed**: `TestAnOpenerKnowsItsSeparators` calls `rebuild` itself, so it
+never depended on the accessor refreshing, and no other caller existed. Silence at an
+unalarmed site is a missing alarm rather than a passing one, which is the whole reason
+for injecting past the list.
+
+Note the edit has to **remove** a separator. A merely unrelated structural change
+leaves the scan's record still correct, so a missing refresh would return the right
+answer for the wrong reason and the test would prove nothing.
+**Inject:** sdom/context.go:BracketContext.Separators
+**Pulled:** 2026-08-31 — rang, *2, want 1*, with the tree restored clean.
