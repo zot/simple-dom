@@ -23,29 +23,72 @@ type BracketContext struct {
 
 	origin *Origin // minted once per parse, carried by every node it produces
 
-	closerOf  map[Node]Node // opener  -> its closer
-	openerOf  map[Node]Node // closer  -> its opener
-	enclosing map[Node]Node // any other node -> the opener containing it
+	// R154: ONE index rather than four. How the links are stored is not part of the
+	// contract — what this owes is the answers — which is what made consolidating
+	// them a free change.
+	info map[Node]BracketInfo
 
-	// R126, R127: a keyword node -> every name it declares. One entry for a plain
-	// declaration, several for a group. Stored here beside the pairing links
-	// because storage is machinery; FILLED IN by a schema, because filling it in
-	// means knowing what announces a declaration.
-	declaration map[Node][]Node
-	declStamp   uint64
-	declSet     bool
+	declStamp uint64
+	declSet   bool
 
 	stamp uint64
 }
 
+// CRC: crc-BracketContext.md | R152, R154
+//
+// BracketInfo is everything this context knows about one node. Which fields are
+// set depends on what the node is: an opener has a closer, its separators and its
+// enclosing opener; a closer has an opener; a separator has both; anything else has
+// only an enclosing opener; and a declaration keyword has the names it declares.
+//
+// It is a FLAT VALUE STRUCT, and that won on allocations rather than on size. A
+// boxed hierarchy — an interface with a small struct for plain nodes and a wide one
+// for bracket participants — is the smaller index, because a plain node then carries
+// 16 bytes instead of 96. But an interface value cannot hold a struct inline, so
+// every entry becomes its own heap object. Measured over 15,747 nodes: 111
+// allocations against 15,858, on an index that rebuild recreates at EVERY structural
+// change. The flat struct also allocates less than the three maps it replaced.
+type BracketInfo struct {
+	opener, closer, enclosing Node
+	separators                []Node
+
+	// R126, R127: the names a declaration keyword declares — one for a plain
+	// declaration, several for a group. FILLED IN by a schema, because filling it in
+	// means knowing what announces a declaration, and wiped by any rebuild, because
+	// this is the one part the context cannot re-derive.
+	declaration []Node
+}
+
 func newBracketContext(lang *BracketLang) *BracketContext {
-	return &BracketContext{
-		lang:      lang,
-		origin:    &Origin{},
-		closerOf:  map[Node]Node{},
-		openerOf:  map[Node]Node{},
-		enclosing: map[Node]Node{},
+	return &BracketContext{lang: lang, origin: &Origin{}, info: map[Node]BracketInfo{}}
+}
+
+// with reads, modifies and writes one node's entry. Map values are structs, so this
+// is the only way to touch a field.
+func (bc *BracketContext) with(n Node, f func(*BracketInfo)) {
+	i := bc.info[n]
+	f(&i)
+	bc.info[n] = i
+}
+
+// pair records a closed group, from either derivation.
+func (bc *BracketContext) pair(opener, closer Node) {
+	bc.with(opener, func(i *BracketInfo) { i.closer = closer })
+	bc.with(closer, func(i *BracketInfo) { i.opener = opener })
+}
+
+// enclose records that n sits inside open. A separator also learns its opener,
+// and the opener learns the separator — the direction R152 adds.
+func (bc *BracketContext) enclose(n, open Node) {
+	if _, isSep := n.(*Separator); !isSep {
+		bc.with(n, func(i *BracketInfo) { i.enclosing = open })
+		return
 	}
+	bc.with(n, func(i *BracketInfo) {
+		i.enclosing = open
+		i.opener = open
+	})
+	bc.with(open, func(i *BracketInfo) { i.separators = append(i.separators, n) })
 }
 
 // CRC: crc-BracketContext.md | R80
@@ -65,21 +108,34 @@ func (bc *BracketContext) Origin() *Origin { return bc.origin }
 // left open at end of input.
 func (bc *BracketContext) Closer(opener Node) Node {
 	bc.refresh()
-	return bc.closerOf[opener]
+	return bc.info[opener].closer
 }
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.2 | R83
 // Opener returns the opener paired with a closer, or nil for an unmatched one.
 func (bc *BracketContext) Opener(closer Node) Node {
 	bc.refresh()
-	return bc.openerOf[closer]
+	return bc.info[closer].opener
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#1.4 | R152
+//
+// Separators returns the separators belonging to opener's group, in document order.
+//
+// This is the direction the contract was missing. A separator could always be traced
+// back through its enclosing opener; nothing could ask an opener which separators
+// were its own without scanning forward for them. Consumer count did not decide it:
+// a library answers the questions its own structure makes meaningful.
+func (bc *BracketContext) Separators(opener Node) []Node {
+	bc.refresh()
+	return bc.info[opener].separators
 }
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.3 | R84
 // Enclosing returns the innermost opener containing n, or nil at top level.
 func (bc *BracketContext) Enclosing(n Node) Node {
 	bc.refresh()
-	return bc.enclosing[n]
+	return bc.info[n].enclosing
 }
 
 // CRC: crc-BracketContext.md | R128
@@ -95,7 +151,23 @@ var ErrDeclarationsStale = errors.New(
 // document's current generation. A schema calls it after its pass, OUTSIDE the
 // mutation window the pass ran in — reading the generation refuses inside one.
 func (bc *BracketContext) SetDeclarations(links map[Node][]Node) {
-	bc.declaration = links
+	// Refresh FIRST, and this is not an optimisation. rebuild recreates the whole
+	// index, and the declaration links now live in it — so a rebuild pending at
+	// this moment would wipe what we are about to write, and then set stamp to the
+	// generation declStamp already holds, making the loss invisible to the
+	// staleness check. Every schema pass reaches here in exactly that state: it
+	// mutates inside a window and records afterwards. Doing the pending rebuild
+	// before the write is what keeps the two stamps honest.
+	bc.refresh()
+	// Replace, as the name says: a keyword absent from links keeps nothing.
+	for n := range bc.info {
+		if bc.info[n].declaration != nil {
+			bc.with(n, func(i *BracketInfo) { i.declaration = nil })
+		}
+	}
+	for kw, names := range links {
+		bc.with(kw, func(i *BracketInfo) { i.declaration = names })
+	}
 	bc.declSet = true
 	if bc.doc != nil {
 		bc.declStamp = bc.doc.Generation()
@@ -123,7 +195,7 @@ func (bc *BracketContext) Declarations(kw Node) ([]Node, error) {
 	if bc.doc != nil && bc.doc.Generation() != bc.declStamp {
 		return nil, ErrDeclarationsStale
 	}
-	return bc.declaration[kw], nil
+	return bc.info[kw].declaration, nil
 }
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.5 | R86
@@ -143,7 +215,7 @@ func (bc *BracketContext) refresh() {
 	}
 }
 
-// CRC: crc-BracketContext.md | R81, R82, R83, R84
+// CRC: crc-BracketContext.md | R81, R82, R83, R84, R152, R153
 //
 // rebuild derives every link a second way: by walking the finished flat array
 // with a stack, rather than from the recursion that produced it. The scan records
@@ -151,9 +223,7 @@ func (bc *BracketContext) refresh() {
 // The two are independent derivations and must agree — which is what makes the
 // index checkable rather than merely believed (R87).
 func (bc *BracketContext) rebuild() {
-	bc.closerOf = make(map[Node]Node, len(bc.closerOf))
-	bc.openerOf = make(map[Node]Node, len(bc.openerOf))
-	bc.enclosing = make(map[Node]Node, len(bc.enclosing))
+	bc.info = make(map[Node]BracketInfo, len(bc.info))
 	var stack []Node
 	for _, n := range bc.doc.Nodes() {
 		var open Node
@@ -171,17 +241,20 @@ func (bc *BracketContext) rebuild() {
 			// unbalanced file.
 			if open != nil && bc.closes(open, n) {
 				stack = stack[:len(stack)-1]
-				bc.closerOf[open] = n
-				bc.openerOf[n] = open
+				bc.pair(open, n)
 			}
 		case *Opener:
 			if open != nil {
-				bc.enclosing[n] = open
+				bc.enclose(n, open)
 			}
 			stack = append(stack, n)
 		default:
+			// A Separator lands here, and enclose gives it BOTH directions: it
+			// learns its opener, and its opener learns it. Recovering separators
+			// from this walk rather than trusting the scan is what keeps them
+			// inside R87's cross-derivation instead of riding along beside it.
 			if open != nil {
-				bc.enclosing[n] = open
+				bc.enclose(n, open)
 			}
 		}
 	}

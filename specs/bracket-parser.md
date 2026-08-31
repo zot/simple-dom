@@ -141,14 +141,24 @@ Each schema has its own parse context, a concrete type rather than an interface.
 The parser's carries the language while scanning, and **outlives the parse** to
 carry the pairing links:
 
-- an opener knows its **closer** and its **enclosing opener**
+- an opener knows its **closer**, its **separators**, and its **enclosing opener**
 - a closer knows its **opener**
+- a separator knows its **opener**
 - any other node knows its **enclosing opener**
 
+**The separator direction completes an asymmetry, and it is a contract matter.** A
+separator could always be traced back to its opener, because it is enclosed by one;
+nothing could ask an opener which separators belong to it without scanning forward.
+A library answers the questions its structure makes meaningful, and `for x in a b;
+do … done` makes that one meaningful whether or not a consumer is asking yet.
+
 These links are owned by the context, **not by `Doc`** — not every document has
-brackets, and a markdown DOM would carry two dead maps forever. They are a derived
+brackets, and a markdown DOM would carry dead maps forever. They are a derived
 index: the context stamps itself with the document's structural generation and
 rebuilds when the stamp is stale.
+
+**How they are stored is not part of this contract.** Whether the context keeps one
+map or several is its own business; what it owes is the answers above.
 
 **The index is checkable rather than merely believed.** A forward scan that skips
 whole bracket pairs finds a node's enclosing opener independently, and must agree.

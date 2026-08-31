@@ -53,6 +53,24 @@ pairs differing by nine — the stray closers the fallback leaves unpaired. Each
 derivation stays individually self-consistent, which is why nothing but the
 comparison can see it.
 
+## Test: an opener knows its separators, and each names it back
+**Purpose:** R152, R153 — the direction the contract was missing
+**Input:** shell's `for x in a b; do echo $x; done` and
+`if p; then q; elif r; then s; else t; fi`
+**Expected:** the `for` opener reports `in` and `do`, **in document order**; the `if`
+opener reports `then`, `elif`, `then`, `else`; and every separator names its own
+opener back. A group with no separators reports none rather than nil-versus-empty
+confusion
+**Refs:** crc-BracketContext.md, seq-pair.md#1.4
+**Code:** sdom/context_test.go
+**Alarm:** 3
+**Fire alarm:** Record separators only from the scan and drop them from `rebuild`'s
+independent walk. Red: **not immediately** — the links are right until a structural
+edit makes the stamp stale, and then the rebuilt index has none. That is the whole
+hazard of a representation change, and it is why this test must force a rebuild
+rather than read the freshly scanned index.
+**Inject:** sdom/context.go:BracketContext.rebuild
+
 ## Test: a stale stamp rebuilds, and a fresh one does not
 **Purpose:** R86 — the context is a derived index like any other
 **Input:** a scanned document; a freshness check, a membership change, another

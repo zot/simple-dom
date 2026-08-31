@@ -118,6 +118,11 @@
   `BracketGroup` is exercised by at least one of them and so that the languages mini-spec reads
   are covered.
 
+- **R152:** An opener knows the separators belonging to its group.
+- **R153:** A separator knows its opener.
+- **R154:** How the parse context stores its links is not part of its contract: what it owes is
+  the answers, and whether it keeps one map or several is its own business.
+
 ## Feature: stencils
 **Source:** specs/stencils.md
 
@@ -156,8 +161,10 @@
 - **R125:** `Doc.Replace` swaps one node for another in the document, preserving position; it
   changes membership, so it bumps the structural generation and requires an open mutation
   window.
-- **R126:** A `DeclarationType` holds no reference to its names; the link map lives on
-  `BracketContext` beside the bracket pairing links.
+- **R126:** A `DeclarationType` holds no reference to its names; the declaration links live on
+  `BracketContext`. ~~beside the bracket pairing links~~ — *edited 2026-08-31: that phrase
+  described storage, which R154 says is not part of the contract, and it stops being true when
+  the links are folded into one index. The claim it qualified is unchanged.*
 - **R127:** The declaration link is one-to-many: a keyword maps to every name it declares, one
   for a plain declaration and several for a group.
 - **R128:** `sdom` provides the declaration link map and a schema fills it in, because filling

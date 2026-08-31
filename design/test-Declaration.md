@@ -91,3 +91,34 @@ exactly why `IndexOf` refuses rather than returning `-1`.
 **Pulled:** 2026-08-31 — rang, and alone. Dropping the stamp comparison failed only
 `TestStaleDeclarationsRefuse`, with *got <nil>, want ErrDeclarationsStale* — the
 accessor answering happily from a document that had changed underneath it.
+
+## Test: declarations survive a rebuild that follows them
+**Purpose:** R126, R128 — the regression consolidating the index introduced
+**Input:** mutate inside a window, then `SetDeclarations`, then call any accessor
+that refreshes — the exact order every schema pass uses
+**Expected:** the names are still there, and no refusal
+**Refs:** crc-BracketContext.md, seq-declare.md#2.5
+**Code:** sdom/declaration_test.go
+**Alarm:** 6
+**Fire alarm:** Remove the `refresh()` at the top of `SetDeclarations`. Red: the
+names come back **empty with a nil error** — `rebuild` recreates the index the
+declaration links now live in, then sets `stamp` to the generation `declStamp`
+already held, so the loss is invisible to the staleness check. That empty answer is
+the one the accessor's own comment promises to refuse, because it reads as *this
+keyword declares nothing*. Note `TestStaleDeclarationsRefuse` stays **green** under
+this injection: it edits after recording, so the stamps differ and it refuses
+correctly. The hole is a rebuild firing while they agree.
+**Inject:** sdom/context.go:BracketContext.SetDeclarations
+
+## Test: SetDeclarations replaces rather than merges
+**Purpose:** R126 — the second regression, and the one no caller would have hit yet
+**Input:** two `SetDeclarations` calls, the second omitting the first's keyword
+**Expected:** the omitted keyword keeps nothing
+**Refs:** crc-BracketContext.md
+**Code:** sdom/declaration_test.go
+**Alarm:** 7
+**Fire alarm:** Drop the clearing loop in `SetDeclarations`. Red: the omitted
+keyword keeps its old names. Nothing fails today without this test — no caller runs
+a second pass over one context — which is why it is written down rather than left to
+the first consumer that does.
+**Inject:** sdom/context.go:BracketContext.SetDeclarations

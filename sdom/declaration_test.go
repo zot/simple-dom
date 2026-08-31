@@ -92,3 +92,63 @@ func TestDeclarationKindsAreDistinct(t *testing.T) {
 		t.Error("a DeclarationType compared equal to a Text")
 	}
 }
+
+// CRC: crc-BracketContext.md | Seq: seq-declare.md#2.5 | R126, R128
+//
+// Declarations survive a rebuild that happens AFTER they were recorded — and the
+// order here is the one every schema pass uses: mutate inside a window, record at
+// the end, and let some later accessor trigger the refresh.
+//
+// This is the regression consolidating the maps introduced. rebuild recreates the
+// whole index, the declaration links now live in it, and rebuild then sets stamp to
+// the generation declStamp already held — so the loss was invisible to the staleness
+// check and the accessor returned (nil, nil). That empty answer is exactly the one
+// its own doc comment promises to refuse, because it reads as "declares nothing".
+//
+// TestStaleDeclarationsRefuse cannot see this: it edits AFTER recording, so the
+// stamps differ and the refusal is correct. The hole is a rebuild firing while they
+// agree.
+func TestDeclarationsSurviveALaterRebuild(t *testing.T) {
+	d, ctx := Scan("func Index(a int) int {\n}\n", 0, &LangGo)
+	kw := NewDeclarationType("func", Synthetic(4))
+	nm := NewDeclarationName("Index", Synthetic(5))
+
+	if err := d.Mutate(func() error { _, _, e := d.Split(d.Nodes()[0], 2); return e }); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	ctx.SetDeclarations(map[Node][]Node{kw: {nm}})
+
+	ctx.Enclosing(d.Nodes()[0]) // any accessor that refreshes
+
+	got, err := ctx.Declarations(kw)
+	if err != nil {
+		t.Fatalf("refused after a rebuild it should have survived: %v", err)
+	}
+	if len(got) != 1 {
+		t.Errorf("got %d names after a rebuild, want 1 — a silent wipe reads as "+
+			"'this keyword declares nothing'", len(got))
+	}
+}
+
+// CRC: crc-BracketContext.md | R126
+//
+// SetDeclarations REPLACES, as its name says: a keyword absent from the new map
+// keeps nothing. Consolidating the maps turned it into a merge, because writing
+// entry-by-entry leaves untouched entries alone where assigning a whole map did not.
+func TestSetDeclarationsReplaces(t *testing.T) {
+	_, ctx := Scan("a\n", 0, &LangGo)
+	first := NewDeclarationType("first", Synthetic(5))
+	second := NewDeclarationType("second", Synthetic(6))
+	nm := NewDeclarationName("n", Synthetic(1))
+
+	ctx.SetDeclarations(map[Node][]Node{first: {nm}})
+	ctx.SetDeclarations(map[Node][]Node{second: {nm}})
+
+	if got, _ := ctx.Declarations(first); len(got) != 0 {
+		t.Errorf("a keyword absent from the second call kept %d names; "+
+			"SetDeclarations replaces, it does not merge", len(got))
+	}
+	if got, _ := ctx.Declarations(second); len(got) != 1 {
+		t.Errorf("the second call's own keyword got %d names, want 1", len(got))
+	}
+}

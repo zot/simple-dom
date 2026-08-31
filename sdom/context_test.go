@@ -4,6 +4,7 @@ package sdom
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -85,25 +86,20 @@ func TestIndexAgreesWithTheIndependentDerivation(t *testing.T) {
 	for path, src := range corpus(t) {
 		for name, lang := range langs {
 			_, ctx := Scan(src, 0, lang)
-			fromScan := maps.Clone(ctx.enclosing)
-			pairsFromScan := maps.Clone(ctx.closerOf)
+			fromScan := maps.Clone(ctx.info)
 
 			ctx.rebuild() // the second derivation, from the data rather than the recursion
 
-			if len(fromScan) != len(ctx.enclosing) || len(pairsFromScan) != len(ctx.closerOf) {
-				t.Fatalf("%s under %s: scan recorded %d enclosings / %d pairs; "+
-					"the independent walk found %d / %d",
-					path, name, len(fromScan), len(pairsFromScan),
-					len(ctx.enclosing), len(ctx.closerOf))
+			if len(fromScan) != len(ctx.info) {
+				t.Fatalf("%s under %s: the scan recorded %d entries; the independent "+
+					"walk found %d", path, name, len(fromScan), len(ctx.info))
 			}
+			// Comparing the whole entry is what keeps EVERY link inside the
+			// cross-derivation. A field added later is covered by construction, and
+			// separators in particular cannot quietly become scan-only.
 			for n, want := range fromScan {
-				if got := ctx.enclosing[n]; got != want {
-					t.Fatalf("%s under %s: the two derivations disagree on an enclosing opener", path, name)
-				}
-			}
-			for o, want := range pairsFromScan {
-				if got := ctx.closerOf[o]; got != want {
-					t.Fatalf("%s under %s: the two derivations disagree on a pairing", path, name)
+				if !sameInfo(ctx.info[n], want) {
+					t.Fatalf("%s under %s: the two derivations disagree about a node", path, name)
 				}
 			}
 		}
@@ -158,7 +154,7 @@ func TestDocumentWithNoBracketsCarriesNoLinks(t *testing.T) {
 	if len(d.Nodes()) != 1 {
 		t.Fatalf("an empty table should produce one Text node, got %d", len(d.Nodes()))
 	}
-	if len(ctx.closerOf) != 0 || len(ctx.openerOf) != 0 || len(ctx.enclosing) != 0 {
+	if len(ctx.info) != 0 {
 		t.Fatalf("a document with no brackets must carry no links")
 	}
 }
@@ -170,5 +166,59 @@ func TestContextCarriesItsLanguage(t *testing.T) {
 	_, ctx := Scan("a {b} c", 0, lang)
 	if ctx.Language() != lang {
 		t.Fatalf("the context must report the table it scanned with")
+	}
+}
+
+// sameInfo compares two index entries, slices included.
+func sameInfo(a, b BracketInfo) bool {
+	return a.opener == b.opener && a.closer == b.closer && a.enclosing == b.enclosing &&
+		slices.Equal(a.separators, b.separators) && slices.Equal(a.declaration, b.declaration)
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#1.4 | R152, R153
+//
+// An opener knows its separators, in document order, and each names it back. This
+// forces a REBUILD before asking, because the hazard is not that the scan gets it
+// wrong — it is that the scan is the only thing that records it, which nothing
+// notices until a structural edit makes the stamp stale.
+func TestAnOpenerKnowsItsSeparators(t *testing.T) {
+	for _, tc := range []struct {
+		name, src string
+		opener    string
+		want      []string
+	}{
+		{"a for loop", "for x in a b; do echo $x; done\n", "for", []string{"in", "do"}},
+		{"an if chain", "if p; then q; elif r; then s; else t; fi\n", "if",
+			[]string{"then", "elif", "then", "else"}},
+		{"a group with none", "{ echo hi; }\n", "{", nil},
+	} {
+		d, ctx := Scan(tc.src, 0, &LangShell)
+		// Force the independent walk to be what answers.
+		_ = d.Mutate(func() error { return nil })
+		ctx.rebuild()
+
+		var opener Node
+		for _, n := range d.Nodes() {
+			if o, ok := n.(*Opener); ok {
+				if r, _ := o.Render(); r == tc.opener {
+					opener = o
+					break
+				}
+			}
+		}
+		if opener == nil {
+			t.Fatalf("%s: no %q opener in the parse", tc.name, tc.opener)
+		}
+		var got []string
+		for _, sep := range ctx.Separators(opener) {
+			r, _ := sep.Render()
+			got = append(got, r)
+			if ctx.Opener(sep) != opener {
+				t.Errorf("%s: separator %q does not name its opener back", tc.name, r)
+			}
+		}
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("%s: separators %v, want %v", tc.name, got, tc.want)
+		}
 	}
 }

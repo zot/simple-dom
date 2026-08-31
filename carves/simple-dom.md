@@ -23,9 +23,9 @@ identifier.
 - [x] ~~**Item 2 — the bracket parser.**~~ **LANDED (`57fa312`, 2026-08-30 — `#2`.)**
 - [x] ~~**Item 7 — provenance carries its origin.**~~ **LANDED (`baec358`, 2026-08-30 — `#3`.)**
 - [x] ~~**Item 3 — regex compounds.**~~ **LANDED (`4b903a9`, 2026-08-31 — `#8`.)**
-- [ ] **Item 4 — declarations, as a post-pass.** **OPEN (#9.)**
-- [ ] **Item 10 — one bracket index.** **OPEN (not queued.)**
-- [ ] **Item 11 — separator links, completing the bracket contract.** **OPEN (not queued.)**
+- [x] ~~**Item 4 — declarations, as a post-pass.**~~ **LANDED (`df7a987`, 2026-08-31 — `#9`.)**
+- [ ] **Item 10 — one bracket index.** **OPEN (#11.)**
+- [ ] **Item 11 — separator links, completing the bracket contract.** **OPEN (#11.)**
 - [ ] **Item 5 — indent scope.** **OPEN (not queued.)**
 - [ ] **Item 6 — the traceability reader.** **OPEN (not queued.)**
 - [ ] **Item 9 — generalize the schema work into `sdom` tools.** **OPEN (not queued.)**
@@ -1095,6 +1095,23 @@ Replace `BracketContext`'s three link maps with one. **Added 2026-08-31**, and
 contract matter and moved to Item 11, while this half is a representation change
 and is **deferred**.
 
+**DECIDED (Bill, 2026-08-31): Items 10 and 11 are done together, as one queue
+item.** They rewrite the same function, and the decisive reason is that neither
+ordering works apart: `BracketInfo` carries a `separators []Node` field, and nothing
+derives separators until Item 11 — so Item 10 alone ships a field nothing fills,
+while Item 10 without the field changes the struct twice and voids the measurement
+below. Declared once, correctly, is only available together.
+
+*The cost of splitting them is also concrete.* Three alarms anchor into exactly the
+code both rewrite — `parser.open`, `BracketContext.rebuild`, and
+`BracketContext.Declarations`, the last because this part folds the declaration map
+in — so a split rewrites `rebuild` twice and pulls those alarms twice.
+
+**But their justifications stay separate, and that is not bookkeeping.** This part is
+a representation change, deferred on consumer grounds and legitimately so. Item 11 is
+a **contract gap**, which consumer count does not get to defer. If the rewrite goes
+badly, Item 11 still lands. Merging the work must not merge that.
+
 **DEFERRED PAST ITEM 4 (Bill, 2026-08-31):** *"We can still defer `BracketInfo` to
 later, since it seems like we don't need it for declarations."* Deferring a
 representation change on consumer grounds is legitimate in a way that deferring a
@@ -1189,14 +1206,26 @@ form. `O13` says *"unused outside tests"* is meaningless in a library; this is
 contract. Demand orders work that is all going to happen; it does not decide what
 belongs.
 
-**The work.** `rebuild` collects separators from the **same stack walk** that
-recovers the pairing, so `R87`'s independent cross-derivation survives — that
+**The work, and `R87` is the property at risk.** `rebuild` collects separators from
+the **same stack walk** that recovers the pairing, so its independent
+cross-derivation survives — the whole point being that `rebuild` re-derives every
+link a *second* way, from the finished array rather than from the recursion that
+produced it. A representation change is exactly what can quietly lose that, by
+letting the scan be the only thing that records a separator — that
 property being the one most easily lost when this index changes. Then an accessor
 in the shape of the three that exist, a requirement, a test, and an alarm.
 
-**Neither part depends on the other** — one adds a link the contract is missing,
-the other changes how the links are stored — so the order is free, and **Bill placed
-Item 10 first** (2026-08-31), immediately after Item 4.
+**GROUPED WITH ITEM 10 (Bill, 2026-08-31)** — one queue item, for the reasons
+recorded there. Neither part depends on the other in principle: one adds a link the
+contract is missing, the other changes how the links are stored. In practice they
+share a function and a struct field, so doing them apart declares `separators` before
+anything fills it.
+
+**What must not be merged is the justification.** Item 10 is deferrable and was
+deferred; this is a contract gap and is not. Should the representation change stall,
+this still lands on its own — the grouping is about the work, not the standing.
+
+**Bill placed Item 10 first** (2026-08-31), immediately after Item 4.
 
 *That order is the tidier one, and this document previously argued the reverse.*
 With Item 10 first, `BracketInfo` is declared **with** its `separators []Node`

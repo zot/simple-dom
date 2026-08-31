@@ -53,7 +53,7 @@ func (p *parser) flushText() {
 // with its opener instead, by the caller.
 func (p *parser) emit(n Node) {
 	if _, isCloser := n.(*Closer); !isCloser && len(p.stack) > 0 {
-		p.ctx.enclosing[n] = p.stack[len(p.stack)-1]
+		p.ctx.enclose(n, p.stack[len(p.stack)-1])
 	}
 	p.out = append(p.out, n)
 }
@@ -84,8 +84,7 @@ func (p *parser) closeGroup(g *BracketGroup, opener Node) bool {
 	}
 	c := NewCloser(m, p.at(p.pos, len(m)))
 	p.take(c)
-	p.ctx.closerOf[opener] = c
-	p.ctx.openerOf[c] = opener
+	p.ctx.pair(opener, c)
 	return true
 }
 
