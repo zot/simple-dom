@@ -1,0 +1,49 @@
+# Sequences: the scan
+**Requirements:** R57, R64, R65, R72, R73, R74, R75, R77
+
+Three diagrams: a code-mode group, a scan-restricted one, and the rules that keep
+the scan from stalling or losing bytes.
+
+## 1. A code-mode group
+
+1. The lexer meets an opener
+   1.1. The marker matches, and the group's `AllowedParent` permits the context
+        currently open
+   1.2. An `Opener` node is constructed and **appended to the document's array**
+   1.3. The group's loop runs, receiving the group as the enclosing context — no
+        stack is consulted, because the loop *is* the context
+        1.3.1. Whatever the loop recognizes is appended as a **sibling**, never as
+               a child
+        1.3.2. A nested opener recurses; the nesting lives on the call stack
+        1.3.3. A separator of this group is appended and the loop continues
+   1.4. This group's closer matches; a `Closer` is appended and the loop returns
+   1.5. Nothing of the nesting survives in the array — opener, contents and closer
+        are siblings, and the pairing is a derived index
+
+## 2. A scan-restricted group
+
+2. The lexer meets a string, or a comment
+   2.1. Its opener is appended exactly as in diagram 1
+   2.2. Inside, only three things are recognized
+        2.2.1. This group's own `Close`, which ends it
+        2.2.2. Its `Escape`, which consumes itself and the following byte as
+               literal
+        2.2.3. An opener named in `AllowedInner`, which recurses into whatever
+               mode that group declares
+   2.3. Every other byte accumulates as literal `Text` — comments inside strings
+        are not comments, and brackets inside comments are not brackets
+   2.4. A comment is this case with a newline or a terminator for its closer,
+        which is what makes it non-nesting without a rule saying so
+
+## 3. The scan cannot stall, and cannot lose bytes
+
+3. Nothing recognized matches here
+   3.1. The any-close fallback is tried: any code-mode group's closer is
+        recognized, so a stray `}` lands as a `Closer` rather than derailing the
+        scan
+   3.2. Otherwise a text run begins, and **advances at least one byte** before
+        testing again — which holds structurally, since this branch is only
+        reached once no marker matched at this position
+   3.3. The run ends where a marker would start, or at end of input
+   3.4. At end of input every group still open closes where it stands
+   3.5. The array tiles the source: every byte belongs to exactly one node

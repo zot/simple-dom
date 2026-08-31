@@ -67,3 +67,38 @@
 - **R54:** A mutation window provides no rollback.
 - **R55:** An error or a panic escaping the mutation function poisons the document; there is no reset, and recovery is to re-parse.
 - **R56:** `sdom` provides no operation log, queued edit plan, transaction or undo.
+
+## Feature: bracket lexer
+**Source:** specs/bracket-lexer.md
+
+- **R57:** The bracket lexer scans a source into a flat, document-order stream of `sdom` nodes.
+- **R58:** The lexer is table-driven: supporting a new language means adding a table entry, not code.
+- **R59:** Strings and comments are expressed as bracket groups rather than as special cases.
+- **R60:** `BracketLang` carries the language's bracket groups and no other lexical configuration.
+- **R61:** `BracketGroup` declares `Open`, `Separators`, `Close`, `Escape`, `AllowedInner` and `AllowedParent`.
+- **R62:** There is no comment configuration: a line comment is a group closing on a newline, and a block comment a group closing on its terminator.
+- **R63:** A block comment nests only when its own opener is listed in its `AllowedInner`.
+- **R64:** `AllowedInner` nil means code mode — every group's openers are recognized inside the group.
+- **R65:** `AllowedInner` non-nil, including empty, means scan-restricted — only the group's own `Close`, its `Escape`, and the listed openers are recognized, and every other byte is literal.
+- **R66:** `AllowedParent` nil means the group is recognized in any context; non-nil means it is recognized only while scanning inside one of the listed openers.
+- **R67:** nil and an empty slice are semantically distinct in both `AllowedInner` and `AllowedParent`.
+- **R68:** `BracketLang` carries no indent parameters and no flag enabling indentation; a language needing indent scope is described by a type that embeds `BracketLang`, and the type is the flag.
+- **R69:** The package exports the language tables `LangGo`, `LangShell`, `LangPascal` and `LangJavaScript`, chosen so that every field of `BracketGroup` is exercised by at least one of them.
+- **R70:** Language tables are Go values; the package ships no config-file format or loader for them.
+- **R71:** A marker whose first byte is a word character is recognized only at a word boundary — neither preceded nor followed by a word character.
+- **R72:** A group's separators are recognized only while that group is the one currently open.
+- **R73:** When no other marker matches, any code-mode group's closer is recognized, so a stray closer lands as a bracket rather than derailing the scan.
+- **R74:** The scan always consumes at least one byte.
+- **R75:** A group left open at end of input closes there, and no bytes are dropped.
+- **R76:** Whitespace is not a token: it folds into text, so a text run is everything between two recognized markers.
+- **R77:** The emitted stream is flat and in document order — an opener, everything between it and its closer, and the closer are siblings in the array.
+- **R78:** The lexer adds the node kinds `Opener`, `Closer` and `Separator`; every other byte becomes `Text`.
+- **R79:** A marker node holds the bytes it matched and no reference to its bracket group; the active group comes from the parse context.
+- **R80:** The lexer's parse context is a concrete type, carrying the language while scanning.
+- **R81:** The parse context outlives the parse and owns the bracket pairing links.
+- **R82:** An opener knows its closer and its enclosing opener.
+- **R83:** A closer knows its opener.
+- **R84:** Any node that is not a bracket marker knows its enclosing opener.
+- **R85:** The pairing links are owned by the parse context and never by `Doc`.
+- **R86:** The pairing links are a derived index: the context stamps itself with the document's structural generation and rebuilds when that stamp is stale.
+- **R87:** A forward scan that skips whole bracket pairs finds a node's enclosing opener independently, and must agree with the index.

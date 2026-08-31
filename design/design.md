@@ -22,20 +22,30 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-Loc.md → `sdom/loc.go`
 - [x] crc-Doc.md → `sdom/doc.go`
 - [x] crc-MutationWindow.md → `sdom/mutate.go`
+- [x] crc-BracketGroup.md → `sdom/bracket.go`
+- [x] crc-BracketLang.md → `sdom/bracket.go`, `sdom/lang.go`
+- [x] crc-Marker.md → `sdom/marker.go`
+- [x] crc-Lexer.md → `sdom/lexer.go`
+- [x] crc-BracketContext.md → `sdom/context.go`
 
 ### Sequences
 - [x] seq-mutate.md → `sdom/mutate.go`, `sdom/doc.go`
 - [x] seq-stamp.md → `sdom/doc.go`
+- [x] seq-scan.md → `sdom/lexer.go`
+- [x] seq-pair.md → `sdom/context.go`
 
 ### Test Designs
 - [x] test-Node.md → `sdom/node_test.go`
 - [x] test-Loc.md → `sdom/loc_test.go`
 - [x] test-Doc.md → `sdom/doc_test.go`
 - [x] test-roundtrip.md → `sdom/roundtrip_test.go`
+- [x] test-Lexer.md → `sdom/lexer_test.go`
+- [x] test-BracketContext.md → `sdom/context_test.go`
+- [x] test-Languages.md → `sdom/lang_test.go`
 
 ## Gaps
 
-- [ ] I1: R12 (each schema's parse context is a concrete type, not an interface) has design
+- [x] I1: R12 (each schema's parse context is a concrete type, not an interface) has design
   coverage but no inline ref in any code file, because no parse context exists yet. Nothing in
   `sdom` parses from text — the lexer is Item 2 of carves/simple-dom.md, and `Parse` is
   deliberately off the `Node` interface. Closes when Item 2 lands a schema with a parse context.

@@ -17,6 +17,8 @@ consume the lexical half.
   `Split` / `Merge` as re-granulation.
 - [document.md](document.md) — `Doc`, the flat array, the structural generation,
   and the mutation window.
+- [bracket-lexer.md](bracket-lexer.md) — the table-driven scanner, its two mode
+  fields, and the pairing links the lexicon's context owns.
 
 ## Summary specs
 

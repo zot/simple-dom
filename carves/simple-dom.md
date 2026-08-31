@@ -19,8 +19,8 @@ reference-discipline carve exists to prevent. Those notes are private and are
 Ordered by intent; position is the priority and the number is only the
 identifier.
 
-- [ ] **Item 1 — the node protocol and the document.** **OPEN (#1.)**
-- [ ] **Item 2 — the bracket lexer.** **OPEN (not queued.)**
+- [x] ~~**Item 1 — the node protocol and the document.**~~ **LANDED (`77fa5f4`, 2026-08-30 — `#1`.)**
+- [ ] **Item 2 — the bracket lexer.** **OPEN (#2.)**
 - [ ] **Item 3 — regex compounds.** **OPEN (not queued.)**
 - [ ] **Item 4 — declarations, as a post-pass.** **OPEN (not queued.)**
 - [ ] **Item 5 — indent scope.** **OPEN (not queued.)**
@@ -105,35 +105,105 @@ below and is the reason several plausible mechanisms are absent from them.
 read as the local idiom and reproduced, so the most expensive complexity is the
 kind that looks principled — a hack gets deleted, a pattern gets propagated.
 
+**DECIDED (Bill, 2026-08-30): a node's children are exactly what falls inside its
+own span.** One rule for brackets and stencils alike. A bracket opener's span is
+the opener bytes; the group's contents are **siblings**; the closer ends the
+region. A stencil's span is its own marked-up text; what it introduces but does
+not cover is siblings, and the region is delimited by marker nodes — either the
+next typed node, or an explicit **zero-length marker** for a region with no
+natural successor.
+
+It forecloses a rendering bug rather than guarding against one: if a stencil's
+span covered a region whose content also sat in the document list, those bytes
+would be emitted twice. Under this rule every byte has exactly one owner and the
+array tiles.
+
+**And the span rule does not choose the span — editability does.** Only what a
+tool *writes into* is a stenciled field, and the span is the narrowest one
+covering those fields. Note what "minimum" constrains: inside a span, tiling
+**forces** children to cover every byte, glue included, so minimality is a
+constraint on the span's **width**, never on the child count within it. When
+stenciled parts are far apart, make **several stencil nodes** rather than one wide
+span that drags the intervening text in as children. The test to apply to any
+compound: *would a tool ever write into this child?* If not, it should have been a
+sibling and the span was too wide.
+
+**DECIDED (Bill, 2026-08-30): a bound value is derived from its text, never
+stored.** A stenciled field is a typed value over a `Text` node — a checkbox, a
+gap name (which manages both its kind and its number), a requirement number, a
+requirement list. The text is the **storage**; the literal and the typed value are
+two views of it, which makes "dual-ported" exact in the hardware sense: one
+storage, two access ports.
+
+This generalises Item 6's rule — *field keys and requirement lists are derived
+from the literals, never stored* — to **every** field, and what it buys is the
+absence of an invalidation protocol: no second copy, no staleness, no question of
+which representation is authoritative.
+
+**The lineage is TCL, and we are choosing its earlier half.** Pre-8.0 Tcl was
+pure strings — everything re-parsed at every reference, no internal
+representation and so nothing to invalidate. `Tcl_Obj`, with a typed internal rep
+cached beside the string and each invalidating the other, arrived with the
+bytecode compiler in 8.0 (1997), because by then that re-parsing was the
+bottleneck. We do not have that constraint. **The absent cache is a decision, not
+an oversight** — and if a profile ever says otherwise, adding one is a local
+change behind the same two accessors.
+
+Its consequence reaches the protocol: no node kind holds state its children do not
+carry, so `Equals` is uniformly *assert the type, compare children*. The
+local-`Equals` escape hatch stays in the rule for a future kind that needs one, and
+nothing in this design does.
+
+**DECIDED (Bill, 2026-08-30): an edit reformats only what it touched, and fields
+segment lazily.** The rule is not *never normalise*; it is **never normalise what
+you did not touch**. `R5-8` stays `R5-8` until something edits it — then
+reformatting the edited part is fine and the unedited parts stay byte-intact.
+Adding `R12` to `R5-R7, R10` must not flatten the range on its way past.
+
+That is the granularity rule one level inside a field. A field edited as a whole
+can be one `Text`; a field whose parts are edited independently must be a compound
+over its **segments**. **Lazily**: the field holds one `Text`, reading derives the
+value and creates no nodes, and segment nodes come into existence only because
+something is about to **write** — at which point `Split` puts a boundary where the
+edit needs one. The common case, a field nobody edits, costs one node.
+
+The property is already tested. After such an edit the edited segment is altered,
+its siblings still report `Faithful()`, and the enclosing compound is altered
+because a child is — which is the **one-field delta**, written before anyone
+noticed this is what it was for.
+
+*Worked examples of all three live in `.scratch/PARSING.md`, which is a working
+note. The calls are here.*
+
 ## Item 1
 
-The protocol every other part stands on.
+The protocol every other part stands on. **LANDED — the specification now lives
+where a stranger can find it**, and this section keeps only the decisions and why
+they were made:
 
-```go
-type Node interface {
-    Kids() []Node
-    Location() Loc
-    Render() (string, error)
-    Equals(Node) bool
-}
-```
+- [specs/node-protocol.md](../specs/node-protocol.md) — `Node`, its four methods,
+  the two that take no context, per-kind `Equals`, and the kinds `Text` and
+  `Compound`.
+- [specs/location.md](../specs/location.md) — `Loc`, provenance separated from
+  faithfulness, and `Split` / `Merge`.
+- [specs/document.md](../specs/document.md) — `Doc`, the flat array, the
+  structural generation, and the mutation window.
+- `design/` carries the six CRC cards, two sequence files and four test designs;
+  `sdom/` carries the code, anchored to them by `// CRC:` comments.
 
-`Doc` holds the source, a `base` offset (its position within an outer document),
-a **document-order flat** `dom []Node`, `data any`, and its own derived indices
-over `Doc.dom` only — `nodeIndex` and `lineIndex`. It holds nothing lexicon-
-specific: anything else derived is owned and stamped by the layer that needs it,
-per the decision above. Navigation is `d.Prev(n)` / `d.Next(n)`.
+**Two sentences that stood here were wrong by the time the item landed**, and are
+recorded rather than deleted because a reader of Items 2–6 may remember them:
 
-`Loc` is `{Offset, Length int; Altered bool}` and **separates provenance from
-faithfulness**: `Offset` of −1 is no provenance, `Altered` means read from
-`Offset` but no longer rendering it, `Length` is derived. `Split` and `Merge` are
-**re-granulation** — boundaries move, bytes and provenance do not — and `Merge`
-requires adjacency, which the two locations prove on their own **when both are
-faithful — see the `Doc.Merge` decision below for the rest.**
-
-Edits **resolve outside** the mutation window and apply as **one rebuild** of
-`dom`, so the document is never observably half-edited. Ops are keyed by node
-identity, never by index.
+- *"`Loc` is `{Offset, Length int; Altered bool}`"* — it is accessors over an
+  unexported offset **stored biased by one**, which is what makes the zero value
+  mean absence rather than offset 0. There are no exported fields; a biased field
+  would leak the bias.
+- *"Edits resolve outside the mutation window and apply as one rebuild of `dom`"* —
+  this read as a queued plan, and there is none. It means: **resolve your targets
+  before you enter**, where navigation is still legal, then edit **directly**. The
+  "one rebuild" is the derived indices, rebuilt once at the exit. "Ops keyed by
+  node identity, never by index" survives intact, and is about what stays valid
+  across that boundary.
 
 **DECIDED (Bill, 2026-08-27): Item 1 lands `Text` and `Compound`.** Settled by its
 own criterion — the tests cannot be written against `Text` alone. The one-field
@@ -309,12 +379,14 @@ not a starting point to improve on.
 
 ## Item 3
 
-Compound nodes parse by regex, and the regex checks itself.
+Compound nodes parse by regex. ~~and the regex checks itself.~~ — **superseded
+2026-08-30: there is no check, because the failure it caught is now
+unrepresentable. See the computed-glue decision below.**
 
-**Every byte of a match must land in an outer capture group.** A regex that leaves
-bytes uncaptured drops them from the render silently — `^- \[([ xX])\] (.*)$`
-looks reasonable and eats four bytes — so the outer groups are computed from the
-index array and must **tile the match**.
+~~**Every byte of a match must land in an outer capture group.**~~ A regex that
+leaves bytes uncaptured would drop them from the render silently — `^- \[([ xX])\]
+(.*)$` looks reasonable and eats four bytes — which is exactly the failure the
+computed glue dissolves.
 
 Indices are **half-open**: contiguity is `next.start == prev.end`, with no `+1`
 anywhere. A zero-length group is `[k,k)` and needs no special case, which is what
@@ -329,10 +401,27 @@ and out of range for another.
 ### Item 3's decisions
 
 **DECIDED (Bill, 2026-08-27): the parse-time check is the outer-group index
-tiling, not a render comparison.** Once the tiling holds, concatenating the groups
-re-proves what was just established. The render comparison is a *different* claim —
-it catches a node that renders something other than what it captured — and belongs
-in the corpus round-trip, where it already is.
+tiling, not a render comparison.** ~~Once the tiling holds, concatenating the
+groups re-proves what was just established.~~ **Superseded 2026-08-30 — there is
+no tiling check any more.** The half that survives is why a render comparison was
+rejected: it is a *different* claim, catching a node that renders something other
+than what it captured, and it belongs in the corpus round-trip where it already is.
+
+**DECIDED (Bill, 2026-08-30): the glue is computed, not required.** A stencil's
+regex names groups only for the fields it **binds**. The machinery synthesizes
+`Text` nodes for the head of the match, the tail, and every gap between
+consecutive groups, then pushes the whole ordered run into the stencil's child
+list.
+
+Tiling then holds **by construction**, which *dissolves* the problem the check
+above existed to catch rather than detecting it. A regex cannot eat bytes, because
+whatever it does not capture becomes `Text`. So the requirement that every byte
+land in an outer capture group is **lifted**, the parse-time tiling check is
+**removed**, and this part gets smaller.
+
+Unchanged: binding is **by group name, never by position**, since with alternation
+the branches have different group counts and a fixed index is right for one input
+and out of range for another. Nested groups are skipped. Indices stay half-open.
 
 ## Item 4
 
