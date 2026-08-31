@@ -17,8 +17,8 @@ level report none
 **Refs:** crc-BracketContext.md, seq-pair.md#1.3
 **Code:** sdom/context_test.go
 **Alarm:** 1
-**Fire alarm:** In `lexer.open`, push the opener onto the stack *before* emitting it rather than after. Red: an opener records **itself** as its own enclosing opener instead of the one containing it. Nothing about the bytes, the tiling or the pairing changes, so this is silent everywhere else — and it would quietly corrupt any layer walking enclosure to find scope.
-**Inject:** sdom/lexer.go:lexer.open
+**Fire alarm:** In `parser.open`, push the opener onto the stack *before* emitting it rather than after. Red: an opener records **itself** as its own enclosing opener instead of the one containing it. Nothing about the bytes, the tiling or the pairing changes, so this is silent everywhere else — and it would quietly corrupt any layer walking enclosure to find scope.
+**Inject:** sdom/parser.go:parser.open
 **Pulled:** 2026-08-30 — rang, and wider than designed. This test failed and so
 did the cross-check, **in the opposite column** from the alarm above: pairs equal
 at 316, enclosings 974 vs 962. The blast radius is larger than predicted, because
@@ -38,7 +38,7 @@ would catch a wrong index**; nothing else in the suite reads the links twice
 **Note:** what this protects is a fact written in two places on purpose. The
 scan's rule — *everything but a closer records an enclosing opener* — and
 rebuild's rule — *closers get no enclosing* — are the same statement, expressed
-once in `lexer.emit` and once in `BracketContext.rebuild`. That duplication is
+once in `parser.emit` and once in `BracketContext.rebuild`. That duplication is
 inherent to having two independent derivations, and this test is exactly the
 thing that catches them drifting apart.
 **Refs:** crc-BracketContext.md, seq-pair.md#2

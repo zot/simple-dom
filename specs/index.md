@@ -17,8 +17,8 @@ consume the lexical half.
   `Split` / `Merge` as re-granulation.
 - [document.md](document.md) — `Doc`, the flat array, the structural generation,
   and the mutation window.
-- [bracket-lexer.md](bracket-lexer.md) — the table-driven scanner, its two mode
-  fields, and the pairing links the lexicon's context owns.
+- [bracket-parser.md](bracket-parser.md) — the table-driven parser, its two mode
+  fields, and the pairing links the schema's context owns.
 - [stencils.md](stencils.md) — compounds that parse by regex: the builder a schema
   drives, computed glue, and bound values.
 

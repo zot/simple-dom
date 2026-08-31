@@ -1,7 +1,7 @@
 # Marker: Opener, Closer, Separator
 **Requirements:** R78, R79
 
-The three leaf kinds the lexer adds. Each holds the bytes it matched and nothing
+The three leaf kinds the parser adds. Each holds the bytes it matched and nothing
 more.
 
 ## Knows

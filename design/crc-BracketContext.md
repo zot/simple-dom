@@ -1,7 +1,7 @@
 # BracketContext
 **Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91
 
-The lexicon's parse context: a concrete type, not an interface. It carries the
+The schema's parse context: a concrete type, not an interface. It carries the
 language through the scan and **outlives the parse** to own the pairing links.
 
 ## Knows
@@ -14,8 +14,8 @@ language through the scan and **outlives the parse** to own the pairing links.
 - the structural generation it was built against
 
 ## Does
-- mints one origin per parse, before any node exists, and hands it to the scanner
-- hands the scanner the group currently open
+- mints one origin per parse, before any node exists, and hands it to the parser
+- hands the parser the group currently open
 - records the pairing as the scan discovers it
 - reports whether its links are fresh, and rebuilds them when its stamp is stale
 
@@ -33,7 +33,7 @@ language through the scan and **outlives the parse** to own the pairing links.
 
 ## Collaborators
 - Doc: supplies the nodes and the generation this stamps against
-- Lexer: the scan that populates it
+- BracketParser: the scan that populates it
 - Marker: the nodes the links pair
 
 ## Sequences

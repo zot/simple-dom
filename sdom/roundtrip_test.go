@@ -35,7 +35,7 @@ func corpus(t *testing.T) map[string]string {
 	return out
 }
 
-// wholeFile is the document a lexer-less parse produces: one Text over
+// wholeFile is the document a parser-less parse produces: one Text over
 // everything, which is the starting point every corpus property is checked from.
 func wholeFile(src string) *Doc {
 	return New(src, 0, NewText(src, Source(0, len(src))))
@@ -43,7 +43,7 @@ func wholeFile(src string) *Doc {
 
 // shred splits the document's tail node every step bytes, so the flat-array
 // properties are tested against many nodes rather than the single Text a
-// lexer-less parse produces.
+// parser-less parse produces.
 func shred(t *testing.T, d *Doc, step int) {
 	t.Helper()
 	if step < 1 {

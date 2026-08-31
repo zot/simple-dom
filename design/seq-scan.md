@@ -6,7 +6,7 @@ the scan from stalling or losing bytes.
 
 ## 1. A code-mode group
 
-1. The lexer meets an opener
+1. The parser meets an opener
    1.1. The marker matches, and the group's `AllowedParent` permits the context
         currently open
    1.2. An `Opener` node is constructed and **appended to the document's array**
@@ -22,7 +22,7 @@ the scan from stalling or losing bytes.
 
 ## 2. A scan-restricted group
 
-2. The lexer meets a string, or a comment
+2. The parser meets a string, or a comment
    2.1. Its opener is appended exactly as in diagram 1
    2.2. Inside, only three things are recognized
         2.2.1. This group's own `Close`, which ends it

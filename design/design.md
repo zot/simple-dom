@@ -25,7 +25,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-BracketGroup.md → `sdom/bracket.go`
 - [x] crc-BracketLang.md → `sdom/bracket.go`, `sdom/lang.go`
 - [x] crc-Marker.md → `sdom/marker.go`
-- [x] crc-Lexer.md → `sdom/lexer.go`
+- [x] crc-BracketParser.md → `sdom/parser.go`
 - [x] crc-BracketContext.md → `sdom/context.go`
 - [x] crc-StencilBuilder.md → `sdom/stencil.go`
 - [x] crc-Bool.md → `sdom/bound.go`
@@ -34,7 +34,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 ### Sequences
 - [x] seq-mutate.md → `sdom/mutate.go`, `sdom/doc.go`
 - [x] seq-stamp.md → `sdom/doc.go`
-- [x] seq-scan.md → `sdom/lexer.go`
+- [x] seq-scan.md → `sdom/parser.go`
 - [x] seq-pair.md → `sdom/context.go`
 - [x] seq-stencil.md → `sdom/stencil.go`
 
@@ -43,7 +43,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] test-Loc.md → `sdom/loc_test.go`
 - [x] test-Doc.md → `sdom/doc_test.go`, `sdom/alloc_test.go`
 - [x] test-roundtrip.md → `sdom/roundtrip_test.go`
-- [x] test-Lexer.md → `sdom/lexer_test.go`
+- [x] test-BracketParser.md → `sdom/parser_test.go`
 - [x] test-BracketContext.md → `sdom/context_test.go`
 - [x] test-Languages.md → `sdom/lang_test.go`
 - [x] test-Stencil.md → `sdom/stencil_test.go`
@@ -52,7 +52,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 
 - [x] I1: R12 (each schema's parse context is a concrete type, not an interface) has design
   coverage but no inline ref in any code file, because no parse context exists yet. Nothing in
-  `sdom` parses from text — the lexer is Item 2 of carves/simple-dom.md, and `Parse` is
+  `sdom` parses from text — the parser is Item 2 of carves/simple-dom.md, and `Parse` is
   deliberately off the `Node` interface. Closes when Item 2 lands a schema with a parse context.
 - [ ] O1: R28 understates the rule the code implements. It says a compound is altered if any of
   its children is; `Compound.Location` also requires the children's spans to run **contiguously
@@ -70,11 +70,11 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [ ] O3: `Doc.Split` and `Doc.Merge` accept `Node` but are defined only for `*Text`, refusing
   anything else with a runtime `%T` error. That is honest while `*Text` is the only splittable
   kind, but the mutation vocabulary is then not expressible over the protocol the `Node` doc
-  comment advertises. Item 2's lexer lands marker kinds; decide then whether re-granulation
+  comment advertises. Item 2's parser lands marker kinds; decide then whether re-granulation
   belongs on the interface or stays a leaf operation.
 - [x] O4: The structural round-trip (test-roundtrip.md) reconstructs its comparison tree by the
   same construction rather than re-parsing it, because nothing recovers a `Compound` from bytes
-  until Item 2's lexer. It therefore proves `Equals` ignores provenance but does not prove a
+  until Item 2's parser. It therefore proves `Equals` ignores provenance but does not prove a
   parse is stable. The re-parse form of the test belongs with Item 2 and should replace the
   reconstruction there.
 - [ ] O5: Structural edits locate their nodes with a linear scan (`Doc.find`), because the node
@@ -84,8 +84,8 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   by node would feel it. Measure before optimising; no consumer exists yet.
 - [ ] O6: `TestLangShell` and `TestLangPascal` assert with `strings.Contains` over the rendered
   stream rather than comparing it exactly, so they check that certain markers appear rather than
-  that the tokenization is right. Measured 2026-08-30: under the `Restricted() == false`
-  injection both stayed green while their dumps showed visibly wrong tokenization, because the
+  that the parse is right. Measured 2026-08-30: under the `Restricted() == false`
+  injection both stayed green while their dumps showed visibly wrong parses, because the
   markers they look for still appeared somewhere. `TestLangGo` and `TestLangJavaScript` use
   exact-stream comparison and both failed. Not a hole — the per-marker recognition count now
   covers what these miss — but the two tests read stronger than they are, and a reader would
@@ -102,7 +102,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   a second) but it is the obvious hot spot if a large file or a big table ever appears. A
   first-byte index over the markers would collapse most of it. No consumer needs it yet; measure
   before optimising.
-- [x] O9: A `Doc`'s `base` never enters a node's `Loc`: the lexer emits `Source(pos, len)` with
+- [x] O9: A `Doc`'s `base` never enters a node's `Loc`: the parser emits `Source(pos, len)` with
   positions relative to the document's own source, and `base` is metadata about where that
   source sits in an outer document. Nothing states this, and two documents assume the opposite.
   The carve's Item 1 test 4 says the structural round-trip is "re-parsed into a document with a
@@ -166,3 +166,14 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   this is the fourth guard added in three days and the density is worth watching: a codebase is
   a prompt, and a reader will take it as the local idiom. Revisit if a fifth appears, or if
   `mergeLocs` still has one caller when the readers land.
+- [ ] O16: `minispec validate trajectory` fails on this repository, and has since before this
+  session: *item numbers in no readable entry: #4 #5 #6*. Two halves of one tool defect, and
+  only the first was recorded. The **minter** reads `#N` anywhere in the done ledger, so
+  `part #7` inside #3's completion entry counted as an item that had been handed out, and the
+  next mint jumped from #3 to #8 — leaving 4, 5 and 6 never issued. The **validator** then
+  objects to the hole the minter made. Measured 2026-08-31: `query next-id item` reports
+  `DONE.md 7` against four done entries, and the three numbers it names were never minted, so
+  there is nothing to restore and the skill's usual repair for a numbering gap — put the
+  missing entry back — does not apply. Like `O10`, the fix belongs in the mini-spec tool
+  rather than here, so this records the hole and the evidence: the minter should count only the
+  identifier a done entry owns, not every `#N` in its prose.

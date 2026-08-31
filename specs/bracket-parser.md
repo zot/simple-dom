@@ -1,6 +1,6 @@
-# The bracket lexer
+# The bracket parser
 
-A **table-driven** scanner that turns a source into a flat, document-order stream
+A **table-driven** parser that turns a source into a flat, document-order stream
 of `sdom` nodes. Adding a language means adding a table entry, not code.
 
 A string is not a special case: it is a bracket group with scanning turned off.
@@ -102,18 +102,18 @@ configuration. Mini-spec already does this, in `.minispec/config.yaml`.
 - **A group left open at end of input closes there.** The bytes are already
   accounted for; nothing is dropped.
 
-**Whitespace is not a token.** It folds into text, so a text run is *everything
+**Whitespace is not a node of its own.** It folds into text, so a text run is *everything
 between two recognized markers* rather than a run of non-whitespace. A layer that
 needs line or indent boundaries — Item 5 — scans a text node for them and splits
 it only if it wants them addressable.
 
 ## Output
 
-**Flat and document-order**, always. The scanner tracks nesting while it works and
+**Flat and document-order**, always. The parser tracks nesting while it works and
 the emitted stream carries none: an opener, everything between it and its closer,
 and the closer are **siblings in the array**.
 
-The kinds the lexer adds to `sdom`:
+The kinds the parser adds to `sdom`:
 
 - **`Opener`**, **`Closer`**, **`Separator`** — marker nodes.
 - Everything else is `Text`.
@@ -132,7 +132,7 @@ parse context.
 ## The context, and the links it owns
 
 Each schema has its own parse context, a concrete type rather than an interface.
-The lexer's carries the language while scanning, and **outlives the parse** to
+The parser's carries the language while scanning, and **outlives the parse** to
 carry the pairing links:
 
 - an opener knows its **closer** and its **enclosing opener**

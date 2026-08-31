@@ -79,7 +79,7 @@ func TestEveryNodeKnowsItsEnclosingOpener(t *testing.T) {
 // records links from its own recursion; rebuild derives them again from the
 // finished flat array. Two independent derivations, over the whole corpus, under
 // every shipped language — including the many combinations where the language is
-// wrong for the file, which is exactly where a scanner misbehaves.
+// wrong for the file, which is exactly where a parser misbehaves.
 func TestIndexAgreesWithTheIndependentDerivation(t *testing.T) {
 	langs := shippedLangs()
 	for path, src := range corpus(t) {

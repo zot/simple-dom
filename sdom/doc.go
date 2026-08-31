@@ -10,7 +10,7 @@ import (
 // CRC: crc-Doc.md | Seq: seq-stamp.md | R1, R2, R3, R37, R38, R39, R40
 //
 // Doc is a parsed source: the bytes, the flat document-order node array over
-// them, and two derived indices. It holds nothing lexicon-specific — anything
+// them, and two derived indices. It holds nothing schema-specific — anything
 // else derived is owned and stamped by the layer that needs it, so a document
 // type whose layers need no derived state carries none.
 //

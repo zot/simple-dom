@@ -10,7 +10,7 @@ adding an entry, not writing code.
 ## Does
 - resolves an opener string back to the group that owns it, which is how
   `AllowedInner` reaches a nested group
-- offers its groups in order, which is the precedence the Lexer scans by
+- offers its groups in order, which is the precedence the BracketParser scans by
 
 ## Constraints
 - **No comment configuration exists.** A line comment is a group closing on a

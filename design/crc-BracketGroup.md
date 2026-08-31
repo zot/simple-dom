@@ -29,7 +29,7 @@ all. Code brackets, strings and comments are all this one type.
 
 ## Collaborators
 - BracketLang: holds it, and resolves an opener back to the group that owns it
-- Lexer: asks it what matches here
+- BracketParser: asks it what matches here
 
 ## Sequences
 - seq-scan.md

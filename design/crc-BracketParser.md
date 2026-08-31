@@ -1,7 +1,7 @@
-# Lexer
+# BracketParser
 **Requirements:** R57, R72, R73, R74, R75, R76, R77, R78
 
-The scanner. It walks a source once and appends nodes to the document in the
+The parser. It walks a source once and appends nodes to the document in the
 order it meets them.
 
 ## Knows
@@ -30,7 +30,7 @@ order it meets them.
   closer is recognized, so a stray `}` lands as a bracket rather than derailing
   the scan
 - **A group left open at end of input closes there**, with no bytes dropped
-- **Whitespace is not a token.** A text run is everything between two recognized
+- **Whitespace is not a node of its own.** A text run is everything between two recognized
   markers, not a run of non-whitespace. A layer wanting line or indent boundaries
   scans a text node for them and splits only if it wants them addressable
 

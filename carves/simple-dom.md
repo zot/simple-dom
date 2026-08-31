@@ -20,12 +20,13 @@ Ordered by intent; position is the priority and the number is only the
 identifier.
 
 - [x] ~~**Item 1 — the node protocol and the document.**~~ **LANDED (`77fa5f4`, 2026-08-30 — `#1`.)**
-- [x] ~~**Item 2 — the bracket lexer.**~~ **LANDED (`57fa312`, 2026-08-30 — `#2`.)**
+- [x] ~~**Item 2 — the bracket parser.**~~ **LANDED (`57fa312`, 2026-08-30 — `#2`.)**
 - [x] ~~**Item 7 — provenance carries its origin.**~~ **LANDED (`baec358`, 2026-08-30 — `#3`.)**
 - [x] ~~**Item 3 — regex compounds.**~~ **LANDED (`4b903a9`, 2026-08-31 — `#8`.)**
-- [ ] **Item 4 — declarations, as a post-pass.** **OPEN (not queued.)**
+- [ ] **Item 4 — declarations, as a post-pass.** **OPEN (#9.)**
 - [ ] **Item 5 — indent scope.** **OPEN (not queued.)**
 - [ ] **Item 6 — the traceability reader.** **OPEN (not queued.)**
+- [ ] **Item 8 — the vocabulary: it is a parser, not a lexer.** **OPEN (#10.)**
 
 ## Decisions
 
@@ -42,9 +43,9 @@ the work, not an obstacle to it.
 
 **DECIDED (Bill, 2026-08-27): a bracket group is NOT a node.** An opener,
 everything between it and its closer, and the closer are **siblings in the flat
-array**. The scanner keeps the nesting on a stack; the emitted stream has none.
+array**. The parser keeps the nesting on a stack; the emitted stream has none.
 
-Nesting is expressed by **links**, owned by the **lexicon's context** and not by
+Nesting is expressed by **links**, owned by the **schema's context** and not by
 `Doc` — not every document has brackets, and a markdown DOM would carry two dead
 maps forever:
 
@@ -72,7 +73,7 @@ when the stamp goes stale.
 
 So `Doc` needs no registry of indices, no invalidation callbacks, and **no
 knowledge of what exists above it**: the layers pull, `Doc` does not push. A
-lexicon that needs no derived state carries none. A *content* edit does not bump
+schema that needs no derived state carries none. A *content* edit does not bump
 the generation, because node membership is unchanged and an index over structure
 survives one.
 
@@ -83,14 +84,21 @@ freshness is the one call every stamped index must make. Poisoning the compariso
 instead — returning a value no stamp can match — would let the layer rebuild from
 a half-edited tree, which is a different wrong answer rather than a refusal.
 
-**DECIDED (Bill, 2026-08-27): the readers are post-passes over the lexer's
-output, never a re-parse of raw text.** A reader that re-parses bytes can *consume
-tokens the lexer already produced*: a declaration regex matching
+**DECIDED (Bill, 2026-08-27): the readers are post-passes over the bracket
+parse's output, never a re-parse of raw text.** A reader that re-parses bytes can
+*consume nodes the bracket parse already produced*: a declaration regex matching
 `func (s *Store) Index` from text swallows the receiver's parens, so the same
 file scanned with and without readers has different bracket structure. Grouping
-existing nodes is **purely additive**: the flattened token stream is identical
+existing nodes is **purely additive**: the flattened node array is identical
 with and without the readers, and only the top-level stream differs — which is
 what nesting means, and is *not* the same as a group having children.
+
+*Vocabulary corrected 2026-08-31; the claim is unchanged.* This said "the lexer's
+output", "tokens the lexer already produced" and "the flattened token stream". The
+bracket layer is a **parser** — it matches nested structure well beyond tokens —
+and there are no tokens here, only nodes. The words had imported the
+lexer-then-parser model, and that cost a session's design work before it was
+caught. The **names** moved with Item 8 the same day.
 
 **DECIDED (Bill, 2026-08-27): correctness and enforcement are different things.**
 An invariant can be correct without a mechanism guarding it. Total enforcement in
@@ -216,9 +224,10 @@ programming error rather than a data condition — the offsets are in different
 coordinate systems and no result names anything true. It is a foreign panic, so
 `Mutate` re-raises it with its stack rather than converting it, which is right for
 a caller error. It also subsumes the cross-document adjacency false positive:
-`Merge` never reaches the adjacency arithmetic. *Open: whether a nil origin counts
-as different or merely absent — the house style treats absence as compatible with
-anything.*
+`Merge` never reaches the adjacency arithmetic. **A nil origin is unknown rather
+than different, and compatible with anything** — settled by Item 7 as it landed
+(2026-08-30), and migrated to where it belongs: `specs/location.md`, `R93`, and the
+guard in `sdom/loc.go:mergeLocs`.
 
 ## Item 1
 
@@ -374,7 +383,7 @@ either.
 
 ## Item 2
 
-A **table-driven** bracket lexer. A string is not a special case: it is a bracket
+A **table-driven** bracket parser. A string is not a special case: it is a bracket
 group with scanning turned off, which is why interpolation, word brackets and
 shell `if`/`then`/`fi` all fall out of one mechanism.
 
@@ -400,7 +409,7 @@ derailing the scan; and a scan that **always consumes at least one byte**, so
 nothing stalls on input it does not understand.
 
 Output is **flat and document-order** — see the group-is-not-a-node decision
-above, which this part is the main consumer of. The scanner keeps the nesting on a
+above, which this part is the main consumer of. The parser keeps the nesting on a
 stack and emits `Open`, `Close` and `Sep` as ordinary siblings; the pairing that
 recovers the structure is a derived index, not a node graph.
 
@@ -441,8 +450,10 @@ three repairs the gap names: state in `specs/location.md` that offsets are
 relative to the document's own source, retire R38's back-link when a real
 requirement replaces it, and rewrite `nest()` to stop faking a shift it never had.
 
-One question is open, recorded with the decision: whether a **nil** origin counts
-as different or merely absent.
+The one question left open when this item was written — whether a **nil** origin
+counts as different or merely absent — was settled by the item itself: **unknown
+rather than different, and compatible with anything.** It now lives in
+`specs/location.md`, `R93`, and `sdom/loc.go:mergeLocs`.
 
 ## Item 3
 
@@ -495,33 +506,110 @@ and out of range for another. Nested groups are skipped. Indices stay half-open.
 Declarations are addressable so a tool can ask which carry no traceability
 comment, and can insert one above a declaration that does not.
 
-A declaration node models the **keyword through the name** and nothing more.
-Everything after stays opaque. This is not a language parser; it is a way to
-*address* declarations.
+~~A declaration node models the **keyword through the name** and nothing more.~~
+~~**It is built by grouping nodes the lexer produced** — splitting text nodes at
+the declaration's edges and nesting the span.~~ — **superseded 2026-08-31: there is
+no declaration node and no span.** What survives is the framing: this is not a
+language parser; it is a way to *address* declarations.
 
-**It is built by grouping nodes the lexer produced** — splitting text nodes at the
-declaration's edges and nesting the span — so brackets inside a receiver survive
-as children. See the second decision at the top of this document for why.
+### The design (Bill, 2026-08-31)
 
-**Indentation is captured, not required to be empty.** Go's methods happen to sit
-at column 0; Python's, Java's and Smalltalk's do not, and requiring column 0 finds
-`class Widget` and misses every method in it. The indent capture must be
-`[ \t]*` and never `\s*`: `\s` matches newlines, so it would swallow blank lines
-and let a declaration match several lines further down, breaking both the line
-lookup and the backward walk that finds its comment.
+**DECIDED: declarations post-process a bracket-parsed or indent-parsed document.**
+You parse a code file, get its basic structure, and find the declarations in that.
+The 2026-08-27 post-pass call stands; the shape it produces is what changed.
+
+**DECIDED: recognition is forward to a brace, then backwards over structure.** Go
+declarations are recognized by their top-level open curly — search forward for the
+next one, then search backwards at the top level, **skipping from each closer to
+its opener**, to reach the name. The skip is what makes it work on real
+signatures, and the two shapes differ only in how much gets skipped:
+
+```
+func (s *Store) Index(k string) int {
+[ text{"...func "}, open{"("}, …, close{")"}, text{" Index"},
+  open{"("}, …, close{")"}, text{" int "}, open{"{"} ]
+
+func Index(k string) int {
+[ text{"...func Index"},
+  open{"("}, …, close{")"}, text{" int "}, open{"{"} ]
+```
+
+Walking back from `open{"{"}`: over `text{" int "}`, skip the parameter group
+closer-to-opener, and the name is at the tail of the text node before it. A method
+skips a **second** group for the receiver; a type is followed immediately by its
+name. `BracketContext.Opener` is already that skip and `Enclosing(n) == nil` is
+already the top-level test — neither was built for this.
+
+**DECIDED: the product is two narrow typed nodes, not one wide compound.** Slice
+the keyword out and replace it with a `DeclarationType`; slice the name out and
+replace it with a `DeclarationName`. `DeclarationType` knows how to find its name.
+Everything between them — receiver group, parameter group, return type — stays
+exactly where it is in the document array.
+
+Three consequences, each of which had been a live worry:
+
+- **The additive property holds by construction.** Nothing consumes a byte the
+  bracket parse already claimed: two text nodes are split, and two halves change
+  kind. The flattened array is identical with and without the pass, so the
+  recognition count cannot drop either.
+- **This is what the minimality rule already said.** Two writable fields separated
+  by a run of structure want two narrow nodes with that run as an ordinary
+  sibling — not one span that drags a receiver group in as children.
+- **`StencilBuilder` is not involved.** The fields are found by walking structure
+  and split out of existing text, never bound from a regex over a fresh string.
+
+**The one new primitive is `Doc.Replace(old, new Node) error`**, a sibling of
+`Split` / `Merge` / `Remove`. `Split` already yields two `*Text`; turning a half
+into a typed node is the only structural verb missing.
+
+~~**Indentation is captured, not required to be empty.** The indent capture must
+be `[ \t]*` and never `\s*`.~~ — **superseded 2026-08-31: there is no capture,
+because there is no regex.** What survives is the observation that motivated it:
+Go's declarations sit at column 0 and Python's, Java's and Smalltalk's do not, so
+anything keyed on column 0 finds `class Widget` and misses every method in it.
+That now bears on the depth question below rather than on a capture group.
 
 ### Item 4's decisions
 
-**DECIDED (Bill, 2026-08-27): only the fields a tool *writes* are nodes.** The
+**DECIDED (Bill, 2026-08-27): only the fields a tool *writes* are nodes.** ~~The
 indent and the name are nodes; the keyword and the receiver are read-only
-derivations over the render. *Editability sets the granularity* used as a budget
+derivations over the render.~~ *Editability sets the granularity* used as a budget
 rather than a maximum.
 
-@undecided: does this part live in `sdom` or in `minispecParser`? Nothing in it
-knows what a CRC card is, and microfts2 would want it for symbol indexing, which
-argues for `sdom` with the declaration regex moving onto a `DeclLang` layer
-between the indent language and the reader language. Settled by whether a second
-consumer is real or hypothetical when the part is scheduled.
+**Partly superseded 2026-08-31, and the remainder is a real question.** The keyword
+*is* a node now — `DeclarationType` — and it is not a field any tool writes into.
+So either the rule reads "only what a tool writes is a **field**", with an *anchor*
+being a different thing that may also be a node, or the rule takes an exception.
+Worth settling in words before the spec is written, because the same distinction
+decides the indent.
+
+**DECIDED (Bill, 2026-08-31): this part lives in `sdom`, on a `DeclLang` layer.**
+`DeclLang` embeds `BracketLang` and carries the per-language declaration knowledge
+— the shape `lang.go` already uses, for the reason its own note already gives: the
+shipped tables cover the mechanism rather than serving consumers. ~~the
+per-language declaration regex~~ — **corrected the same day: there is no regex.**
+What the layer carries is open; a keyword set, plus how many bracket groups the
+backward walk skips for each, is the obvious shape.
+
+**The criterion this was to be settled by came out the other way, and was
+overruled.** Measured 2026-08-31: microfts2's `specs/`, `design/`, `notes.md` and
+its queue mention no declaration or symbol indexing anywhere. It has real bracket
+and indent chunkers — genuine consumers of Items 2 and 5 — and nothing that wants
+a declaration's *name*. So the second consumer is **hypothetical**, which argued
+for `minispecParser`.
+
+What outweighs it is Item 5. Its scope index is `sdom`'s, and each frame remembers
+the declaration on the line that opened it. With `Declaration` one package up,
+`sdom`'s frames would hold a bare `Node` and the reader would perform the "nearest
+enclosing frame that *has* one" walk — no import cycle, but one mechanism split
+across two packages. A wider `sdom` costs less than a split Item 5, and the
+boundary rule is satisfied either way: a declaration node knows nothing about a
+CRC card.
+
+**`DeclLang` embeds `BracketLang` now, and Item 5 inserts `IndentLang` between
+them.** The layering this document describes — declarations over indent over
+brackets — arrives in two steps because Item 4 precedes Item 5, and the insertion
+is one embedding line.
 
 @undecided: which declarations *ought* to be anchored is a policy and belongs in a
 reader, not here. Unfiltered, the query is mostly noise: over one ordinary Go
@@ -530,6 +618,27 @@ boilerplate that should never want a comment. Candidates: exported
 names only; types and functions but not interface-satisfying methods; only files
 that already carry at least one traceability comment. Settled by running the
 candidates over a real corpus and reading the noise.
+
+@undecided (2026-08-31): **does the indent get a node?** The 2026-08-27 decision
+says it does. This design produces none — the text before a `DeclarationType` ends
+with the indent, so it is the tail after the last `\n` and derivable without a
+kind, which also makes inserting a comment above a **content** write into that text
+node with no structural change at all.
+
+@undecided (2026-08-31): **what "top level" means when declarations nest.** Go's
+are at bracket depth 0, so a top-level curly finds them all; a Java method's `{`
+sits at depth 1 inside the class body. The walk is depth-general for free — the
+array is flat, so siblings at a depth share an `Enclosing` — but running it at
+every depth in Go finds every `if`, `for` and `switch` brace as well. Is depth 0
+the scope of this item, or is depth a parameter the anchoring policy sets?
+
+@undecided (2026-08-31): **declarations with no brace.** `var x = 1`,
+`type Foo = Bar`, an interface method, an `import` line — the curly trigger finds
+none of them. Brace-introducing declarations only, or does the trigger generalize?
+
+@undecided (2026-08-31): **indent-parsed documents.** Python has no curly; the
+trigger there is `:` plus an indent increase. The same walk with a different
+trigger, or a different mechanism?
 
 **Known and accepted:** scope for a brace language's *locals* nests by indentation
 rather than by brace, which is wrong. Every mis-nested declaration is a local,
@@ -549,7 +658,7 @@ case.
 
 **This part relates declarations, so it follows Item 4.**
 
-Scope is a **derived index**, not a lexicon: a scope frame is opened by a bracket,
+Scope is a **derived index**, not a schema: a scope frame is opened by a bracket,
 or by a significant indent increase, and each frame remembers the declaration on
 the line that opened it. A declaration's parent is the nearest enclosing frame
 that *has* one — which is what steps correctly over an `if {` or a `for {` that is
@@ -560,7 +669,7 @@ width.
 
 **DECIDED (Bill, 2026-08-27): YAML is its own DOM, reusing this mechanism — not a
 mode on the markdown or code one.** It shares the indent rule and shares no
-lexicon. It also needs bracket parsing, for flow style. Mini-spec's original
+schema. It also needs bracket parsing, for flow style. Mini-spec's original
 comment-eating `--repair` bug was YAML, so the motivating instance already exists;
 this carve does not schedule it.
 
@@ -597,6 +706,67 @@ this does.
 not propagated out of the mutation function, since anything escaping it poisons
 the document. The guarded write is its own transaction.
 
+## Item 8
+
+The bracket layer is a **parser**, not a lexer, and five names say otherwise.
+**Added 2026-08-31** — a part discovered rather than planned, which is why its
+number runs out of sequence.
+
+`specs/bracket-lexer.md`, `design/crc-Lexer.md`, `design/test-Lexer.md`,
+`sdom/lexer.go`, `sdom/lexer_test.go`, and `R76`'s text ("whitespace is not a
+token"). The **prose** in this document was corrected the day the part opened; the
+names are what remains.
+
+**Why this is a part and not a wording pass.** The word imports the
+lexer-then-parser-over-tokens model, and that model is wrong here: a parse level
+matches at the head of the input, decides which concrete node it is looking at, and
+hands that node the string. *Measured 2026-08-31:* reading "lexer" literally
+produced a design for Item 4 built on a second `StencilBuilder` binding over
+existing nodes — a thing that should not exist — and the error survived a full
+carve read, because every document says "lexer" too.
+
+**What makes it a pass rather than a rename.** Moving `crc-Lexer.md` rewrites every
+`// CRC: crc-Lexer.md` comment in `sdom/`, the Artifacts manifest row, and the
+`**Inject:**` anchors in `design/test-Lexer.md`. Moving `specs/bracket-lexer.md`
+rewrites the `**Source:**` lines and the root index entry. `R76` keeps its number
+and gets edited text: the claim — whitespace folds into text rather than becoming a
+node of its own — is unchanged, so this is **not** a retirement.
+
+**Not to be renamed.** `Origin` is "a small core token that every parser mints", in
+`specs/location.md`, `design/crc-Loc.md` and `sdom/context.go`. That is a
+capability token, not a lexical one, and it is correct as it stands.
+
+**DECIDED (Bill, 2026-08-31): the parser family, and `Scan` stays.** The words that
+import the wrong model are *lexer* and *token*. **Scan** is a neutral verb for one
+pass over a source, so the exported entry point keeps its name and everything
+naming the **layer** becomes parser:
+
+| from | to |
+|---|---|
+| `specs/bracket-lexer.md` | `specs/bracket-parser.md` |
+| `design/crc-Lexer.md` | `design/crc-BracketParser.md` |
+| `design/test-Lexer.md` | `design/test-BracketParser.md` |
+| `sdom/lexer.go` | `sdom/parser.go` |
+| `sdom/lexer_test.go` | `sdom/parser_test.go` |
+| `type lexer` | `type parser` |
+
+`Scanner` was considered and refused: in ordinary compiler usage a scanner **is** a
+lexer, so it would have changed the spelling and kept the model — the exact failure
+this part exists to fix.
+
+**DECIDED (Bill, 2026-08-31): `lexicon` becomes `schema`.** Ten hits, and a
+different word making a different claim — it names the language table rather than a
+lexing pass. `schema` is not a synonym picked for freshness: it is **already this
+project's word** for a document type, in `StencilBuilder`'s "a schema drives it",
+in "each schema's parse context is its own concrete type", and throughout
+`specs/stencils.md`. The rename leaves one word where there were two.
+
+**DECIDED (Bill, 2026-08-31): the carve's status block moves; `DONE.md` does not.**
+The status block is a live index people read to orient — the whole reason this part
+goes first — so Item 2's title becomes "the bracket parser". The done ledger
+records what the work was called when it landed, and rewriting it would falsify a
+record rather than clarify one.
+
 ---
 
 ## The tests, and why they are not a separate item
@@ -620,11 +790,12 @@ their own.
 5. **The one-field delta** — mutate one node and require exactly that node and its
    ancestors to lose faithfulness, and every untouched sibling to keep it.
 6. **A recognition count.** This is the one that is easy to omit and it catches
-   what nothing else does: a sub-lexicon that quietly stops recognizing something
+   what nothing else does: a sub-schema that quietly stops recognizing something
    falls back to opaque text, which **loses no bytes and breaks no round-trip**.
    Only counting what you expected to find sees it.
-7. **The additive property** — the flattened token stream is identical with and
-   without the readers.
+7. **The additive property** — the flattened node array is identical with and
+   without the readers. ~~token stream~~ — **corrected 2026-08-31 (Item 8): there
+   are no tokens here, only nodes.**
 
 **And the alarms must be pulled.** One case decides the shape of the suite: a
 `Render` that hands back the retained source leaves the **byte round-trip green**

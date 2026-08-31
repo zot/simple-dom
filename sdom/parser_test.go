@@ -1,4 +1,4 @@
-// CRC: crc-Lexer.md | R57, R65, R71, R72, R73, R74, R75, R76, R77
+// CRC: crc-BracketParser.md | R57, R65, R71, R72, R73, R74, R75, R76, R77
 package sdom
 
 import (
@@ -73,7 +73,7 @@ func checkCovers(t *testing.T, d *Doc, src, what string) {
 	}
 }
 
-// CRC: crc-Lexer.md | Seq: seq-scan.md#1.5 | R77
+// CRC: crc-BracketParser.md | Seq: seq-scan.md#1.5 | R77
 // The nesting lives on the call stack and is absent from the data.
 func TestOpenerContentsAndCloserAreSiblings(t *testing.T) {
 	d := assertStream(t, codeLang(), "a {b {c} d} e",
@@ -95,7 +95,7 @@ func TestWordMarkersRespectBoundaries(t *testing.T) {
 		`T"download " O"do" T" file " C"fi" T" begin_ " C"end"`)
 }
 
-// CRC: crc-Lexer.md | Seq: seq-scan.md#1.3.3 | R72
+// CRC: crc-BracketParser.md | Seq: seq-scan.md#1.3.3 | R72
 func TestSeparatorsOnlyInsideTheirGroup(t *testing.T) {
 	d, _ := Scan("else if x then y else z fi", 0, &LangShell)
 	got := stream(d)
@@ -107,13 +107,13 @@ func TestSeparatorsOnlyInsideTheirGroup(t *testing.T) {
 	}
 }
 
-// CRC: crc-Lexer.md | Seq: seq-scan.md#3.1 | R73
+// CRC: crc-BracketParser.md | Seq: seq-scan.md#3.1 | R73
 // The any-close fallback keeps an unbalanced file scannable.
 func TestStrayCloserLandsAsABracket(t *testing.T) {
 	assertStream(t, codeLang(), "a } b", `T"a " C"}" T" b"`)
 }
 
-// CRC: crc-Lexer.md | Seq: seq-scan.md#3.2 | R74
+// CRC: crc-BracketParser.md | Seq: seq-scan.md#3.2 | R74
 // The guarantee that makes unknown input safe.
 func TestTheScanNeverStalls(t *testing.T) {
 	src := "$ \x00 \xff\xfe unknown ~`!@#%^&*"
@@ -123,7 +123,7 @@ func TestTheScanNeverStalls(t *testing.T) {
 	}
 }
 
-// CRC: crc-Lexer.md | Seq: seq-scan.md#3.4 | R75
+// CRC: crc-BracketParser.md | Seq: seq-scan.md#3.4 | R75
 // An unbalanced file drops no bytes.
 func TestUnclosedGroupClosesAtEndOfInput(t *testing.T) {
 	for _, src := range []string{"func f() {", `s := "unterminated`, "// trailing", "`raw"} {
@@ -132,7 +132,7 @@ func TestUnclosedGroupClosesAtEndOfInput(t *testing.T) {
 	}
 }
 
-// CRC: crc-Lexer.md | R76
+// CRC: crc-BracketParser.md | R76
 // A text run is everything between two markers, whitespace included.
 func TestWhitespaceFoldsIntoText(t *testing.T) {
 	assertStream(t, codeLang(), "{ a  b\n  c }", `O"{" T" a  b\n  c " C"}"`)
@@ -140,7 +140,7 @@ func TestWhitespaceFoldsIntoText(t *testing.T) {
 
 // CRC: crc-BracketGroup.md | Seq: seq-scan.md#2.2 | R65
 // The property that makes strings and comments the same case.
-func TestNothingInsideARestrictedGroupIsTokenized(t *testing.T) {
+func TestNothingInsideARestrictedGroupIsRecognized(t *testing.T) {
 	cases := []struct{ src, want string }{
 		{`"a { b // c"`, `O"\"" T"a { b // c" C"\""`},
 		{"// a \"b\" { c\n", `O"//" T" a \"b\" { c" C"\n"`},
@@ -189,9 +189,9 @@ func TestAllowedParentSuppressesOutsideItsContext(t *testing.T) {
 	}
 }
 
-// CRC: crc-Lexer.md | R57
+// CRC: crc-BracketParser.md | R57
 //
-// The failure nothing else can see: a sub-lexicon that quietly stops recognizing
+// The failure nothing else can see: a sub-schema that quietly stops recognizing
 // something falls back to opaque text, which loses no bytes and breaks no
 // round-trip. Only counting what you expected to find sees it.
 //
@@ -245,7 +245,7 @@ func TestRecognitionCountPerLanguage(t *testing.T) {
 	}
 }
 
-// CRC: crc-Lexer.md | R57, R77
+// CRC: crc-BracketParser.md | R57, R77
 // Scanning models far more than Text did, and still loses nothing.
 func TestByteRoundTripPerLanguageOverTheCorpus(t *testing.T) {
 	langs := shippedLangs()

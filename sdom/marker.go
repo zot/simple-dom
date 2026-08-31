@@ -2,7 +2,7 @@ package sdom
 
 // CRC: crc-Marker.md | R78, R79
 //
-// Opener, Closer and Separator are the three leaf kinds the lexer adds. Each
+// Opener, Closer and Separator are the three leaf kinds the parser adds. Each
 // holds the bytes it matched and nothing more — in particular NO pointer to its
 // bracket group. Holding one would make Equals compare pointers, so two documents
 // parsed with independently constructed languages would never be equal and the

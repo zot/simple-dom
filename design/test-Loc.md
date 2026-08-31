@@ -101,10 +101,10 @@ source, and each renders exactly the source at its own offset with no adjustment
 **Refs:** crc-Loc.md, crc-Doc.md
 **Code:** sdom/loc_test.go
 **Alarm:** 4
-**Fire alarm:** In `Scan`, thread the base into the lexer and add it in `at`, so
+**Fire alarm:** In `Scan`, thread the base into the parser and add it in `at`, so
 locations come out base-relative. Red: this test, and the tiling assertions with
 it. Loud rather than silent — recorded so the coverage is deliberate.
-**Inject:** sdom/lexer.go:Scan
+**Inject:** sdom/parser.go:Scan
 **Pulled:** 2026-08-30 — rang, and less loudly than predicted. **Only this test
 failed**, out of 64. Every offset in the document was wrong by 500 and the corpus
 round-trip, the tiling test and the faithful-span check all stayed green, because
@@ -153,13 +153,13 @@ nodes from the two are distinguishable despite identical bytes and offsets
 **Refs:** crc-BracketContext.md
 **Code:** sdom/loc_test.go
 **Alarm:** 6
-**Fire alarm:** Make `lexer.at` return `Source(pos, length)` without `.In(...)`.
+**Fire alarm:** Make `parser.at` return `Source(pos, length)` without `.In(...)`.
 Red: only this test. Everything else works exactly as well without origins — the
 bytes, the tiling, the pairing, the round-trips are all untouched — which is why
 attribution needs an assertion of its own.
-**Inject:** sdom/lexer.go:lexer.at
+**Inject:** sdom/parser.go:parser.at
 **Pulled:** 2026-08-30 — rang, and **alone**: 63 of 64 tests passed with the
-lexer attributing nothing at all. The bytes, the tiling, the bracket pairing, the
+parser attributing nothing at all. The bytes, the tiling, the bracket pairing, the
 cross-derivation check and every corpus round-trip are all indifferent to
 provenance, which is why attribution needs an assertion of its own.
 

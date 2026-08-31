@@ -15,7 +15,7 @@ unnamed spans present as `Text` despite the pattern never mentioning them
 compile**: removing the two calls strands the `glue` closure and the `at` cursor,
 so the puller extended to the minimal compiling form of the same change and said
 so. Every corpus test stayed green, which is not evidence of weakness — the corpus
-path runs the lexer, and no corpus document contains a stencil.
+path runs the parser, and no corpus document contains a stencil.
 
 ## Test: the children tile the match
 **Purpose:** R98, R110 — contiguous, half-open, no byte unowned

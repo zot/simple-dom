@@ -3,7 +3,7 @@
 
 Written once and inherited by every node kind, so a new kind is tested **by
 existing**. Tests 6 (the recognition count) and 7 (the additive property) from the
-carve need a lexicon and readers, and land with Items 2 and 6.
+carve need a schema and readers, and land with Items 2 and 6.
 
 ## Test: byte round-trip over the real corpus
 **Purpose:** R2 — bytes the parse does not model come back unchanged
@@ -54,7 +54,7 @@ base**
 **Expected:** the two node arrays compare equal, node for node, despite every
 offset differing and the edited node being altered on one side and freshly
 faithful on the other
-**Refs:** crc-Node.md, crc-Lexer.md
+**Refs:** crc-Node.md, crc-BracketParser.md
 **Code:** sdom/roundtrip_test.go
 **Alarm:** 2
 **Fire alarm:** Make `Opener.Equals` compare locations as well as bytes — add

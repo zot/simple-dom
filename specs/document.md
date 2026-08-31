@@ -1,7 +1,7 @@
 # The document
 
 A `Doc` is a parsed source: the bytes, the flat document-order array of nodes
-over them, and two derived indices. It holds **nothing lexicon-specific**.
+over them, and two derived indices. It holds **nothing schema-specific**.
 Anything else derived — bracket links, a scope relation, an anchor index — is
 owned by the layer that needs it, so a document type that needs no such state
 carries none.

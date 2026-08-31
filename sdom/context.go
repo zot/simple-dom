@@ -4,7 +4,7 @@ import "slices"
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md | R12, R80, R81, R85
 //
-// BracketContext is the lexicon's parse context: a CONCRETE type, not an
+// BracketContext is the schema's parse context: a CONCRETE type, not an
 // interface (R12). An interface here would exist only to let one signature serve
 // heterogeneous node kinds, which nothing requires — each schema's context is
 // shaped for its own needs, and generic core code that needs only the document

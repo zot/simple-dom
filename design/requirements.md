@@ -58,7 +58,7 @@
 - **R37:** A `Doc` holds the source bytes, a base offset, the flat document-order node array, an open `data` slot, and two derived indices.
 - **R38:** A `Doc`'s base offset is its own position within an outer document. *(See R88, which states the other half: node offsets are relative to the document's own source and never include the base. Tracked as gap O9 until the code matches.)*
 - **R39:** A `Doc`'s derived indices cover its own node array and nothing else: one from node to position, one over lines.
-- **R40:** A `Doc` holds no lexicon-specific state; any other derived state is owned by the layer that needs it.
+- **R40:** A `Doc` holds no schema-specific state; any other derived state is owned by the layer that needs it.
 - **R41:** `Prev` and `Next` navigate by node rather than by position.
 - **R42:** A `Doc` exposes a monotonic structural generation.
 - **R43:** The structural generation is bumped whenever node membership changes.
@@ -79,11 +79,11 @@
 - **R119:** A document's nodes must describe its source. Beyond the shared-parse check this is not verified, because the guard would cost more than the failure, which is loud in every other test.
 - **R120:** When both operands are faithful, a merged node's text is a slice of the document's source rather than a separate copy of it; when either is altered its bytes are not in the source, so a new string is unavoidable. The *values* are equal either way — what differs, and what is asserted, is whether the result shares the source's storage. *(See gap O12: whether the fast path also avoids building a string it discards is a separate claim, and an unmeasured one.)*
 
-## Feature: bracket lexer
-**Source:** specs/bracket-lexer.md
+## Feature: bracket parser
+**Source:** specs/bracket-parser.md
 
-- **R57:** The bracket lexer scans a source into a flat, document-order stream of `sdom` nodes.
-- **R58:** The lexer is table-driven: supporting a new language means adding a table entry, not code.
+- **R57:** The bracket parser scans a source into a flat, document-order stream of `sdom` nodes.
+- **R58:** The parser is table-driven: supporting a new language means adding a table entry, not code.
 - **R59:** Strings and comments are expressed as bracket groups rather than as special cases.
 - **R60:** `BracketLang` carries the language's bracket groups and no other lexical configuration.
 - **R61:** `BracketGroup` declares `Open`, `Separators`, `Close`, `Escape`, `AllowedInner` and `AllowedParent`.
@@ -101,11 +101,11 @@
 - **R73:** When no other marker matches, any code-mode group's closer is recognized, so a stray closer lands as a bracket rather than derailing the scan.
 - **R74:** The scan always consumes at least one byte.
 - **R75:** A group left open at end of input closes there, and no bytes are dropped.
-- **R76:** Whitespace is not a token: it folds into text, so a text run is everything between two recognized markers.
+- **R76:** Whitespace is not a node of its own: it folds into text, so a text run is everything between two recognized markers.
 - **R77:** The emitted stream is flat and in document order — an opener, everything between it and its closer, and the closer are siblings in the array.
-- **R78:** The lexer adds the node kinds `Opener`, `Closer` and `Separator`; every other byte becomes `Text`.
+- **R78:** The parser adds the node kinds `Opener`, `Closer` and `Separator`; every other byte becomes `Text`.
 - **R79:** A marker node holds the bytes it matched and no reference to its bracket group; the active group comes from the parse context.
-- **R80:** The lexer's parse context is a concrete type, carrying the language while scanning.
+- **R80:** The parser's parse context is a concrete type, carrying the language while scanning.
 - **R81:** The parse context outlives the parse and owns the bracket pairing links.
 - **R82:** An opener knows its closer and its enclosing opener.
 - **R83:** A closer knows its opener.
