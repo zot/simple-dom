@@ -38,6 +38,13 @@ not act as a code bracket
 **Alarm:** 1
 **Fire alarm:** Move the `(*` group after the bare `(` group in `LangPascal`. Red: `(*` never fires, because `(` matches first and wins — Pascal's block comments stop being recognized and their interiors scan as code. The round-trip stays green and no byte moves; only the recognition assertions see it. This is what the ordering comment in the table is protecting.
 **Inject:** sdom/lang.go:LangPascal
+**Pulled:** 2026-08-30 — rang, but **only on this test**, out of 56 — and that
+corrected the alarm's own prediction. `TestRecognitionCountPerLanguage` stayed
+GREEN, because the reorder swapped `(*` for a bare `(` and the *kind* counts did
+not move: five openers before, five after. The count was measuring how many
+rather than what. It has since been rewritten to tally **per marker**, and now
+reports `0 of "O(*", expected 1`; re-verified against this same injection on
+2026-08-30. Both corpus round-trips stayed green throughout.
 
 ## Test: JavaScript
 **Purpose:** R64, R66 — the only table exercising both mode fields together

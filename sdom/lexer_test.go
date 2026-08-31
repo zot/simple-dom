@@ -186,37 +186,57 @@ func TestAllowedParentSuppressesOutsideItsContext(t *testing.T) {
 }
 
 // CRC: crc-Lexer.md | R57
+//
 // The failure nothing else can see: a sub-lexicon that quietly stops recognizing
 // something falls back to opaque text, which loses no bytes and breaks no
 // round-trip. Only counting what you expected to find sees it.
+//
+// Counted PER MARKER, not per kind. A tally of "five openers" is blind to one
+// marker being replaced by another — measured 2026-08-30, when reordering
+// LangPascal stopped "(*" being recognized and the kind counts did not move,
+// because a bare "(" took its place.
 func TestRecognitionCountPerLanguage(t *testing.T) {
 	cases := []struct {
-		name             string
-		lang             *BracketLang
-		src              string
-		open, close, sep int
+		name string
+		lang *BracketLang
+		src  string
+		want map[string]int // "O(*" -> 1, keyed by kind letter and marker text
 	}{
-		{"go", &LangGo, "func f(a int) {\n\t// c\n\ts := \"x\"\n\treturn `r`\n}\n", 5, 5, 0},
-		{"shell", &LangShell, "if a; then b; else c; fi\nwhile x; do download; done\n", 2, 2, 3},
-		{"pascal", &LangPascal, "begin { c } writeln('s'); (* o *) end", 5, 5, 0},
-		{"js", &LangJavaScript, "let x = `a ${b + `c ${d}`} e`; // ${no}\n", 5, 5, 0},
+		{"go", &LangGo, "func f(a int) {\n\t// c\n\ts := \"x\"\n\treturn `r`\n}\n",
+			map[string]int{"O(": 1, "C)": 1, "O{": 1, "C}": 1, "O//": 1, "C\n": 1,
+				`O"`: 1, `C"`: 1, "O`": 1, "C`": 1}},
+		{"shell", &LangShell, "if a; then b; else c; fi\nwhile x; do download; done\n",
+			map[string]int{"Oif": 1, "Sthen": 1, "Selse": 1, "Cfi": 1,
+				"Owhile": 1, "Sdo": 1, "Cdone": 1}},
+		{"pascal", &LangPascal, "begin { c } writeln('s'); (* o *) end",
+			map[string]int{"Obegin": 1, "Cend": 1, "O{": 1, "C}": 1,
+				"O'": 1, "C'": 1, "O(": 1, "C)": 1, "O(*": 1, "C*)": 1}},
+		{"js", &LangJavaScript, "let x = `a ${b + `c ${d}`} e`; // ${no}\n",
+			map[string]int{"O`": 2, "C`": 2, "O${": 2, "C}": 2, "O//": 1, "C\n": 1}},
 	}
 	for _, c := range cases {
 		d, _ := Scan(c.src, 0, c.lang)
-		var o, cl, s int
+		got := map[string]int{}
 		for _, n := range d.Nodes() {
+			var kind string
 			switch n.(type) {
 			case *Opener:
-				o++
+				kind = "O"
 			case *Closer:
-				cl++
+				kind = "C"
 			case *Separator:
-				s++
+				kind = "S"
+			default:
+				continue
 			}
+			text, _ := n.Render()
+			got[kind+text]++
 		}
-		if o != c.open || cl != c.close || s != c.sep {
-			t.Errorf("%s: recognized %d/%d/%d (open/close/sep), expected %d/%d/%d\n  %s",
-				c.name, o, cl, s, c.open, c.close, c.sep, stream(d))
+		for marker, want := range c.want {
+			if got[marker] != want {
+				t.Errorf("%s: recognized %d of %q, expected %d\n  %s",
+					c.name, got[marker], marker, want, stream(d))
+			}
 		}
 	}
 }

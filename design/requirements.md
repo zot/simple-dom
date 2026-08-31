@@ -48,7 +48,7 @@
 **Source:** specs/document.md
 
 - **R37:** A `Doc` holds the source bytes, a base offset, the flat document-order node array, an open `data` slot, and two derived indices.
-- **R38:** A `Doc`'s base offset is its own position within an outer document.
+- **R38:** A `Doc`'s base offset is its own position within an outer document. *(See gap O9: this is true but incomplete — nothing yet states that node offsets are relative to the document's own source and never include the base. Closing O9 adds that requirement.)*
 - **R39:** A `Doc`'s derived indices cover its own node array and nothing else: one from node to position, one over lines.
 - **R40:** A `Doc` holds no lexicon-specific state; any other derived state is owned by the layer that needs it.
 - **R41:** `Prev` and `Next` navigate by node rather than by position.

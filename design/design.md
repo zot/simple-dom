@@ -67,7 +67,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   kind, but the mutation vocabulary is then not expressible over the protocol the `Node` doc
   comment advertises. Item 2's lexer lands marker kinds; decide then whether re-granulation
   belongs on the interface or stays a leaf operation.
-- [ ] O4: The structural round-trip (test-roundtrip.md) reconstructs its comparison tree by the
+- [x] O4: The structural round-trip (test-roundtrip.md) reconstructs its comparison tree by the
   same construction rather than re-parsing it, because nothing recovers a `Compound` from bytes
   until Item 2's lexer. It therefore proves `Equals` ignores provenance but does not prove a
   parse is stable. The re-parse form of the test belongs with Item 2 and should replace the
@@ -77,3 +77,36 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   O(n^2) for a window making many edits to a large document. Splicing needs the position
   regardless, so the scan is not pure overhead — but a window that edits a whole document node
   by node would feel it. Measure before optimising; no consumer exists yet.
+- [ ] O6: `TestLangShell` and `TestLangPascal` assert with `strings.Contains` over the rendered
+  stream rather than comparing it exactly, so they check that certain markers appear rather than
+  that the tokenization is right. Measured 2026-08-30: under the `Restricted() == false`
+  injection both stayed green while their dumps showed visibly wrong tokenization, because the
+  markers they look for still appeared somewhere. `TestLangGo` and `TestLangJavaScript` use
+  exact-stream comparison and both failed. Not a hole — the per-marker recognition count now
+  covers what these miss — but the two tests read stronger than they are, and a reader would
+  trust them further than the evidence warrants.
+- [ ] O7: `BracketContext.rebuild` recomputes the whole index on any membership change: there is
+  no incremental path, so a document edited structurally many times rebuilds its bracket links
+  in full each time the stamp goes stale. That is the price of the stamped-not-registered design
+  and it is the right default — an incremental rebuild would need `Doc` to describe what
+  changed, which is exactly the coupling the design refuses. Revisit only if a consumer with a
+  large document and frequent structural edits appears; measure before optimising.
+- [ ] O8: `matchOpen` and `matchAnyClose` walk the entire bracket table at every scan position,
+  so scanning costs positions × groups × markers with no dispatch on the first byte. Fine for
+  the corpus today (the whole suite scans every project file under four languages in well under
+  a second) but it is the obvious hot spot if a large file or a big table ever appears. A
+  first-byte index over the markers would collapse most of it. No consumer needs it yet; measure
+  before optimising.
+- [ ] O9: A `Doc`'s `base` never enters a node's `Loc`: the lexer emits `Source(pos, len)` with
+  positions relative to the document's own source, and `base` is metadata about where that
+  source sits in an outer document. Nothing states this, and two documents assume the opposite.
+  The carve's Item 1 test 4 says the structural round-trip is "re-parsed into a document with a
+  different base offset, so passing also proves `Equals` ignores provenance" — which is false
+  as built, since a different base leaves every offset identical. And Item 1's `nest()` fixture
+  bakes base into offsets by hand, so `TestStructuralRoundTripAtADifferentBase` passes for a
+  reason unrelated to how a parse actually assigns locations. Measured 2026-08-30: an alarm on
+  `Opener.Equals` comparing locations did not ring against a re-parse at a different base, and
+  rang immediately once offsets were shifted by a prefix instead. Repair: state the rule in
+  specs/document.md and add a requirement for it (this gap ADDS a requirement rather than
+  editing one — R38 stays true, it is merely not the whole story), then rewrite `nest()` to
+  stop faking the shift, and correct the carve's test-4 wording at its source.

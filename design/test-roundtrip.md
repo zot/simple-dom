@@ -36,11 +36,40 @@ overlap; the first begins at 0 and the last ends at the length of the source
 **Input:** a mutated tree, and the same structure rebuilt over a document with a
 **different base offset**.
 **Note:** in this item the comparison tree is *reconstructed* by the same
-construction, not re-parsed, because `sdom` has no lexer yet — nothing recovers a
-`Compound` from bytes until Item 2. The re-parse form of this test lands there
+construction, not re-parsed, because `sdom` had no lexer yet. **The re-parse form
+landed with Item 2 — see the next test, which closes gap O4.** This one is kept:
+it exercises `Compound`, which no lexer produces
 **Expected:** the two compare equal despite every offset differing
 **Refs:** crc-Node.md, crc-Doc.md
 **Code:** sdom/roundtrip_test.go
+
+## Test: structural round-trip through a re-parse
+**Purpose:** R10, R57 — the real form of the property. Passing proves both that
+the parse is stable under its own output and that `Equals` ignores provenance
+**Input:** a Go source scanned, one text node's content rewritten inside a
+mutation, the document rendered, and that output **re-scanned at a different
+base**
+**Expected:** the two node arrays compare equal, node for node, despite every
+offset differing and the edited node being altered on one side and freshly
+faithful on the other
+**Refs:** crc-Node.md, crc-Lexer.md
+**Code:** sdom/roundtrip_test.go
+**Alarm:** 2
+**Fire alarm:** Make `Opener.Equals` compare locations as well as bytes — add
+`&& o.Location() == x.Location()` to its return. Red: only this test, because it
+is the only one comparing nodes across two documents with different bases.
+`TestEqualsIgnoresProvenance` stays green, since it exercises `*Text` rather than
+a marker kind — which is exactly the gap a per-kind `Equals` discipline opens.
+**Inject:** sdom/marker.go:Opener.Equals
+**Pulled:** 2026-08-30 — rang on the second attempt, and the first attempt is the
+record worth keeping. As first written this test re-parsed **at a different
+`base`** and the injection left all 57 tests green: node offsets are relative to
+the document's own source, so a different base changes no location at all, and the
+only nodes whose offsets differed were after the edit — none of them openers. The
+test was rewritten to shift offsets with a prefix instead, and now fails alone,
+with `node 1 differs after a re-parse: "(" vs "("` — identical bytes, different
+provenance. Tracked as a gap, because two other documents assume base flows into
+offsets.
 
 ## Test: the one-field delta
 **Purpose:** R28 — exactly the edited node and its ancestors lose faithfulness

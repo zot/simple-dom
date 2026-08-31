@@ -175,6 +175,50 @@ noticed this is what it was for.
 *Worked examples of all three live in `.scratch/PARSING.md`, which is a working
 note. The calls are here.*
 
+**DECIDED (Bill, 2026-08-30): `Loc` carries an `Origin`, and merging across two
+of them panics.** Provenance is currently document-relative and therefore not
+globally meaningful: node offsets are relative to a document's own source, `base`
+never enters a location, and two nodes at offset 10 from different parses are
+indistinguishable. `Loc` gains a reference to the parse it came from.
+
+```go
+// Origin identifies one PARSE, not one file. Two scans of the same source are
+// two Origins, which is what makes "same file, different parser" answerable.
+type Origin struct {
+    Name string // a path, a URL, or whatever the caller finds useful
+}
+```
+
+**The parse context, not the `Doc`** — and not merely because context identity is
+the question being asked. The context **exists before the nodes do**: a scan mints
+it, scans, and only then builds the `Doc` from what it emitted. Holding a `*Doc`
+would need a back-patching pass over every node once the document existed.
+
+**Concrete, not an interface.** Each schema's context is its own concrete type, so
+there is no single `Ctx` for `Loc` to hold; a small core token that every parser
+mints and its context keeps is what makes this work without an abstraction. It
+doubles as a lookup key. It carries a field rather than being an empty marker
+because Go may give every zero-size allocation the same address, and an empty
+`Origin` would fail as an identity exactly where it was needed.
+
+**This does not reopen the group-pointer ban.** A marker holding its group was
+refused because `Equals` would compare it, so two documents parsed with
+independently built languages would never be equal. A reference inside `Loc`
+cannot do that: `Equals` never compares `Location` at all.
+
+**Set by chaining, so no existing call site changes**: `Source(pos, n)` stays as
+it is for the many places with no origin to give, and a parser writes
+`Source(pos, n).In(origin)`.
+
+**`mergeLocs` panics when the two origins differ.** Merging across parses is a
+programming error rather than a data condition — the offsets are in different
+coordinate systems and no result names anything true. It is a foreign panic, so
+`Mutate` re-raises it with its stack rather than converting it, which is right for
+a caller error. It also subsumes the cross-document adjacency false positive:
+`Merge` never reaches the adjacency arithmetic. *Open: whether a nil origin counts
+as different or merely absent — the house style treats absence as compatible with
+anything.*
+
 ## Item 1
 
 The protocol every other part stands on. **LANDED — the specification now lives

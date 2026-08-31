@@ -167,6 +167,76 @@ func TestStructuralRoundTripAtADifferentBase(t *testing.T) {
 	}
 }
 
+// CRC: crc-Node.md | R10, R57
+//
+// The structural round-trip in its real form: mutate a scanned document, render
+// it, RE-PARSE that output at a different base, and require the two to compare
+// equal node for node. Passing proves both that the parse is stable under its own
+// output and that Equals ignores provenance — every offset differs, and the
+// mutated node is altered on one side and freshly faithful on the other.
+//
+// Item 1 could only reconstruct the comparison tree, because nothing recovered a
+// Compound from bytes until the lexer landed. This replaces that (gap O4).
+func TestStructuralRoundTripThroughAReparse(t *testing.T) {
+	const src = "func f(a int) {\n\t// note\n\treturn 1\n}\n"
+	d, _ := Scan(src, 0, &LangGo)
+
+	var target *Text
+	for _, n := range d.Nodes() {
+		if txt, ok := n.(*Text); ok && strings.Contains(txt.text, "return") {
+			target = txt
+			break
+		}
+	}
+	if target == nil {
+		t.Fatal("precondition: a text node holding the return statement")
+	}
+	if err := d.Mutate(func() error { target.SetText("\n\treturn 42 + 7\n"); return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if target.Location().Faithful() {
+		t.Fatal("precondition: the edited node is no longer faithful")
+	}
+
+	out, err := d.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Shift every offset by re-parsing the same bytes behind a prefix. A
+	// different `base` would NOT do this: node offsets are relative to the
+	// document's own source, and base is metadata about where that source sits in
+	// an outer document — it never enters a location. Measured 2026-08-30, when an
+	// alarm that should have rung did not.
+	const prefix = "// shifted\n"
+	reparsed, _ := Scan(prefix+out, 0, &LangGo)
+	skip := 0
+	for _, n := range reparsed.Nodes() {
+		l := n.Location()
+		if l.Offset()+l.Length() > len(prefix) {
+			break
+		}
+		skip++
+	}
+	tail := reparsed.Nodes()[skip:]
+
+	if len(tail) != len(d.Nodes()) {
+		t.Fatalf("re-parsing produced %d nodes past the prefix; the mutated tree has %d",
+			len(tail), len(d.Nodes()))
+	}
+	for i, want := range d.Nodes() {
+		got := tail[i]
+		if got.Location().Offset() == want.Location().Offset() {
+			t.Fatalf("node %d shares an offset with the original; the prefix did not shift it", i)
+		}
+		if !got.Equals(want) {
+			gs, _ := got.Render()
+			ws, _ := want.Render()
+			t.Fatalf("node %d differs after a re-parse: %q vs %q", i, gs, ws)
+		}
+	}
+}
+
 // CRC: crc-Compound.md | R28
 // Exactly the edited node and its ancestors lose faithfulness.
 func TestTheOneFieldDelta(t *testing.T) {

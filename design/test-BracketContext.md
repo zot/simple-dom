@@ -19,6 +19,14 @@ level report none
 **Alarm:** 1
 **Fire alarm:** In `lexer.open`, push the opener onto the stack *before* emitting it rather than after. Red: an opener records **itself** as its own enclosing opener instead of the one containing it. Nothing about the bytes, the tiling or the pairing changes, so this is silent everywhere else — and it would quietly corrupt any layer walking enclosure to find scope.
 **Inject:** sdom/lexer.go:lexer.open
+**Pulled:** 2026-08-30 — rang, and wider than designed. This test failed and so
+did the cross-check, **in the opposite column** from the alarm above: pairs equal
+at 316, enclosings 974 vs 962. The blast radius is larger than predicted, because
+`take` flushes pending text *before* emitting: pushing first means the text
+**preceding** an opener is attributed to it as well. The failure output also
+showed this test's message was lossy — it printed nil-ness rather than which
+node, so a real failure could read `got true, want true`. Message rewritten
+afterwards to name the node; the assertion is unchanged, so this record stands.
 
 ## Test: the independent forward scan agrees, over the corpus
 **Purpose:** R87 — the check that makes the index a fact rather than an assertion
@@ -38,6 +46,12 @@ thing that catches them drifting apart.
 **Alarm:** 2
 **Fire alarm:** Remove the `bc.closes(o, n)` condition from `rebuild`, so the stack walk pairs any closer with whatever opener is on top. **This is the real defect, hit while implementing:** on `( { )` the scan emits `)` unpaired via the any-close fallback while the walk pairs it with `{`. Red: the two derivations disagree, on most corpus files under most languages. Every other test stays green, because each derivation is individually self-consistent.
 **Inject:** sdom/context.go:BracketContext.rebuild
+**Pulled:** 2026-08-30 — rang. **Only this test failed**, out of 56, and the
+message named the divergence exactly: `doc.go under shell: scan recorded 268
+enclosings / 77 pairs; the independent walk found 268 / 86`. Enclosings equal,
+pairs differing by nine — the stray closers the fallback leaves unpaired. Each
+derivation stays individually self-consistent, which is why nothing but the
+comparison can see it.
 
 ## Test: a stale stamp rebuilds, and a fresh one does not
 **Purpose:** R86 — the context is a derived index like any other

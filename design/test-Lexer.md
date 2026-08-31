@@ -19,6 +19,9 @@
 **Alarm:** 1
 **Fire alarm:** Drop both word-boundary tests from `matchAt`, returning as soon as the bytes compare equal. Red: `do` fires inside `download`, `fi` inside `file`, `end` inside `begin_`. The round-trip and the tiling stay green — the bytes are all still there, just cut in the wrong places — so only an assertion about *which* nodes exist can see it.
 **Inject:** sdom/bracket.go:matchAt
+**Pulled:** 2026-08-30 — rang. This test failed, and the recognition count with
+it (`shell: 4 separators, expected 3` — `do` firing inside `download`). Both
+corpus round-trips stayed green.
 
 ## Test: separators are recognized only inside their own group
 **Purpose:** R72
@@ -37,6 +40,10 @@
 **Alarm:** 2
 **Fire alarm:** Make `matchAnyClose` always return no match. Red: the unmatched `}` becomes text instead of a `Closer`. Nothing else objects — no byte moves and the array still tiles — which is why a fallback that quietly stops firing needs its own assertion.
 **Inject:** sdom/lexer.go:lexer.matchAnyClose
+**Pulled:** 2026-08-30 — rang. This test failed, and so did
+`TestWordMarkersRespectBoundaries`, whose fixture ends with an `end` that only
+the fallback can recognize. **The recognition count did not catch it**, and
+neither corpus round-trip did.
 
 ## Test: the scan never stalls
 **Purpose:** R74 — the guarantee that makes unknown input safe
@@ -78,6 +85,10 @@ brackets, quotes and comment markers inside are text
 **Alarm:** 3
 **Fire alarm:** Make `BracketGroup.Restricted` return false unconditionally. Red: every string and comment scans in code mode, so `{` inside a comment opens a group and `//` inside a string starts one. Bytes are preserved and the array still tiles, so the corpus round-trip stays green — this is the recognition-count failure class exactly.
 **Inject:** sdom/bracket.go:BracketGroup.Restricted
+**Pulled:** 2026-08-30 — rang, and widest of the batch: six tests failed,
+including `TestLangGo`, `TestLangJavaScript`, the escape test and the recognition
+count. Both corpus round-trips stayed green even so — every string and comment
+was tokenizing its interior as code.
 
 ## Test: an escape consumes itself and the byte after it
 **Purpose:** R61 — and specifically that an escaped closer does not close
@@ -89,6 +100,10 @@ case must differ, or the escape is doing nothing
 **Alarm:** 4
 **Fire alarm:** In `scanRestricted`, advance past the escape sequence without consuming the byte after it. Red: the escaped quote closes the string, so one string becomes two plus stray text. The round-trip survives intact, because every byte is still emitted somewhere.
 **Inject:** sdom/lexer.go:lexer.scanRestricted
+**Pulled:** 2026-08-30 — rang, on this test and `TestLangGo`. Both of this
+test's messages fired, including *disabling the escape changed nothing, so the
+escape does nothing* — the second assertion earning its place. The recognition
+count and both corpus round-trips stayed green.
 
 ## Test: AllowedInner reaches back into code mode
 **Purpose:** R64, R65 — the escape hatch that makes interpolation work
@@ -108,6 +123,8 @@ template it is the interpolation opener
 **Alarm:** 5
 **Fire alarm:** Make `parentAllowed` return true unconditionally. Red: `${` opens an interpolation at top level, where it is really a `$` followed by a `{`. This is the failure the field exists to prevent, and it is invisible to everything except a test that scans `${` *outside* a template.
 **Inject:** sdom/bracket.go:BracketGroup.parentAllowed
+**Pulled:** 2026-08-30 — rang, on this test and `TestLangJavaScript`. `${x}` at
+top level became an interpolation. Nothing else in 56 tests objected.
 
 ## Test: a recognition count, per language
 **Purpose:** the failure nothing else can see — a sub-lexicon that quietly stops

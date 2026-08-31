@@ -2,6 +2,7 @@
 package sdom
 
 import (
+	"fmt"
 	"maps"
 	"strings"
 	"testing"
@@ -49,10 +50,25 @@ func TestEveryNodeKnowsItsEnclosingOpener(t *testing.T) {
 	want := map[int]Node{
 		0: nil, 1: nil, 2: outer, 3: outer, 4: inner, 6: outer, 8: nil,
 	}
+	// Report WHICH node, not merely whether one exists: two different openers are
+	// both non-nil, and a message that prints "got true, want true" on a failure
+	// is worse than no message.
+	name := func(n Node) string {
+		if n == nil {
+			return "none"
+		}
+		for j, c := range ns {
+			if c == n {
+				s, _ := c.Render()
+				return fmt.Sprintf("node %d (%q)", j, s)
+			}
+		}
+		return "a node from another document"
+	}
 	for i, w := range want {
 		if got := ctx.Enclosing(ns[i]); got != w {
 			s, _ := ns[i].Render()
-			t.Errorf("node %d (%q): enclosing = %v, want %v", i, s, got != nil, w != nil)
+			t.Errorf("node %d (%q): enclosed by %s, want %s", i, s, name(got), name(w))
 		}
 	}
 }
