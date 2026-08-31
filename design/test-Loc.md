@@ -103,6 +103,10 @@ source, and each renders exactly the source at its own offset with no adjustment
 locations come out base-relative. Red: this test, and the tiling assertions with
 it. Loud rather than silent — recorded so the coverage is deliberate.
 **Inject:** sdom/lexer.go:Scan
+**Pulled:** 2026-08-30 — rang, and less loudly than predicted. **Only this test
+failed**, out of 64. Every offset in the document was wrong by 500 and the corpus
+round-trip, the tiling test and the faithful-span check all stayed green, because
+`Render` never consults an offset. The prediction of "loud" was wrong.
 
 ## Test: an origin is set by chaining
 **Purpose:** R89, R92 — and that `In` does not mutate the location it is chained
@@ -125,7 +129,17 @@ allocation the same address; whether it does here is the thing being measured. A
 green result would mean the field is justified by `Name` being useful rather than
 by the address hazard, and the reasoning in the decision should be narrowed to say
 so.
-**Inject:** sdom/loc.go:Origin
+**Inject:** sdom/origin.go:Origin
+**Pulled:** 2026-08-30 — **the hazard is real and this test could not see it.**
+The empty-struct injection reddened four tests, so zero-size `Origin`s genuinely
+collide — but *this* test, the one whose comment names the hazard, stayed GREEN.
+Escape analysis is why: `a, b := &Origin{}, &Origin{}` as locals do not escape, so
+the compiler gives them distinct stack slots and they compare distinct with or
+without a field. Production mints through `newBracketContext`, which escapes to
+the heap, where every zero-size allocation lands on `runtime.zerobase` and compares
+equal — measured directly at `0x726840` for all of them. The test now mints through
+a context so it observes the production path, and re-pulling against the corrected
+version reddens five tests including this one.
 **Code:** sdom/loc_test.go
 
 ## Test: one origin per parse, carried by every node
@@ -142,6 +156,10 @@ Red: only this test. Everything else works exactly as well without origins — t
 bytes, the tiling, the pairing, the round-trips are all untouched — which is why
 attribution needs an assertion of its own.
 **Inject:** sdom/lexer.go:lexer.at
+**Pulled:** 2026-08-30 — rang, and **alone**: 63 of 64 tests passed with the
+lexer attributing nothing at all. The bytes, the tiling, the bracket pairing, the
+cross-derivation check and every corpus round-trip are all indifferent to
+provenance, which is why attribution needs an assertion of its own.
 
 ## Test: a nil origin is absent, not different
 **Purpose:** R93 — a synthesized node has no origin, and merging it into scanned
@@ -157,6 +175,10 @@ unknown
 `a`'s is nil, so the result keeps `a`'s nil. Red: this test. Silent elsewhere —
 the merged node simply loses its attribution and nothing else looks.
 **Inject:** sdom/loc.go:mergeLocs
+**Pulled:** 2026-08-30 — rang, on exactly one row of its table: *synthesized on
+the left*. The other two rows are unaffected by the injection and correctly stayed
+quiet, which is the table earning its keep — a single combined assertion would have
+said less.
 
 ## Test: merging across origins panics
 **Purpose:** R94, R95 — a programming error, not a data condition; and it must
@@ -173,3 +195,6 @@ of these. Silent everywhere else — the merge produces a perfectly plausible
 location that names a position in one parse for bytes drawn from two, and the
 round-trip is blind to it because no byte moves.
 **Inject:** sdom/loc.go:mergeLocs
+**Pulled:** 2026-08-30 — rang, on both of its tests and nothing else. 62 of 64
+passed while a cross-parse merge silently produced a location naming a position in
+one parse for bytes drawn from two. No byte moves, so the round-trip is blind to it.

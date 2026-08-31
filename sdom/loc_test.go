@@ -253,7 +253,13 @@ func TestOriginIsSetByChaining(t *testing.T) {
 // zero-size allocation the same address, so an empty marker would compare equal
 // to an unrelated one.
 func TestDistinctOriginsAreDistinct(t *testing.T) {
-	a, b := &Origin{}, &Origin{}
+	// Mint them the way production does, through a context, so they ESCAPE to the
+	// heap. Two `&Origin{}` locals do not escape; the compiler gives them distinct
+	// stack slots, so they compare distinct even with no field at all — and this
+	// test proved nothing. Measured 2026-08-30 by an injection that made Origin an
+	// empty struct: four tests went red and this one stayed green.
+	a := newBracketContext(codeLang()).Origin()
+	b := newBracketContext(codeLang()).Origin()
 	if a == b {
 		t.Fatalf("two separately minted origins must not be the same identity")
 	}

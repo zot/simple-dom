@@ -19,7 +19,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-Node.md → `sdom/node.go`
 - [x] crc-Text.md → `sdom/node.go`
 - [x] crc-Compound.md → `sdom/node.go`
-- [x] crc-Loc.md → `sdom/loc.go`
+- [x] crc-Loc.md → `sdom/loc.go`, `sdom/origin.go`
 - [x] crc-Doc.md → `sdom/doc.go`
 - [x] crc-MutationWindow.md → `sdom/mutate.go`
 - [x] crc-BracketGroup.md → `sdom/bracket.go`
@@ -97,7 +97,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   a second) but it is the obvious hot spot if a large file or a big table ever appears. A
   first-byte index over the markers would collapse most of it. No consumer needs it yet; measure
   before optimising.
-- [ ] O9: A `Doc`'s `base` never enters a node's `Loc`: the lexer emits `Source(pos, len)` with
+- [x] O9: A `Doc`'s `base` never enters a node's `Loc`: the lexer emits `Source(pos, len)` with
   positions relative to the document's own source, and `base` is metadata about where that
   source sits in an outer document. Nothing states this, and two documents assume the opposite.
   The carve's Item 1 test 4 says the structural round-trip is "re-parsed into a document with a
@@ -121,3 +121,11 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   names its `**Code:**` file, and its `## Test:` headings could be required to correspond to
   test functions in that file. That belongs in the mini-spec tool rather than here, so this gap
   records the hole and the evidence rather than proposing a fix in this repository.
+- [ ] O11: `Scan` mints an unnamed `Origin`, and there is no way to name it at the call. A
+  caller wanting a useful name must reach through `ctx.Origin().Name = path` afterwards, which
+  works but means the common case — two scanned parses colliding — reports two unnamed
+  identities in the panic message rather than two paths. `Origin.String` degrades gracefully (it
+  prints the pointer when unnamed) so the diagnostic is still usable, but it is worse than it
+  needs to be. The repair is an API change: either `Scan` takes a name, or it takes an `*Origin`
+  the caller minted. Deferred because no consumer names its parses yet, and because whichever
+  shape is right will be obvious once one does.
