@@ -2,9 +2,10 @@
 **Source:** crc-BracketLang.md
 
 ## Test: every field of BracketGroup is live somewhere
-**Purpose:** R69 — the tables are chosen to cover the mechanism, and this is the
-assertion that keeps that true as they change
-**Input:** the four shipped tables
+**Purpose:** R121 — the tables cover the mechanism as well as serving the
+languages mini-spec reads, and this is the assertion that keeps the first half
+true as they change
+**Input:** the six shipped tables
 **Expected:** across them, each of `Open`, `Separators`, `Close`, `Escape`,
 `AllowedInner` (both nil and non-nil) and `AllowedParent` is exercised by at
 least one group. A field live in no table is dead code

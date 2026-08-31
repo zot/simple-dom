@@ -70,11 +70,17 @@ Tables are **Go values**, exported from the package:
 - **`LangPascal`** — `begin`/`end`, the other word-bracket shape.
 - **`LangJavaScript`** — the only one exercising `AllowedInner` and
   `AllowedParent` together, through `` `text ${expr} more` ``.
+- **`LangTypeScript`** — the same brackets as JavaScript; types add none.
+- **`LangLua`** — `function`/`do`/`if` … `end`, `repeat`/`until`, `[[ ]]` long
+  strings and `--[[ ]]` block comments.
 
-They are chosen to **cover the mechanism, not to serve consumers**: between them
-every field of `BracketGroup` is live, so no mode is dead code and the recognition
-count has languages that actually recognize something. A consumer needing another
-language constructs its own `BracketLang`.
+**The set has two jobs, and it used to have one.** It still covers the mechanism:
+between them every field of `BracketGroup` is live, so no mode is dead code and the
+recognition count has languages that actually recognize something. It now also
+**serves the languages mini-spec reads** — Go, TypeScript, JavaScript, Lua and
+Shell, with Python following the indent parser. `LangPascal` earns its place under
+the first job alone. A consumer needing a language outside the set still constructs
+its own `BracketLang`.
 
 **They are code, not a config-file format**, and `sdom` ships no loader for one.
 The decisive reason is that **`nil` and an empty slice are semantically distinct

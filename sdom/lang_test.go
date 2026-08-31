@@ -1,4 +1,4 @@
-// CRC: crc-BracketLang.md | R59, R62, R64, R66, R69, R72
+// CRC: crc-BracketLang.md | R59, R62, R64, R66, R121, R72
 package sdom
 
 import (
@@ -18,7 +18,7 @@ func assertContains(t *testing.T, got string, wants ...string) {
 	}
 }
 
-// CRC: crc-BracketLang.md | R69
+// CRC: crc-BracketLang.md | R121
 //
 // The tables are chosen to cover the mechanism; this is the assertion that keeps
 // that true as they change. A field live in no table is dead code.

@@ -1,6 +1,9 @@
 package sdom
 
-import "slices"
+import (
+	"errors"
+	"slices"
+)
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md | R12, R80, R81, R85
 //
@@ -23,6 +26,14 @@ type BracketContext struct {
 	closerOf  map[Node]Node // opener  -> its closer
 	openerOf  map[Node]Node // closer  -> its opener
 	enclosing map[Node]Node // any other node -> the opener containing it
+
+	// R126, R127: a keyword node -> every name it declares. One entry for a plain
+	// declaration, several for a group. Stored here beside the pairing links
+	// because storage is machinery; FILLED IN by a schema, because filling it in
+	// means knowing what announces a declaration.
+	declaration map[Node][]Node
+	declStamp   uint64
+	declSet     bool
 
 	stamp uint64
 }
@@ -69,6 +80,50 @@ func (bc *BracketContext) Opener(closer Node) Node {
 func (bc *BracketContext) Enclosing(n Node) Node {
 	bc.refresh()
 	return bc.enclosing[n]
+}
+
+// CRC: crc-BracketContext.md | R128
+//
+// ErrDeclarationsStale reports that the document changed structurally since a
+// schema last filled these links in.
+var ErrDeclarationsStale = errors.New(
+	"sdom: declaration links are stale; re-run the schema's declaration pass")
+
+// CRC: crc-BracketContext.md | Seq: seq-declare.md#2.5 | R126, R127, R128
+//
+// SetDeclarations replaces the declaration links and stamps them against the
+// document's current generation. A schema calls it after its pass, OUTSIDE the
+// mutation window the pass ran in — reading the generation refuses inside one.
+func (bc *BracketContext) SetDeclarations(links map[Node][]Node) {
+	bc.declaration = links
+	bc.declSet = true
+	if bc.doc != nil {
+		bc.declStamp = bc.doc.Generation()
+	}
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-declare.md#2.5 | R127, R128
+//
+// Declarations returns the names a keyword node declares.
+//
+// This is the ONE index this context cannot rebuild. The pairing links are
+// recoverable from the finished array by walking it; declarations are not, because
+// sdom does not know what announces one in any language. So freshness is answered
+// HERE, at the accessor, which is the one call every reader makes — and a stale
+// accessor REFUSES.
+//
+// Returning the old map would answer from a document that has changed underneath
+// it, and returning an empty one is worse: it reads identically to "this keyword
+// declares nothing". That is the plausible wrong answer IndexOf already refuses on
+// the same grounds, where -1 would be indistinguishable from end-of-document.
+func (bc *BracketContext) Declarations(kw Node) ([]Node, error) {
+	if !bc.declSet {
+		return nil, ErrDeclarationsStale
+	}
+	if bc.doc != nil && bc.doc.Generation() != bc.declStamp {
+		return nil, ErrDeclarationsStale
+	}
+	return bc.declaration[kw], nil
 }
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.5 | R86

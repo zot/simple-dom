@@ -1,5 +1,5 @@
 # MutationWindow
-**Requirements:** R31, R32, R33, R47, R48, R49, R50, R51, R52, R53, R54, R55, R56, R120
+**Requirements:** R31, R32, R33, R47, R48, R49, R50, R51, R52, R53, R54, R55, R56, R120, R125
 
 The bracket around a set of edits. **Edits are direct** — the window's whole
 mechanism is that nothing can observe the document while they land.
@@ -20,6 +20,10 @@ mechanism is that nothing can observe the document while they land.
   `Doc` methods rather than node methods
 - checks `Merge`'s adjacency **when both operands are faithful**, from their two
   locations at the call site, and not at all otherwise
+- `Replace(old, new)`: swaps one node for another, keeping its position. Membership
+  changes, so it bumps the generation and needs the window like its siblings. It is
+  what turns a split-off `*Text` into a typed node, and it is a `Doc` method because
+  Go does not permit one to be declared from another package
 
 ## Constraints
 - **Resolve targets before entering.** Navigation is legal outside; node

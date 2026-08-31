@@ -24,9 +24,12 @@ identifier.
 - [x] ~~**Item 7 — provenance carries its origin.**~~ **LANDED (`baec358`, 2026-08-30 — `#3`.)**
 - [x] ~~**Item 3 — regex compounds.**~~ **LANDED (`4b903a9`, 2026-08-31 — `#8`.)**
 - [ ] **Item 4 — declarations, as a post-pass.** **OPEN (#9.)**
+- [ ] **Item 10 — one bracket index.** **OPEN (not queued.)**
+- [ ] **Item 11 — separator links, completing the bracket contract.** **OPEN (not queued.)**
 - [ ] **Item 5 — indent scope.** **OPEN (not queued.)**
 - [ ] **Item 6 — the traceability reader.** **OPEN (not queued.)**
-- [ ] **Item 8 — the vocabulary: it is a parser, not a lexer.** **OPEN (#10.)**
+- [ ] **Item 9 — generalize the schema work into `sdom` tools.** **OPEN (not queued.)**
+- [x] ~~**Item 8 — the vocabulary: it is a parser, not a lexer.**~~ **LANDED (`145ee96`, 2026-08-31 — `#10`.)**
 
 ## Decisions
 
@@ -518,27 +521,140 @@ language parser; it is a way to *address* declarations.
 You parse a code file, get its basic structure, and find the declarations in that.
 The 2026-08-27 post-pass call stands; the shape it produces is what changed.
 
-**DECIDED: recognition is forward to a brace, then backwards over structure.** Go
-declarations are recognized by their top-level open curly — search forward for the
-next one, then search backwards at the top level, **skipping from each closer to
-its opener**, to reach the name. The skip is what makes it work on real
-signatures, and the two shapes differ only in how much gets skipped:
+~~**DECIDED: recognition is forward to a brace, then backwards over structure.**~~
+**Superseded within the day (Bill, 2026-08-31), and it never survived contact with
+a type.** Walking back from a brace to the nearest identifier gives `Index` for
+`func (s *Store) Index(…) int {` and gives `struct` for `type Foo struct {` and
+`BracketLang` for `var LangGo = BracketLang{`. It also missed three of this
+repository's own anchored declarations outright, `var X = f(...)` having no brace
+at all.
+
+**DECIDED (Bill, 2026-08-31): recognition is a keyword at the start of a
+statement, matched over the top-level text nodes.** In a whitespace-insensitive
+language a declaration is announced by its keyword, and each language brings its
+own keywords and its own statement separators — Go and TypeScript separate on
+`\n` and `;`. From the keyword the pass searches **forward** for the name: within
+the same text for `var`, `type` and a plain function, and into the **forward
+siblings** for a method, whose receiver group sits between the keyword and the
+name.
+
+```go
+`(?:^|[\n;])[ \t]*(?P<kw>func|var|type|const)\b`
+```
+
+**`\b`, and a consuming prefix, are forced rather than preferred.** Go's RE2
+supports neither lookbehind nor lookahead — *verified 2026-08-31: `(?<=[\n;]\s*)`
+and `(?=\s)` are both rejected at compile* — so the separator is a non-capturing
+group and the trailing boundary is `\b`. That is also the better rule: `\b`
+rejects `constant` while admitting a keyword followed by punctuation.
+
+**Comments cost nothing, because the parse already excluded them.** A comment's
+interior is inside its group, so it is not a top-level text node and commented-out
+code cannot match.
+
+**But the comment's closing newline is a `Closer`, not a byte in the text** —
+which is the one hazard here, and it is the common case rather than an edge.
+*Verified 2026-08-31 on `// CRC: …\nfunc Index(k string) int {`:*
 
 ```
-func (s *Store) Index(k string) int {
-[ text{"...func "}, open{"("}, …, close{")"}, text{" Index"},
-  open{"("}, …, close{")"}, text{" int "}, open{"{"} ]
-
-func Index(k string) int {
-[ text{"...func Index"},
-  open{"("}, …, close{")"}, text{" int "}, open{"{"} ]
+2  *sdom.Closer  top=true   "\n"          ← the comment's Close marker
+3  *sdom.Text    top=true   "func Index"  ← starts with func; no \n in front of it
 ```
 
-Walking back from `open{"{"}`: over `text{" int "}`, skip the parameter group
-closer-to-opener, and the name is at the tail of the text node before it. A method
-skips a **second** group for the receiver; a type is followed immediately by its
-name. `BracketContext.Opener` is already that skip and `Enclosing(n) == nil` is
-already the top-level test — neither was built for this.
+Nearly all 183 declarations in `sdom/` carrying a `// CRC:` comment sit in exactly
+that position, so a purely in-text separator would miss most of them. **Statement
+separation is therefore partly structural:** a match at the start of a top-level
+text node begins a statement when the **preceding top-level content ends with a
+separator**. The in-text `[\n;]` branch handles the rest, since `}\nfunc b` keeps
+its newline in the text.
+
+**And "preceding content" means after skipping — comments go anywhere a space
+goes** (Bill, 2026-08-31), interleaved with whitespace-only text in any number. A
+schema walking the array steps over **whole comment groups and whitespace-only
+text**, both **backward** when testing a statement start and **forward** when
+finding a name. *Verified 2026-08-31, and each direction has a case that fails
+without it:*
+
+```
+/* c */ func Foo() {
+[ Opener "/*", Text " c ", Closer "*/", Text " func Foo", … ]
+```
+
+The pattern matches `func`; the backward test then finds `*/`, sees no separator,
+and **rejects a real declaration** — until the comment group is skipped, leaving
+the document start.
+
+```
+func /* hi */ Index(a) int {
+[ Text "func ", Opener "/*", Text " hi ", Closer "*/", Text " Index", … ]
+```
+
+The name is three nodes past the keyword, and `func /* a */ /* b */ Index` puts it
+arbitrarily further. Skipping a comment backward is one hop, since a closer names
+its opener.
+
+*Which groups are comments is the schema's to know*, as recognition always is: a
+comment and a string are both scan-restricted and the table does not distinguish
+them, by design, so a schema matches an opener against the markers it knows.
+
+**And the skip runs before every decision in the walk, not once at its start**
+(Bill, 2026-08-31). `func /* a */ foo /* b */ (…) /* c */ {` puts a comment at each
+position, and the method form adds one more decision to skip before:
+
+```
+skip*                          comments and whitespace-only nodes
+if the next node is an Opener  it is a receiver group — jump to its Closer
+skip*                          again
+the next text with content     the name is the identifier inside it
+```
+
+**Two different whitespace problems, and only one is skipping.** A whitespace-only
+node is stepped over; but the name arrives as `Text " Index "`, carrying whitespace
+on **both sides**, so it is sliced out of the middle by splitting that node at both
+edges. Taking the node whole would put the spaces inside the `DeclarationName` —
+which renders identically and is wrong, the class of failure this project keeps
+finding.
+
+**And skipped whitespace can contain a separator** (Bill, 2026-08-31). *Verified:*
+`func /* a */  /* b */\n/* c */ foo …` yields `Text "   \n"` between two comments —
+whitespace-only, and a newline. A declaration may span lines, so the forward walk
+**cannot stop at a separator**, while the backward test uses one to decide a
+statement began. Not a contradiction: one asks *did a statement begin here*, the
+other *where is the name of the declaration already announced*.
+
+The consequence is that the forward walk has **no terminator** — harmless on valid
+input, where a keyword is always followed by its name, and unbounded on truncated
+input. Stated rather than guarded, per the enforcement rule at the top of this
+document.
+
+**Newline-insensitivity is required rather than tolerated**, and one case settles
+it. *Verified 2026-08-31 against both compilers:* `func` ⏎⏎ `foo` ⏎ ` (x int)` ⏎ `{`
+is **rejected by Go** — `expected '(', found newline`, a semicolon being inserted
+after the identifier `foo` — and the same layout in Lua **runs and returns its
+value**. So a shared rule stopping the walk at a separator would be wrong for both
+languages at once; and even in Go, `func` ⏎ `foo(x int) {` is legal and vets clean.
+
+**And how strict the walk is, is the schema's choice** (Bill, 2026-08-31) — each
+schema does its own, so the general walk above is the *loosest* one permitted
+rather than the one everybody runs. **Go's requires a `func`'s name to reach its
+opening paren without crossing a newline**, which is what semicolon insertion makes
+true, and which lets the Go schema reject the shape Go rejects. It binds `func`
+alone. Lua's schema imposes no such rule, because Lua has none.
+
+*This was first written as **abutment**, and the implementation caught it.* A pass
+built to that rule rejected `func /* a */ (s *S) /* b */ Index /* c */ (x int) {`,
+which is legal Go. Measured against the compiler afterwards: `func foo (x int) {`
+and `func bar /* c */ (x int) {` are legal; `func baz` ⏎ `(x int)` is not; and
+neither is `func qux /*` ⏎ `*/ (x int)`, Go treating a comment that carries a
+newline as one. So the test is over the **source span** between name and paren,
+where comment bytes are in it by construction — which makes the last case fall out
+rather than need a rule. The stricter rule had been generalized from a single
+failing input.
+
+`sdom` itself neither validates nor requires laxity — it only promises never to
+refuse text on a schema's behalf, a DOM that rejected malformed input being useless
+for editing. **Nothing in `sdom` is a syntax checker; whether a schema is, is up to
+it.**
 
 **DECIDED: the product is two narrow typed nodes, not one wide compound.** Slice
 the keyword out and replace it with a `DeclarationType`; slice the name out and
@@ -555,12 +671,50 @@ Three consequences, each of which had been a live worry:
 - **This is what the minimality rule already said.** Two writable fields separated
   by a run of structure want two narrow nodes with that run as an ordinary
   sibling — not one span that drags a receiver group in as children.
-- **`StencilBuilder` is not involved.** The fields are found by walking structure
-  and split out of existing text, never bound from a regex over a fresh string.
+- **`StencilBuilder` is not involved, but its idea is.** No compound is built and
+  no glue is computed, so the builder itself has no part here — yet recognition is
+  a regex over text and the keyword is located by its **named group**, which is
+  Item 3's binding-by-name reused at a different layer. ~~never bound from a regex~~
+  — *corrected 2026-08-31, when the brace walk gave way to a keyword match.*
 
 **The one new primitive is `Doc.Replace(old, new Node) error`**, a sibling of
 `Split` / `Merge` / `Remove`. `Split` already yields two `*Text`; turning a half
 into a typed node is the only structural verb missing.
+
+**DECIDED (Bill, 2026-08-31): `const` is in, and grouped declarations yield several
+names.** `const`, `var` and `type` may take a group, and one group declares many:
+
+```go
+const (
+    A = 1
+    B, C = 2, 3
+)
+```
+
+*Verified 2026-08-31:* the parse puts the group's whole interior in **one text node
+inside the parens**, so the names come from a second pass over it — an identifier
+list at the start of a line within the group. `import` stays out: it is not a
+declaration a tool anchors.
+
+**A name list is captured whole and split, never matched with a repeated group.**
+*Verified the same day:* a repeated capture reports only its last iteration, so
+`B, C, D` yields `B` and `D` and loses `C` outright. One group for the list, and
+the identifiers come out of it — which covers `A = 1`, `B, C = 2, 3` and
+`D, E int` alike.
+
+**DECIDED (Bill, 2026-08-31): the declaration links live in the schema's parse
+context, and the relation is one-to-many.** `DeclarationType` does **not** hold its
+names — no node kind holds state its children do not carry, the rule that already
+keeps a bracket marker from holding its group. The links go where
+`BracketContext`'s `closerOf` / `openerOf` / `enclosing` go: a map on the schema's
+context, stamped against the document's structural generation and rebuilt when the
+stamp is stale, so `Doc` keeps no registry and issues no invalidation. Reading one
+refuses inside a mutation window for free, because checking freshness is the one
+call every stamped index makes.
+
+**One-to-many is forced by the group form**, and it is worth stating as the reason
+rather than as a shape: `map[Node][]Node` from a keyword to every name it declares
+— one entry for a plain declaration, several for a group.
 
 ~~**Indentation is captured, not required to be empty.** The indent capture must
 be `[ \t]*` and never `\s*`.~~ — **superseded 2026-08-31: there is no capture,
@@ -583,58 +737,220 @@ being a different thing that may also be a node, or the rule takes an exception.
 Worth settling in words before the spec is written, because the same distinction
 decides the indent.
 
-**DECIDED (Bill, 2026-08-31): this part lives in `sdom`, on a `DeclLang` layer.**
-`DeclLang` embeds `BracketLang` and carries the per-language declaration knowledge
-— the shape `lang.go` already uses, for the reason its own note already gives: the
-shipped tables cover the mechanism rather than serving consumers. ~~the
-per-language declaration regex~~ — **corrected the same day: there is no regex.**
-What the layer carries is open; a keyword set, plus how many bracket groups the
-backward walk skips for each, is the obvious shape.
+~~**DECIDED (Bill, 2026-08-31): this part lives in `sdom`, on a `DeclLang`
+layer.**~~ **Superseded the same day — see the decision below.** The reasoning is
+kept because it was measured, and because the measurement stays true: microfts2's
+`specs/`, `design/`, `notes.md` and its queue mention no declaration or symbol
+indexing anywhere, so the second consumer for a declaration layer is
+**hypothetical**. What was argued against that — Item 5's scope index being
+`sdom`'s and its frames remembering a declaration — turns out to weigh less than
+the sequencing below, and that argument was mine rather than Bill's.
 
-**The criterion this was to be settled by came out the other way, and was
-overruled.** Measured 2026-08-31: microfts2's `specs/`, `design/`, `notes.md` and
-its queue mention no declaration or symbol indexing anywhere. It has real bracket
-and indent chunkers — genuine consumers of Items 2 and 5 — and nothing that wants
-a declaration's *name*. So the second consumer is **hypothetical**, which argued
-for `minispecParser`.
+**DECIDED (Bill, 2026-08-31): the schemas live in `sdom/schema`, and only
+mini-spec's own readers are `minispecParser`'s.** A language schema is tightly
+coupled to the machinery and **bundles with `sdom`** — anyone parsing Go wants Go's
+schema, and none of it knows what a CRC card is. What stays at the module root is
+the part that is genuinely mini-spec's and will only ever be used by mini-spec: the
+traceability comment and its readers.
 
-What outweighs it is Item 5. Its scope index is `sdom`'s, and each frame remembers
-the declaration on the line that opened it. With `Declaration` one package up,
-`sdom`'s frames would hold a bare `Node` and the reader would perform the "nearest
-enclosing frame that *has* one" walk — no import cycle, but one mechanism split
-across two packages. A wider `sdom` costs less than a split Item 5, and the
-boundary rule is satisfied either way: a declaration node knows nothing about a
-CRC card.
+*This corrects an ambiguity carried through the morning*, in which "the schemas" and
+"`minispecParser`" were treated as the same place. Three packages, not two:
 
-**`DeclLang` embeds `BracketLang` now, and Item 5 inserts `IndentLang` between
-them.** The layering this document describes — declarations over indent over
-brackets — arrives in two steps because Item 4 precedes Item 5, and the insertion
-is one embedding line.
+| package | holds |
+|---|---|
+| `sdom` | the protocol, the bracket parser, the declaration machinery |
+| `sdom/schema` | the bundled Go, TypeScript, JavaScript, Lua and Shell schemas |
+| module root | `minispecParser` — the traceability comment, Item 6 |
 
-@undecided: which declarations *ought* to be anchored is a policy and belongs in a
-reader, not here. Unfiltered, the query is mostly noise: over one ordinary Go
-package it reported 0 of 32 declarations anchored, nearly all of them protocol
-boilerplate that should never want a comment. Candidates: exported
-names only; types and functions but not interface-satisfying methods; only files
-that already carry at least one traceability comment. Settled by running the
-candidates over a real corpus and reading the noise.
+**The boundary argument survives the move.** `sdom/schema` is a separate package, so
+driving the machinery from it still exercises every accessor and constructor the
+export surface is missing — which was the point of not building the schemas inside
+`sdom`.
 
-@undecided (2026-08-31): **does the indent get a node?** The 2026-08-27 decision
-says it does. This design produces none — the text before a `DeclarationType` ends
-with the indent, so it is the tail after the last `\n` and derivable without a
-kind, which also makes inserting a comment above a **content** write into that text
-node with no structural change at all.
+**DECIDED (Bill, 2026-08-31): the machinery is `sdom`'s and the language is the
+schema's.** The line runs between *what a declaration is* and *how this language
+announces one*:
 
-@undecided (2026-08-31): **what "top level" means when declarations nest.** Go's
-are at bracket depth 0, so a top-level curly finds them all; a Java method's `{`
-sits at depth 1 inside the class body. The walk is depth-general for free — the
-array is flat, so siblings at a depth share an `Enclosing` — but running it at
-every depth in Go finds every `if`, `for` and `switch` brace as well. Is depth 0
-the scope of this item, or is depth a parameter the anchoring policy sets?
+| `sdom` — the machinery | the schema — the language |
+|---|---|
+| `DeclarationType`, `DeclarationName` | the keyword set, or the keyword-less form |
+| `Doc.Replace`, the re-granulation | the pattern that recognizes a statement start |
+| the declaration links and their stamp | how a name sits relative to its keyword |
+| | the bundled Go, Lua, JS, Shell, TS schemas |
 
-@undecided (2026-08-31): **declarations with no brace.** `var x = 1`,
-`type Foo = Bar`, an interface method, an `import` line — the curly trigger finds
-none of them. Brace-introducing declarations only, or does the trigger generalize?
+Every rule on the right is a fact about **one language** — Go's keywords, Lua's
+keyword-less `NAME =`, Shell's whitespace-free `NAME=` — and none is a property of
+documents in general. Everything on the left is true of a declaration in any
+language, so a second consumer gets it without inheriting mini-spec's opinions.
+
+**And the generalization is deliberately deferred rather than attempted now.** The
+reusable half — whatever turns out to be a *tool* other schemas can build on —
+gets extracted into `sdom` as **Item 9**, after declarations, indent, and Python
+declarations have all landed. Three worked schemas is when there is enough
+knowledge to know what generalizes; extracting from one is guessing, and the guess
+would be built into `sdom`'s export surface where it is expensive to withdraw.
+
+*Two consequences, stated because they are structural rather than matters of
+taste:*
+
+- **`Doc.Replace` still lands in `sdom`**, and not by preference. Go does not
+  permit a method on `*Doc` to be declared from another package, so the one new
+  structural verb is `sdom`'s wherever the rules live. `Split`, `Merge` and
+  `Remove` are already exported, so the pass can call them from above.
+- **Writing the schema one package up is what exercises the split.** Driving
+  `sdom`'s machinery from `sdom/schema` will find every accessor and constructor
+  the export surface is still missing — which the two-package decision at the top
+  of this document already called part of the work rather than an obstacle to it,
+  and which building the whole thing inside `sdom` would have hidden completely.
+- **`BracketContext` stays in `sdom`, a schema inherits from it, and Item 4 adds
+  the declaration map to it — but the schema does the linking** (Bill,
+  2026-08-31). The map is machinery and goes where the other links go; filling it
+  in requires knowing what a declaration looks like, which is language work.
+
+  ```go
+  // in sdom, beside closerOf / openerOf / enclosing:
+  declaration map[Node][]Node   // a keyword -> every name it declares
+  ```
+
+  One-to-many because a grouped declaration declares several names. **A plain field
+  for now**: Item 10 consolidates it into `BracketInfo` along with the pairing
+  links.
+
+  **First export-surface finding, 2026-08-31:** `BracketContext` exposes
+  `Language`, `Origin`, `Closer`, `Opener` and `Enclosing` — and **no `Doc()`**.
+  A schema building on it therefore holds the document `Scan` returned. Workable,
+  possibly right (the context is deliberately not a document handle), and recorded
+  because it is exactly what the two-package decision predicted would surface only
+  once something outside `sdom` tried to build on it.
+
+  **DECIDED (Bill, 2026-08-31): the declaration accessors notice.** Every other
+  index here is *stamped, not registered*, which works because
+  `BracketContext.rebuild` can re-derive the bracket links by walking the finished
+  array. It cannot re-derive declaration links — `sdom` does not know what
+  announces a declaration in any language — so the freshness check moves to the
+  **accessor**, which is the one call every reader of these links must make. Same
+  placement as everywhere else, and the same reason: checking freshness is what
+  every consumer does anyway.
+
+  *What a stale accessor does is the follow-on, and the house style already
+  answers it.* It cannot rebuild, and returning the stale map — or an empty one,
+  which reads identically to "this keyword declares nothing" — is the plausible
+  wrong answer this project refuses on principle. `IndexOf` sets the precedent: it
+  refuses inside a mutation window precisely because `-1` would be
+  indistinguishable from end-of-document, and *"refusing says what happened
+  instead."* So a stale declaration accessor refuses and names the repair: re-run
+  the schema's pass. What is left to settle in Design is only the **shape** of the
+  refusal — a typed sentinel like `inMutation`, or an ordinary error.
+
+*What is deliberately left concrete:* the **algorithm** — scan the top-level text,
+match, slice, link — is written in the schema for now, not lifted into a reusable
+driver. Item 9 is where that becomes a tool, once three schemas have shown what
+the tool should be.
+
+**DECIDED (Bill, 2026-08-31): the bracket tables stay in `sdom`, and `LangLua` and
+`LangTypeScript` join `lang.go`.** A `BracketLang` is not a declaration rule — it
+is the lexical shape the parser already consumes — so the tables do not follow the
+schemas up. This part adds the two missing ones, because a declaration schema for
+a language with no bracket table cannot be tested.
+
+*Consequences to carry into the Requirements phase:* **`R69` enumerates the four
+shipped tables by name** and gives "every field of `BracketGroup` is exercised" as
+the selection rule. Both change — the set grows to six and the rule gains a second
+job, serving the languages mini-spec reads — so `R69` is **retired and replaced**
+rather than edited. `specs/bracket-parser.md` is already rewritten to match.
+
+**`for`/`while` … `do` … `end` needs no new mechanism — `Separators` is what it is
+for**, and microfts2 already ships the shape: one group, two openers, `do` as a
+separator rather than an opener.
+
+```go
+{Open: []string{"while", "for"}, Separators: []string{"do"}, Close: []string{"done"}},
+```
+
+*Recorded because this session got it wrong first:* a reading of `scanCode` showed
+openers matched before the enclosing group's separators, and that was written up as
+a conflict — on the assumption that `do` would need a group of its own. It does
+not. The scan order is real and it is not a problem here.
+
+**The residual is narrow and worth carrying: Lua's standalone `do … end` block.**
+With `do` a separator of the enclosing group and `end` its closer, an inner
+`do … end` reads as separator-then-close and ends the enclosing group early. No
+shipped table has met this because **shell has no standalone `do`**. To settle in
+Design, and small enough that leaving it unmodelled may be the answer.
+
+**No prior art for Lua.** microfts2 configures Go, Java, C, JavaScript, Lisp,
+nginx, Pascal and shell, and has **no Lua bracket table** — only a note that its
+line comment is `--`. So unlike the bracket parser itself, where that repository is
+the target to copy, Lua's table is genuinely new.
+
+*Also to check in Design:* `elseif` must precede `else` among Lua's separators,
+since `else` is a prefix of it. microfts2's shell config observes exactly this,
+ordering `elif` before `else` — so the convention is real, but the prefix-ordering
+rule is stated for **groups** and not for `Separators` within a group.
+
+**DECIDED (Bill, 2026-08-31): whether to anchor is a mini-spec concern, not an
+`sdom` one — and the question was posed backwards.** It was framed as *filtering*:
+`sdom` reports every declaration, most of them noise, so which ones deserve a
+comment? That invites a policy into the wrong package and makes the answer a
+heuristic over declarations.
+
+The real shape starts from the **other end**. Mini-spec finds its **unanchored
+requirements**, derives the plausible declaration names for them — plausibly with
+agent assistance, since that is a judgement about meaning rather than a match — and
+uses `sdom` to get the **unanchored declarations** to match those against. Two
+lists meeting in the middle, rather than one list being filtered.
+
+So `sdom`'s side of it is small and already specified: report the declarations, and
+which carry a traceability comment. Everything above that lives in mini-spec, and
+mostly in the mini-spec **tool** rather than this repository.
+
+*What this retires:* the noise measurement that motivated the filter — "0 of 32
+declarations anchored over one ordinary Go package" — was measuring the wrong
+thing, and this repository's own 183-of-225 says so. Neither number decides
+anything now, because nothing is being filtered.
+
+**DECIDED (Bill, 2026-08-31): the indent gets no node, and the reason generalizes
+past Go.** Bracket groups already pinpoint the declarations, so indent is
+irrelevant to **recognition** in any bracket-parsed document — depth does that
+work. The 2026-08-27 requirement to capture it was an artifact of the regex
+design: it argued that a pattern anchored at `^` with no indent capture finds
+`class Widget` and misses every method in it, and with no regex that argument has
+nothing to bite on.
+
+Indent is still **read** where a tool emits a matching one while inserting a
+comment above an indented declaration — a derivation over the preceding text, not
+a field. And it is load-bearing in an *indent-parsed* document, where it is the
+scope mechanism itself rather than a property of a declaration: Item 5.
+
+*Measured 2026-08-31 over `sdom/*.go`, 183 declarations carrying a `// CRC:`
+comment: **0** of them are indented.*
+
+@undecided (2026-08-31): **what "top level" means when declarations nest.** The
+trigger scans **top-level text nodes**, which is exactly right for Go: its
+declarations are at bracket depth 0, and the 225/183/0 measurement above is that
+scope. A Java method sits at depth 1 inside its class body, and a Go method value
+or local `func` literal sits deeper still.
+
+The keyword trigger makes this cheaper to answer than the brace walk did, because
+scanning another depth is the *same* code against a different node set — no `if`,
+`for` or `switch` false positives follow it in, since those are not keywords in
+the table. What is left is a scope question rather than a mechanism one: which
+depths a given language's declarations live at. Depth 0 covers this item's own
+corpus completely; settle the general form when a language that needs depth 1
+arrives.
+
+~~@undecided: **declarations with no brace.**~~ **Resolved 2026-08-31 by the
+keyword trigger**, which is also what settled the question the other way round: the
+brace walk missed `var ErrPoisoned = errors.New(...)`, `ErrNotMutating` and
+`todoRe` — three declarations already carrying `// CRC:` comments — because
+`var X = f(...)` has no brace at all. A keyword at a statement start has no such
+blind spot.
+
+*Measured over `sdom/*.go` with the pattern and the structural-separator rule
+above:* **225** declarations recognized, **183** of them anchored, and of those
+anchored **183 recognized, 0 missed**. The 42 remaining are the unanchored set that
+Item 6's query exists to report — **19%**, which is a far quieter signal than the
+"mostly noise" this document feared when the policy question was written below.
 
 @undecided (2026-08-31): **indent-parsed documents.** Python has no curly; the
 trigger there is `:` plus an indent increase. The same walk with a different
@@ -646,6 +962,11 @@ which the anchoring policy discards, and every top-level declaration comes out
 correct. Fix by nesting on bracket depth if something ever needs local scope.
 
 ## Item 5
+
+**Includes Python declarations** (Bill, 2026-08-31): the indent parser needs a
+declaration schema to be tested against, so the two land together rather than as
+separate parts. That also makes Item 5 the second of the three worked schemas
+Item 9 reads.
 
 Indentation and brackets **compose under one rule** rather than being two
 mechanisms selected per language:
@@ -766,6 +1087,155 @@ The status block is a live index people read to orient — the whole reason this
 goes first — so Item 2's title becomes "the bracket parser". The done ledger
 records what the work was called when it landed, and rewriting it would falsify a
 record rather than clarify one.
+
+## Item 10
+
+Replace `BracketContext`'s three link maps with one. **Added 2026-08-31**, and
+**split the same day**: the separator links it was originally bundled with are a
+contract matter and moved to Item 11, while this half is a representation change
+and is **deferred**.
+
+**DEFERRED PAST ITEM 4 (Bill, 2026-08-31):** *"We can still defer `BracketInfo` to
+later, since it seems like we don't need it for declarations."* Deferring a
+representation change on consumer grounds is legitimate in a way that deferring a
+contract gap is not — see Item 11. Placed immediately **after** Item 4 the same
+day, so "later" means next, not someday.
+
+**DECIDED (Bill, 2026-08-31): one map of flat structs.**
+
+```go
+type BracketInfo struct {
+    opener, closer, enclosing Node
+    separators                []Node
+}
+
+// in BracketContext, replacing closerOf / openerOf / enclosing:
+info map[Node]BracketInfo
+```
+
+**Measured before deciding**, over `sdom`'s own 14 files — 15,747 nodes — building
+each shape from one parse:
+
+| shape | heap | allocations |
+|---|---|---|
+| three maps (as landed) | 1,067 KB | 275 |
+| **one map of flat structs** | **2,463 KB** | **111** |
+| one map of boxed `NodeInfo` values | 1,834 KB | 15,858 |
+
+A boxed hierarchy — `NodeInfo` interface, `BaseNodeInfo` for plain nodes,
+`BracketInfo` for bracket participants — was proposed and refused **on its
+allocation count, not its size.** It is the smaller index, because a plain node
+carries 16 bytes rather than 72; but an interface value cannot hold a struct
+inline, so every entry becomes its own heap object. `rebuild` recreates this index
+on **every structural change**, so 15,858 allocations is per-edit churn rather
+than a one-time cost, and trading 630 KB for it is the wrong direction.
+
+*The flat struct also has fewer allocations than the three maps it replaces* —
+111 against 275 — because it is one map instead of three.
+
+**The empty interface was the second reason.** `type NodeInfo interface{}`
+dispatches nothing, so every use site type-asserts back to the concrete type —
+exactly the shape Item 1's decision says to watch for. Had it been kept, it would
+have wanted a real method set rather than nothing.
+
+**And the extensibility it reached for is already provided.** A later layer
+wanting its own per-node facts keeps its own map, stamped separately — the rule
+already in force, and how the declaration links were going to work regardless. That
+buys extensibility with no boxing and no assertions, and leaves `BracketInfo` about
+brackets.
+
+**Why it is its own part.** It rewrites landed Item 2 code, and `rebuild` and
+`parser.open` both carry alarms that will need re-pulling. Item 4 is already
+carrying two node kinds, `Doc.Replace`, the declaration map, `LangLua`,
+`LangTypeScript`, and a new `sdom/schema` package with five schemas.
+
+**DECIDED (Bill, 2026-08-31): the declaration links fold into `BracketInfo` — and
+not yet.** Item 4 adds a plain `declaration map[Node][]Node` field to
+`BracketContext`, which the schema populates; **this part consolidates it into
+`BracketInfo`** with the rest.
+
+*Recorded against a recommendation that went the other way.* The argument for
+keeping it separate was that a `[]Node` of names is language-derived and widens
+every entry — true, and it loses to the same reasoning that put the map in `sdom`
+at all: storage is machinery, and one index answering everything about a node beats
+one more map beside it.
+
+*Consequence for the numbers above:* `BracketInfo` gains a fifth field and goes
+from **72 to 96 bytes**, so the measured 2,463 KB was for the narrower struct. The
+comparison it settled is unaffected — a field widens the boxed shape identically,
+and the allocation counts that decided it do not move at all.
+
+## Item 11
+
+`BracketContext` answers **opener→closer**, **closer→opener** and
+**node→enclosing**. It does not answer **opener→separators**. That asymmetry is the
+part.
+
+**Separator *nodes* already exist** — Item 2 emits `Separator` and links each one
+to its opener through `enclosing`, so `for x in a b; do … done` parses with `in`
+and `do` as separators inside the `for` group. What is missing is only the index in
+the other direction, which a consumer can today only get by scanning forward.
+
+**DECIDED (Bill, 2026-08-31): consumer count does not decide this.**
+
+> we want bracket parsing to be correct, because simple dom is a library and
+> that's the contract. The number of consumers doesn't matter -- it still needs to
+> be there.
+
+*Recorded because this session argued the other way twice*, deferring the direction
+on the grounds that nothing needed it yet — which is `O13`'s mistake in its other
+form. `O13` says *"unused outside tests"* is meaningless in a library; this is
+*"no consumer yet"*, and it prices an export by demand where a library prices it by
+contract. Demand orders work that is all going to happen; it does not decide what
+belongs.
+
+**The work.** `rebuild` collects separators from the **same stack walk** that
+recovers the pairing, so `R87`'s independent cross-derivation survives — that
+property being the one most easily lost when this index changes. Then an accessor
+in the shape of the three that exist, a requirement, a test, and an alarm.
+
+**Neither part depends on the other** — one adds a link the contract is missing,
+the other changes how the links are stored — so the order is free, and **Bill placed
+Item 10 first** (2026-08-31), immediately after Item 4.
+
+*That order is the tidier one, and this document previously argued the reverse.*
+With Item 10 first, `BracketInfo` is declared **with** its `separators []Node`
+field and this part fills it; the field exists from the outset rather than being
+added to a struct that just settled. Taken the other way round, Item 11 would have
+minted a fourth map for Item 10 to immediately fold in.
+
+## Item 9
+
+Extract the reusable half of the schema work into **tools in `sdom`**, and retarget
+the schemas onto them. **Added 2026-08-31**, at the moment the first schema was
+about to be written, so that the deferral is a decision on the record rather than
+an omission somebody notices later.
+
+**It goes last on purpose, and the ordering is the whole point.** It runs after
+declarations, indent, and Python declarations have all landed — because *three
+worked schemas is when there is enough knowledge to know what generalizes.*
+Extracting from one is guessing, and the guess would be built into `sdom`'s export
+surface, where withdrawing it costs every consumer.
+
+So until this part runs, the algorithm — scan the top-level text, match, slice,
+link — is written **concretely in each schema**, and the duplication between them
+is expected rather than regrettable. It is the evidence this part reads.
+
+**What is already known to be `sdom`'s** and is therefore not waiting for this
+part: the `DeclarationType` and `DeclarationName` kinds, `Doc.Replace`, and the
+declaration links with their stamp. Those are true of a declaration in any
+language. What waits is the **driver**: whatever shape lets a schema say *here is
+my pattern, here is how my names sit* and get the pass for free.
+
+**Watch for the generalization that is only two cases wide.** Go and TypeScript
+will look alike, and a tool fitted to them is not a tool. Lua and Shell are the
+useful evidence, because they announce a declaration with **no keyword at all**,
+and they do not even agree with each other: Shell's assignment forbids whitespace
+around `=` while Lua's expects it. Python arrives with a third shape and no braces.
+
+**DECIDED (Bill, 2026-08-31): Python declarations are part of Item 5**, because
+the indent parser needs them to be tested anyway. So this part's precondition is
+Items 4, 5 and 6 landing — not a fourth part that never existed.
 
 ---
 

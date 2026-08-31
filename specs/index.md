@@ -19,8 +19,29 @@ consume the lexical half.
   and the mutation window.
 - [bracket-parser.md](bracket-parser.md) — the table-driven parser, its two mode
   fields, and the pairing links the schema's context owns.
+- [declarations.md](declarations.md) — the declaration machinery: the two typed
+  node kinds, `Replace`, and the links a schema owns.
 - [stencils.md](stencils.md) — compounds that parse by regex: the builder a schema
   drives, computed glue, and bound values.
+
+## sdom/schema — the bundled language schemas
+
+A separate package under `sdom`, because a schema is tightly coupled to the
+machinery and anyone parsing Go wants Go's schema. Nothing here knows what a CRC
+card is either; being a separate package is what keeps `sdom`'s export surface
+honest.
+
+- [declaration-schemas.md](declaration-schemas.md) — how each language announces a
+  declaration: keyword and keyword-less forms, groups, and the bundled Go,
+  TypeScript, JavaScript, Lua and Shell schemas.
+
+## minispecParser — mini-spec's readers
+
+The module root. The only system that may know what a CRC card is, and the only one
+that will ever be used by mini-spec alone. The boundary is enforced by the compiler
+rather than by discipline.
+
+- *(no specs yet — the traceability comment is carve Item 6.)*
 
 ## Summary specs
 

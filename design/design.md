@@ -30,6 +30,11 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-StencilBuilder.md → `sdom/stencil.go`
 - [x] crc-Bool.md → `sdom/bound.go`
 - [x] crc-TodoItem.md → `sdom/todo.go`
+- [x] crc-Declaration.md → `sdom/declaration.go`
+- [x] crc-DeclSchema.md → `sdom/schema/schema.go`
+- [x] crc-GoSchema.md → `sdom/schema/golang.go`
+- [x] crc-LuaSchema.md → `sdom/schema/lua.go`
+- [x] crc-ShellSchema.md → `sdom/schema/shell.go`
 
 ### Sequences
 - [x] seq-mutate.md → `sdom/mutate.go`, `sdom/doc.go`
@@ -37,6 +42,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] seq-scan.md → `sdom/parser.go`
 - [x] seq-pair.md → `sdom/context.go`
 - [x] seq-stencil.md → `sdom/stencil.go`
+- [x] seq-declare.md → `sdom/declaration.go`, `sdom/schema/schema.go`
 
 ### Test Designs
 - [x] test-Node.md → `sdom/node_test.go`
@@ -47,6 +53,8 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] test-BracketContext.md → `sdom/context_test.go`
 - [x] test-Languages.md → `sdom/lang_test.go`
 - [x] test-Stencil.md → `sdom/stencil_test.go`
+- [x] test-Declaration.md → `sdom/declaration_test.go`, `sdom/schema/declaration_test.go`
+- [x] test-DeclSchema.md → `sdom/schema/declaration_test.go`
 
 ## Gaps
 
@@ -177,3 +185,6 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   missing entry back — does not apply. Like `O10`, the fix belongs in the mini-spec tool
   rather than here, so this records the hole and the evidence: the minter should count only the
   identifier a done entry owns, not every `#N` in its prose.
+- T1: R69 retired by R121 (2026-08-31 carve Item 4: the shipped set grows to six with
+  LangTypeScript and LangLua, and its selection rule gains a second job — serving the
+  languages mini-spec reads, not only covering every BracketGroup field.)

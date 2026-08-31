@@ -94,7 +94,7 @@
 - **R66:** `AllowedParent` nil means the group is recognized in any context; non-nil means it is recognized only while scanning inside one of the listed openers.
 - **R67:** nil and an empty slice are semantically distinct in both `AllowedInner` and `AllowedParent`.
 - **R68:** `BracketLang` carries no indent parameters and no flag enabling indentation; a language needing indent scope is described by a type that embeds `BracketLang`, and the type is the flag.
-- **R69:** The package exports the language tables `LangGo`, `LangShell`, `LangPascal` and `LangJavaScript`, chosen so that every field of `BracketGroup` is exercised by at least one of them.
+- **~~R69:~~** (Retired T1 — see R121) The package exports the language tables `LangGo`, `LangShell`, `LangPascal` and `LangJavaScript`, chosen so that every field of `BracketGroup` is exercised by at least one of them.
 - **R70:** Language tables are Go values; the package ships no config-file format or loader for them.
 - **R71:** A marker whose first byte is a word character is recognized only at a word boundary — neither preceded nor followed by a word character.
 - **R72:** A group's separators are recognized only while that group is the one currently open.
@@ -113,6 +113,10 @@
 - **R85:** The pairing links are owned by the parse context and never by `Doc`.
 - **R86:** The pairing links are a derived index: the context stamps itself with the document's structural generation and rebuilds when that stamp is stale.
 - **R87:** A forward scan that skips whole bracket pairs finds a node's enclosing opener independently, and must agree with the index.
+- **R121:** The package exports the language tables `LangGo`, `LangShell`, `LangPascal`,
+  `LangJavaScript`, `LangTypeScript` and `LangLua`, chosen both so that every field of
+  `BracketGroup` is exercised by at least one of them and so that the languages mini-spec reads
+  are covered.
 
 ## Feature: stencils
 **Source:** specs/stencils.md
@@ -139,3 +143,75 @@
 - **R115:** Only what a tool writes into is a bound field; minimality constrains a stencil's span, never the number of children within it.
 - **R116:** Stenciled parts separated by text become several stencil nodes rather than one span wide enough to swallow the text between them.
 - **R117:** `Done` leaves no two adjacent children that are both plain glue: an omitted group's text is merged with its neighbours, so omitting a group produces the identical child list to a regex that never named it.
+
+## Feature: declarations
+**Source:** specs/declarations.md
+
+- **R122:** A declaration is not a node with a span: it is a `DeclarationType` carrying the
+  keyword and one or more `DeclarationName`s carrying the names, all ordinary siblings in the
+  flat array.
+- **R123:** `DeclarationType` and `DeclarationName` are node kinds over `Text`.
+- **R124:** A declaration pass only splits text nodes and re-types halves, so the flattened
+  array is identical with and without it and no marker stops being recognized.
+- **R125:** `Doc.Replace` swaps one node for another in the document, preserving position; it
+  changes membership, so it bumps the structural generation and requires an open mutation
+  window.
+- **R126:** A `DeclarationType` holds no reference to its names; the link map lives on
+  `BracketContext` beside the bracket pairing links.
+- **R127:** The declaration link is one-to-many: a keyword maps to every name it declares, one
+  for a plain declaration and several for a group.
+- **R128:** `sdom` provides the declaration link map and a schema fills it in, because filling
+  it in requires knowing what announces a declaration.
+
+## Feature: declaration schemas
+**Source:** specs/declaration-schemas.md
+- **R129:** The package bundles declaration schemas for Go, TypeScript, JavaScript, Lua and
+  Shell, with Python following the indent parser.
+- **R130:** There is no shared recognition rule: each schema recognizes its own language's
+  declarations from the parse it is given.
+- **R131:** A declaration keyword may be a substring of a text node or a bracket marker node,
+  and a schema handles whichever its language uses.
+- **R132:** A declaration's name is found by walking forward in document order from whatever
+  announced it, which may be inside the group that keyword opened.
+- **R133:** Commented-out code is never recognized as a declaration, because a comment is a
+  bracket group and its interior is not a top-level text node.
+- **R134:** A match at the start of a top-level text node begins a statement when the preceding
+  top-level content, after the skipping of R145, ends with a statement separator.
+- **R135:** A schema whose language announces declarations both by keyword and by keyword-less
+  shape uses one alternation, whose non-participating branch yields the zero location.
+- **R136:** Shell's assignment form forbids whitespace around `=` and Lua's permits it, so the
+  two schemas do not share a pattern.
+- **R137:** A declaration pattern consumes its statement separator and ends on a word boundary,
+  because Go's regexp supports neither lookbehind nor lookahead.
+- **R138:** `import` is in no schema's keyword set.
+- **R139:** A grouped declaration's names come from a second pass over the single text node
+  inside its parens, and each name becomes its own `DeclarationName`.
+- **R140:** A name list is captured as one group and split into identifiers afterwards, because
+  a repeated capture group reports only its last iteration.
+- **R141:** Declarations are sought over top-level nodes; scanning another depth is the same
+  operation against a different node set.
+- **R142:** Indentation is not part of a declaration and gets no node.
+- **R143:** Which declarations ought to carry a traceability comment is a reader's policy, not a
+  schema's.
+- **R144:** Each schema carries its own recognition pass, and generalizing them into a shared
+  tool waits until three schemas exist.
+- **R145:** A schema skips whole comment groups and whitespace-only text nodes, in any number
+  and any interleaving, whenever it walks the array — backward to test whether a match begins
+  a statement, and forward to find a name. Skipping a comment group backward is one hop, because
+  a closer names its opener.
+- **R146:** Recognizing which groups are comments is a schema's own business: a comment and a
+  string are both scan-restricted and the language table does not distinguish them, so a schema
+  matches an opener against the comment markers it knows.
+- **R147:** The skip of R145 runs before every decision in the walk, not once at its start; a
+  receiver group is recognized as an opener met after skipping, and is jumped to its closer
+  before skipping again.
+- **R148:** A name is an identifier inside a text node that may carry whitespace on either side,
+  so slicing it out splits that node at both edges rather than retyping it whole.
+- **R149:** Skipped whitespace may contain statement separators, so a declaration may span lines
+  and the forward walk does not stop at one; the backward statement-start test is a different
+  question and is unaffected.
+- **R150:** `sdom` neither validates text nor requires a schema to be lax about it: nothing in
+  `sdom` is a syntax checker, and how strict a schema's own walk is, is that schema's choice.
+- **R151:** Go's schema requires a func's name to reach its opening parenthesis without
+  crossing a newline — not to abut it, since a space or a comment between them is legal while a
+  comment carrying a newline is not; the rule binds func alone and no other schema inherits it.

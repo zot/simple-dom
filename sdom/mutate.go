@@ -180,6 +180,33 @@ func (d *Doc) Split(n Node, at int) (Node, Node, error) {
 	return left, right, nil
 }
 
+// CRC: crc-MutationWindow.md | Seq: seq-declare.md#2.2 | R125
+//
+// Replace swaps one node for another, keeping its position. Membership changes —
+// the array now holds a different node identity at that index — so it bumps the
+// generation and needs the window like Split, Merge and Remove.
+//
+// It is what turns a split-off *Text into a typed node, which is the one
+// structural verb re-granulation did not already provide. It is a Doc method
+// because Go does not permit one to be declared from another package: a schema
+// outside sdom could not add it however much it is the schema's operation.
+//
+// The replacement's bytes are not checked against the original's. A node that
+// renders differently is an ordinary content change, and the same is true of
+// SetText; stating the rule is enough.
+func (d *Doc) Replace(old, new Node) error {
+	if err := d.editable(); err != nil {
+		return err
+	}
+	i := d.find(old)
+	if i < 0 {
+		return errors.New("sdom: Replace: node is not in this document")
+	}
+	d.dom[i] = new
+	d.dirty = true
+	return nil
+}
+
 // CRC: crc-MutationWindow.md | R32, R43
 //
 // Remove drops a node from the document. Its bytes leave the render with it,

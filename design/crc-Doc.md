@@ -24,7 +24,6 @@ what exists above it**.
 - bumps the generation whenever **node membership** changes — never for a content
   edit, since membership is unchanged and an index over structure survives one
 - rebuilds its own two indices
-
 ## Constraints
 - **Stamped, not registered.** `Doc` keeps no registry of derived indices and
   issues no invalidation callbacks. Layers pull; the document does not push

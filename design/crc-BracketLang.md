@@ -1,5 +1,5 @@
 # BracketLang
-**Requirements:** R58, R59, R60, R62, R68, R69, R70
+**Requirements:** R58, R59, R60, R62, R68, R70, R121
 
 A language's whole lexical table, and nothing else. Supporting a new language is
 adding an entry, not writing code.
@@ -27,9 +27,12 @@ adding an entry, not writing code.
   to most readers of most formats
 
 ## Ships
-`LangGo`, `LangShell`, `LangPascal`, `LangJavaScript` — chosen to **cover the
-mechanism rather than to serve consumers**, so that no field of `BracketGroup` is
-dead code and the recognition count has languages that recognize something.
+`LangGo`, `LangShell`, `LangPascal`, `LangJavaScript`, `LangTypeScript`,
+`LangLua` — chosen for **two jobs**. They still cover the mechanism, so that no
+field of `BracketGroup` is dead code and the recognition count has languages that
+recognize something; and they now serve **the languages mini-spec reads**, with
+Python following the indent parser. `LangPascal` earns its place under the first
+job alone.
 
 ## Collaborators
 - BracketGroup: its entries
