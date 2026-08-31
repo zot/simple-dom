@@ -22,7 +22,7 @@ identifier.
 - [x] ~~**Item 1 — the node protocol and the document.**~~ **LANDED (`77fa5f4`, 2026-08-30 — `#1`.)**
 - [x] ~~**Item 2 — the bracket lexer.**~~ **LANDED (`57fa312`, 2026-08-30 — `#2`.)**
 - [x] ~~**Item 7 — provenance carries its origin.**~~ **LANDED (`baec358`, 2026-08-30 — `#3`.)**
-- [ ] **Item 3 — regex compounds.** **OPEN (#8.)**
+- [x] ~~**Item 3 — regex compounds.**~~ **LANDED (`4b903a9`, 2026-08-31 — `#8`.)**
 - [ ] **Item 4 — declarations, as a post-pass.** **OPEN (not queued.)**
 - [ ] **Item 5 — indent scope.** **OPEN (not queued.)**
 - [ ] **Item 6 — the traceability reader.** **OPEN (not queued.)**

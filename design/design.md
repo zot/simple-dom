@@ -146,15 +146,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   knowing and neither is established. Repair: a careful benchmark that isolates `Merge` from the
   window's index rebuild, or an inspection of the generated code. Until then the requirement
   claims only what has been observed.
-- [ ] O13: `StencilBuilder.Omit` has no caller outside its own test. Measured 2026-08-31 during
-  an alarm pull: `grep -rn "Omit" sdom/` finds only the definition, its doc comment, the
-  `Put it or Omit it` panic string, and `stencil_test.go`. `todo.go` never calls it, because the
-  todo schema binds both of its groups. It exists because a schema will want a group it does not
-  bind — carve Items 4 and 6 both have shapes that need it — but until one of them lands it
-  is API justified by a plan rather than by a consumer. Not a defect: the alternative was
-  forcing a schema to `Put` a `Text` it does not want purely to satisfy the nil check, which
-  would make the child list claim a field where there is none. Revisit when Item 4 or 6 lands:
-  if neither calls it, it should go.
+- [x] O13: `StencilBuilder.Omit` has no caller outside its own test, and **that is not a defect** — the original wording of this gap applied an application standard to a library. A library package exports API for *consumers*; its tests are the in-package exercise of that API, and there is no reason it would call its own exports internally. Recorded here rather than deleted because the mistake is worth not repeating: "unused outside tests" is a real signal in application code and a meaningless one in a library. What remains true and worth knowing is narrower — `Omit` exists because a schema will want a group it does not bind, carve Items 4 and 6 both have shapes that need it, and the alternative was forcing a schema to `Put` a `Text` it does not want purely to satisfy the nil check.
 - [ ] O14: `TodoItem` binds `label` for a test-shape reason rather than an editability one,
   which is a knowing deviation from the minimality rule the same item establishes. The rule says
   only what a tool *writes into* is a bound field; a tool working on todo lists almost certainly
