@@ -31,16 +31,18 @@ overlap; the first begins at 0 and the last ends at the length of the source
 **Refs:** crc-Loc.md
 **Code:** sdom/roundtrip_test.go
 
-## Test: structural round-trip at a different base
-**Purpose:** R10 — passing also proves `Equals` ignores provenance
-**Input:** a mutated tree, and the same structure rebuilt over a document with a
-**different base offset**.
-**Note:** in this item the comparison tree is *reconstructed* by the same
-construction, not re-parsed, because `sdom` had no lexer yet. **The re-parse form
-landed with Item 2 — see the next test, which closes gap O4.** This one is kept:
-it exercises `Compound`, which no lexer produces
-**Expected:** the two compare equal despite every offset differing
-**Refs:** crc-Node.md, crc-Doc.md
+## Test: Equals ignores the parse a node came from
+**Purpose:** R10, R89 — `Equals` never consults `Location`, and that now includes
+the origin
+**Input:** the same nested structure built twice with **different origins** and
+identical offsets; then one leaf edited on each side in turn
+**Expected:** equal, then unequal after one edit, then equal again after the same
+edit on both
+**Note:** this replaces a test that varied the document's *base*. That proved
+nothing — a base never enters a location, so both trees had identical offsets and
+the fixture had been offsetting them by base **by hand** to fake a difference the
+real thing does not have. Found by an alarm that failed to ring; see gap O9.
+**Refs:** crc-Node.md, crc-Loc.md
 **Code:** sdom/roundtrip_test.go
 
 ## Test: structural round-trip through a re-parse
@@ -61,6 +63,13 @@ is the only one comparing nodes across two documents with different bases.
 `TestEqualsIgnoresProvenance` stays green, since it exercises `*Text` rather than
 a marker kind — which is exactly the gap a per-kind `Equals` discipline opens.
 **Inject:** sdom/marker.go:Opener.Equals
+**Pulled:** 2026-08-30 — re-verified after this test was **accidentally deleted
+and restored**. An index-to-index text replacement while rewriting the `nest`
+fixture swallowed the whole function, and the count hid it: seven tests added and
+one destroyed came to exactly the total expected without the deletion. Nothing in
+`validate` noticed, because artifact checkboxes are per FILE — the file still
+existed. Caught by a reviewer reading the design against the code. Rings alone
+again on the restored test.
 **Pulled:** 2026-08-30 — rang on the second attempt, and the first attempt is the
 record worth keeping. As first written this test re-parsed **at a different
 `base`** and the injection left all 57 tests green: node offsets are relative to

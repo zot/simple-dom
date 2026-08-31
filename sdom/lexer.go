@@ -33,12 +33,18 @@ type lexer struct {
 	stack     []Node
 }
 
+// CRC: crc-Lexer.md | R89, R91
+// at builds a location for a span of this scan, attributed to its parse.
+func (lx *lexer) at(pos, length int) Loc {
+	return Source(pos, length).In(lx.ctx.origin)
+}
+
 // CRC: crc-Lexer.md | Seq: seq-scan.md#1.5 | R76, R77
 // flushText emits the bytes accumulated since the last marker. Whitespace is not
 // a token, so a text run is everything between two recognized markers.
 func (lx *lexer) flushText() {
 	if lx.pos > lx.textStart {
-		lx.emit(NewText(lx.src[lx.textStart:lx.pos], Source(lx.textStart, lx.pos-lx.textStart)))
+		lx.emit(NewText(lx.src[lx.textStart:lx.pos], lx.at(lx.textStart, lx.pos-lx.textStart)))
 	}
 	lx.textStart = lx.pos
 }
@@ -61,22 +67,22 @@ func (lx *lexer) take(n Node) {
 	lx.textStart = lx.pos
 }
 
-// closeGroup ends the open group when its closer is at pos, pairing the two
-// nodes in both directions, and reports whether it did. Code mode and restricted
-// mode differ in what they recognize but end a group identically, so both call
-// this rather than each writing the pairing out.
 // CRC: crc-Lexer.md | Seq: seq-scan.md#1.4 | R82, R83
 //
-// closeGroup ends the open group if one of its closers matches here, recording
-// the pairing BOTH WAYS from the recursion that produced it. This is one of the
-// two independent derivations of the links; the other is BracketContext.rebuild,
-// which must never reuse anything recorded here.
+// closeGroup ends the open group when one of its closers is at pos, pairing the
+// two nodes BOTH WAYS, and reports whether it did. Code mode and restricted mode
+// differ in what they recognize but end a group identically, so both call this
+// rather than each writing the pairing out.
+//
+// This is one of the two independent derivations of the links — from the
+// recursion that produced them. The other is BracketContext.rebuild, which must
+// never reuse anything recorded here.
 func (lx *lexer) closeGroup(g *BracketGroup, opener Node) bool {
 	m := matchAny(lx.src, lx.pos, g.Close)
 	if m == "" {
 		return false
 	}
-	c := NewCloser(m, Source(lx.pos, len(m)))
+	c := NewCloser(m, lx.at(lx.pos, len(m)))
 	lx.take(c)
 	lx.ctx.closerOf[opener] = c
 	lx.ctx.openerOf[c] = opener
@@ -109,14 +115,14 @@ func (lx *lexer) scanCode(enclosing *BracketGroup, opener Node) {
 				return
 			}
 			if m := matchAny(lx.src, lx.pos, enclosing.Separators); m != "" {
-				lx.take(NewSeparator(m, Source(lx.pos, len(m))))
+				lx.take(NewSeparator(m, lx.at(lx.pos, len(m))))
 				continue
 			}
 		}
 		// The any-close fallback: a stray closer lands as a bracket rather than
 		// derailing the scan.
 		if m := lx.matchAnyClose(); m != "" {
-			lx.take(NewCloser(m, Source(lx.pos, len(m))))
+			lx.take(NewCloser(m, lx.at(lx.pos, len(m))))
 			continue
 		}
 		// Nothing matched here, so this byte is text. Advancing unconditionally is
@@ -155,7 +161,7 @@ func (lx *lexer) scanRestricted(g *BracketGroup, opener Node) {
 
 // open emits an opener for g and scans its body.
 func (lx *lexer) open(g *BracketGroup, marker string) {
-	o := NewOpener(marker, Source(lx.pos, len(marker)))
+	o := NewOpener(marker, lx.at(lx.pos, len(marker)))
 	lx.take(o)
 	lx.stack = append(lx.stack, o)
 	lx.scanBody(g, o)

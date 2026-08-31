@@ -3,6 +3,8 @@
 // but the intended change in it.
 package sdom
 
+import "fmt"
+
 // CRC: crc-Loc.md | R20, R21, R22, R23, R24
 //
 // Loc is a node's location. It separates provenance — where the node was read
@@ -14,9 +16,42 @@ package sdom
 // nobody set reports no provenance rather than offset 0, which would be the
 // first byte of the file and a plausible wrong answer.
 type Loc struct {
+	origin  *Origin
 	offset  int // biased: 0 is no provenance, n is source offset n-1
 	length  int
 	altered bool
+}
+
+// CRC: crc-Loc.md | R89, R90, R91
+//
+// Origin identifies one PARSE, not one file. Two scans of the same source are two
+// Origins, which is what makes "same file, different parser" answerable.
+//
+// It is the parse CONTEXT rather than the document: a context exists before any
+// node does — a scan mints it, scans, and only then builds the document from what
+// it emitted — so holding a document would need back-patching over every node.
+//
+// It is a concrete type rather than an interface, because each schema's context
+// is its own concrete type and there is no single one for a location to hold. It
+// doubles as a lookup key.
+//
+// It carries a field rather than being an empty marker: Go may give every
+// zero-size allocation the same address, so an empty Origin would compare equal to
+// an unrelated one — failing as an identity exactly where it was needed.
+type Origin struct {
+	Name string // a path, a URL, or whatever the caller finds useful
+}
+
+// String names the parse for a diagnostic. A parse nobody named still has to be
+// distinguishable from another, so an unnamed one reports its identity.
+func (o *Origin) String() string {
+	if o == nil {
+		return "unknown"
+	}
+	if o.Name == "" {
+		return fmt.Sprintf("unnamed parse %p", o)
+	}
+	return o.Name
 }
 
 // CRC: crc-Loc.md | R20
@@ -32,9 +67,13 @@ func Synthetic(length int) Loc {
 	return Loc{length: length}
 }
 
-// CRC: crc-Loc.md | R21
+// CRC: crc-Loc.md | R21, R88
 // Offset is the source position the node was read from, or -1 when there is no
 // provenance. The bias is what makes that -1 fall out without a branch.
+//
+// It is relative to the source of the node's OWN document. A document's base
+// offset never enters a location — a consumer wanting a position in an outer
+// document adds the base itself.
 func (l Loc) Offset() int { return l.offset - 1 }
 
 // CRC: crc-Loc.md | R22
@@ -53,6 +92,18 @@ func (l Loc) Altered() bool { return l.altered }
 // for an unfaithful node Offset is historical while Length is current, so the
 // pair names a span the node never owned (R29).
 func (l Loc) Faithful() bool { return l.offset != 0 && !l.altered }
+
+// CRC: crc-Loc.md | R89
+// Origin returns the parse this location came from, or nil when it is unknown.
+func (l Loc) Origin() *Origin { return l.origin }
+
+// CRC: crc-Loc.md | R92
+// In returns l attributed to a parse. Chained rather than a constructor
+// parameter, so the many places with no origin to give are unchanged.
+func (l Loc) In(o *Origin) Loc {
+	l.origin = o
+	return l
+}
 
 // alter returns l marked as no longer rendering the bytes at its offset. The
 // offset is kept: an altered node keeps its provenance.
@@ -76,7 +127,19 @@ func (l Loc) alter() Loc {
 // associative, so merging a run of nodes gives the same answer however the
 // merges are grouped.
 func mergeLocs(a, b Loc) Loc {
-	l := Loc{offset: a.offset, length: a.length + b.length}
+	// R93, R94, R95: merging across two parses is a programming error, not a data
+	// condition — the offsets are in different coordinate systems and no result
+	// names anything true. A nil origin is UNKNOWN rather than different, and is
+	// compatible with anything, the way no provenance already is. This is not the
+	// mutation-window sentinel, so Mutate re-raises it with its stack.
+	if a.origin != nil && b.origin != nil && a.origin != b.origin {
+		panic(fmt.Sprintf("sdom: merging locations from different parses (%s and %s)",
+			a.origin, b.origin))
+	}
+	l := Loc{origin: a.origin, offset: a.offset, length: a.length + b.length}
+	if l.origin == nil {
+		l.origin = b.origin
+	}
 	if l.offset == 0 {
 		l.offset = b.offset
 	}

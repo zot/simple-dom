@@ -20,7 +20,8 @@ Ordered by intent; position is the priority and the number is only the
 identifier.
 
 - [x] ~~**Item 1 — the node protocol and the document.**~~ **LANDED (`77fa5f4`, 2026-08-30 — `#1`.)**
-- [ ] **Item 2 — the bracket lexer.** **OPEN (#2.)**
+- [x] ~~**Item 2 — the bracket lexer.**~~ **LANDED (`57fa312`, 2026-08-30 — `#2`.)**
+- [ ] **Item 7 — provenance carries its origin.** **OPEN (#3.)**
 - [ ] **Item 3 — regex compounds.** **OPEN (not queued.)**
 - [ ] **Item 4 — declarations, as a post-pass.** **OPEN (not queued.)**
 - [ ] **Item 5 — indent scope.** **OPEN (not queued.)**
@@ -421,6 +422,28 @@ ones. See Item 5 for why the two compose.
 Pascal word-bracket configs. Read them before writing: that design is the target,
 not a starting point to improve on.
 
+## Item 7
+
+`Loc` gains a reference to the parse it came from. **Added 2026-08-30**, after
+Item 2 — a part discovered rather than planned, which is why its number runs out
+of sequence.
+
+**Discharges gap O9.** Provenance is currently document-relative and therefore
+not globally meaningful: node offsets are relative to a document's own source,
+`base` never enters a location, and two nodes at offset 10 from different parses
+are indistinguishable. Two documents already assume otherwise — Item 1's test 4
+wording above, and the `nest()` fixture, which bakes base into offsets by hand so
+its test passes for a reason unrelated to how a parse assigns them.
+
+The design is settled: see **the `Origin` decision** in `## Decisions`. What is
+left for the item is the pass — spec, requirement, design, code, alarms — plus
+three repairs the gap names: state in `specs/location.md` that offsets are
+relative to the document's own source, retire R38's back-link when a real
+requirement replaces it, and rewrite `nest()` to stop faking a shift it never had.
+
+One question is open, recorded with the decision: whether a **nil** origin counts
+as different or merely absent.
+
 ## Item 3
 
 Compound nodes parse by regex. ~~and the regex checks itself.~~ — **superseded
@@ -588,9 +611,12 @@ their own.
 2. **The flat array tiles the document** — contiguous, half-open, first at 0 and
    last at the end.
 3. **Every faithful node renders exactly its own source span.**
-4. **The structural round-trip over a *mutated* tree**, re-parsed into a document
-   with a **different base offset**, so passing also proves `Equals` ignores
-   provenance.
+4. **The structural round-trip over a *mutated* tree**, re-parsed and compared
+   against the original. ~~into a document with a **different base offset**~~ —
+   **corrected 2026-08-30 (gap O9): a base never enters a location, so varying it
+   changes no offset and proves nothing.** What makes the comparison bite is that
+   the two trees carry **different origins** and, where the bytes shifted,
+   different offsets — and `Equals` must still ignore both.
 5. **The one-field delta** — mutate one node and require exactly that node and its
    ancestors to lose faithfulness, and every untouched sibling to keep it.
 6. **A recognition count.** This is the one that is easy to omit and it catches

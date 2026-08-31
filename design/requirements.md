@@ -43,12 +43,20 @@
 - **R34:** A merged node is faithful only if both operands are faithful.
 - **R35:** A merged node takes the first operand's offset when that operand has provenance, and the second operand's offset otherwise.
 - **R36:** A split followed by a merge of the same pair returns the original span with its provenance intact.
+- **R88:** A node's offset is relative to the source of the document it belongs to; a document's base offset never enters a location.
+- **R89:** A location carries the parse it came from, as an `Origin`.
+- **R90:** `Origin` is a concrete type carrying a name, rather than an interface or an empty marker.
+- **R91:** An origin is minted once per parse and shared by every node that parse produces, so two scans of the same source yield two origins.
+- **R92:** Setting a location's origin is a chained operation; the constructor taking an offset and a length is unchanged.
+- **R93:** A nil origin is unknown rather than different, and is compatible with any other origin.
+- **R94:** Merging two locations whose origins are both present and different panics.
+- **R95:** That panic is not the mutation-window sentinel, so `Mutate` re-raises it rather than converting it to an error.
 
 ## Feature: document
 **Source:** specs/document.md
 
 - **R37:** A `Doc` holds the source bytes, a base offset, the flat document-order node array, an open `data` slot, and two derived indices.
-- **R38:** A `Doc`'s base offset is its own position within an outer document. *(See gap O9: this is true but incomplete — nothing yet states that node offsets are relative to the document's own source and never include the base. Closing O9 adds that requirement.)*
+- **R38:** A `Doc`'s base offset is its own position within an outer document. *(See R88, which states the other half: node offsets are relative to the document's own source and never include the base. Tracked as gap O9 until the code matches.)*
 - **R39:** A `Doc`'s derived indices cover its own node array and nothing else: one from node to position, one over lines.
 - **R40:** A `Doc` holds no lexicon-specific state; any other derived state is owned by the layer that needs it.
 - **R41:** `Prev` and `Next` navigate by node rather than by position.

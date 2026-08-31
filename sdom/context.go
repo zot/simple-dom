@@ -18,6 +18,8 @@ type BracketContext struct {
 	lang *BracketLang
 	doc  *Doc
 
+	origin *Origin // minted once per parse, carried by every node it produces
+
 	closerOf  map[Node]Node // opener  -> its closer
 	openerOf  map[Node]Node // closer  -> its opener
 	enclosing map[Node]Node // any other node -> the opener containing it
@@ -28,6 +30,7 @@ type BracketContext struct {
 func newBracketContext(lang *BracketLang) *BracketContext {
 	return &BracketContext{
 		lang:      lang,
+		origin:    &Origin{},
 		closerOf:  map[Node]Node{},
 		openerOf:  map[Node]Node{},
 		enclosing: map[Node]Node{},
@@ -37,6 +40,14 @@ func newBracketContext(lang *BracketLang) *BracketContext {
 // CRC: crc-BracketContext.md | R80
 // Language returns the table this context scanned with.
 func (bc *BracketContext) Language() *BracketLang { return bc.lang }
+
+// CRC: crc-BracketContext.md | R91
+//
+// Origin returns the token identifying this parse, which every node the scan
+// produced carries. It is minted before any node exists, which is why a location
+// holds the context's token rather than a document reference. Its Name is the
+// caller's to set.
+func (bc *BracketContext) Origin() *Origin { return bc.origin }
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.2 | R82, R83
 // Closer returns the closer paired with an opener, or nil when the group was

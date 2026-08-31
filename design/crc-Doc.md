@@ -7,7 +7,10 @@ what exists above it**.
 
 ## Knows
 - the source bytes
-- its **base** offset — its own position within an outer document
+- its **base** offset — its own position within an outer document. **Metadata
+  about the source, not part of any node's location**: offsets are relative to
+  this document's own source, and a consumer wanting a position in the outer
+  document adds the base itself
 - `dom` — the nodes, flat and in document order, tiling the source
 - `data any` — an open slot for a consumer
 - two derived indices over `dom` and nothing else: **node → position**, and

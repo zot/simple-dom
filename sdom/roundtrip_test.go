@@ -128,55 +128,65 @@ func TestEveryFaithfulNodeRendersItsOwnSpan(t *testing.T) {
 	}
 }
 
-// nest builds the same structure over a document at the given base:
-//
-//	dom = [ outer ], outer = Compound{ inner, tail }, inner = Compound{ a, b }
-func nest(base int) (*Doc, *Compound, *Compound, []*Text) {
-	const src = "aabbcc"
-	off := func(i int) int { return base + i }
-	a := NewText("aa", Source(off(0), 2))
-	b := NewText("bb", Source(off(2), 2))
-	tail := NewText("cc", Source(off(4), 2))
-	inner := NewCompound(Source(off(0), 4), a, b)
-	outer := NewCompound(Source(off(0), 6), inner, tail)
-	return New(src, base, outer), outer, inner, []*Text{a, b, tail}
+// nested is one built structure, with every node the tests name reachable by
+// name rather than by position in a slice.
+type nested struct {
+	doc          *Doc
+	outer, inner *Compound
+	a, b, tail   *Text
 }
 
-// CRC: crc-Node.md | R10
-// Passing also proves Equals ignores provenance: every offset differs.
-func TestStructuralRoundTripAtADifferentBase(t *testing.T) {
-	// In this item the comparison tree is reconstructed by the same construction
-	// rather than re-parsed: nothing recovers a Compound from bytes until the
-	// lexer lands in Item 2. The re-parse form of this test belongs there.
-	_, here, _, hereLeaves := nest(0)
-	_, there, _, thereLeaves := nest(500)
+// nest builds the same structure, attributed to the given parse:
+//
+//	dom = [ outer ], outer = Compound{ inner, tail }, inner = Compound{ a, b }
+//
+// Offsets are identical between two calls and only the ORIGIN differs. An earlier
+// version varied the document's base and offset every node by it, which faked a
+// difference the real thing does not have: a base never enters a location. See
+// gap O9.
+func nest(origin *Origin) nested {
+	const src = "aabbcc"
+	at := func(o, n int) Loc { return Source(o, n).In(origin) }
+	a := NewText("aa", at(0, 2))
+	b := NewText("bb", at(2, 2))
+	tail := NewText("cc", at(4, 2))
+	inner := NewCompound(at(0, 4), a, b)
+	outer := NewCompound(at(0, 6), inner, tail)
+	return nested{doc: New(src, 0, outer), outer: outer, inner: inner, a: a, b: b, tail: tail}
+}
 
-	if !here.Equals(there) {
-		t.Fatalf("identical structures at different bases must compare equal")
+// CRC: crc-Node.md | R10, R89
+// Two trees from different parses, structurally identical, must compare equal:
+// Equals never consults Location, and that now includes the origin.
+func TestEqualsIgnoresTheParseItCameFrom(t *testing.T) {
+	here := nest(&Origin{Name: "here"})
+	there := nest(&Origin{Name: "there"})
+
+	if here.outer.Location().Origin() == there.outer.Location().Origin() {
+		t.Fatalf("precondition: the two trees must come from different parses")
 	}
-	hereLeaves[1].SetText("BB")
-	if here.Equals(there) {
+	if !here.outer.Equals(there.outer) {
+		t.Fatalf("identical structures from different parses must compare equal")
+	}
+	here.b.SetText("BB")
+	if here.outer.Equals(there.outer) {
 		t.Fatalf("mutating one tree must make them differ")
 	}
-	thereLeaves[1].SetText("BB")
-	if !here.Equals(there) {
-		t.Fatalf("the same mutation on both must restore equality despite every offset differing")
-	}
-	if here.Location().Offset() == there.Location().Offset() {
-		t.Fatalf("precondition: the two trees must not share offsets")
+	there.b.SetText("BB")
+	if !here.outer.Equals(there.outer) {
+		t.Fatalf("the same mutation on both must restore equality")
 	}
 }
 
 // CRC: crc-Node.md | R10, R57
 //
 // The structural round-trip in its real form: mutate a scanned document, render
-// it, RE-PARSE that output at a different base, and require the two to compare
-// equal node for node. Passing proves both that the parse is stable under its own
-// output and that Equals ignores provenance — every offset differs, and the
-// mutated node is altered on one side and freshly faithful on the other.
+// it, RE-PARSE that output, and require the two to compare equal node for node.
+// Passing proves both that the parse is stable under its own output and that
+// Equals ignores provenance.
 //
-// Item 1 could only reconstruct the comparison tree, because nothing recovered a
-// Compound from bytes until the lexer landed. This replaces that (gap O4).
+// Offsets are shifted with a PREFIX rather than a different base: a base never
+// enters a location, so varying it would change nothing (gap O9).
 func TestStructuralRoundTripThroughAReparse(t *testing.T) {
 	const src = "func f(a int) {\n\t// note\n\treturn 1\n}\n"
 	d, _ := Scan(src, 0, &LangGo)
@@ -202,12 +212,6 @@ func TestStructuralRoundTripThroughAReparse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// Shift every offset by re-parsing the same bytes behind a prefix. A
-	// different `base` would NOT do this: node offsets are relative to the
-	// document's own source, and base is metadata about where that source sits in
-	// an outer document — it never enters a location. Measured 2026-08-30, when an
-	// alarm that should have rung did not.
 	const prefix = "// shifted\n"
 	reparsed, _ := Scan(prefix+out, 0, &LangGo)
 	skip := 0
@@ -240,20 +244,20 @@ func TestStructuralRoundTripThroughAReparse(t *testing.T) {
 // CRC: crc-Compound.md | R28
 // Exactly the edited node and its ancestors lose faithfulness.
 func TestTheOneFieldDelta(t *testing.T) {
-	_, outer, inner, leaves := nest(0)
-	for _, n := range []Node{outer, inner, leaves[0], leaves[1], leaves[2]} {
+	tree := nest(&Origin{Name: "delta"})
+	for _, n := range []Node{tree.outer, tree.inner, tree.a, tree.b, tree.tail} {
 		if !n.Location().Faithful() {
 			t.Fatalf("precondition: everything starts faithful")
 		}
 	}
-	leaves[0].SetText("AA")
+	tree.a.SetText("AA")
 
-	for _, n := range []Node{leaves[0], inner, outer} {
+	for _, n := range []Node{tree.a, tree.inner, tree.outer} {
 		if n.Location().Faithful() {
 			t.Errorf("the edited node and its ancestors must lose faithfulness")
 		}
 	}
-	for i, n := range []Node{leaves[1], leaves[2]} {
+	for i, n := range []Node{tree.b, tree.tail} {
 		if !n.Location().Faithful() {
 			t.Errorf("untouched sibling %d must keep its faithfulness", i)
 		}

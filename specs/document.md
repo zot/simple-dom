@@ -6,9 +6,11 @@ Anything else derived — bracket links, a scope relation, an anchor index — i
 owned by the layer that needs it, so a document type that needs no such state
 carries none.
 
-A `Doc` also carries a **base** offset, its own position within an outer
-document, so the same text can be parsed as a sub-document without its nodes
-lying about where they came from.
+A `Doc` also carries a **base** offset: its own position within an outer
+document. **It is metadata about the source, not part of any node's location** —
+node offsets stay relative to this document's own source, and a consumer that
+needs a position in the outer document adds the base itself. See
+[location.md](location.md).
 
 ## What `Doc` holds
 

@@ -2,6 +2,7 @@
 package sdom
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -193,4 +194,154 @@ func TestSplitThenMergeIsTheIdentity(t *testing.T) {
 			t.Fatalf("at %d: rendered %q; want %q", at, got, src)
 		}
 	}
+}
+
+// CRC: crc-Loc.md | R88
+// A document's base is metadata about its source, not part of any location.
+func TestOffsetsAreRelativeToTheDocumentsOwnSource(t *testing.T) {
+	const src = "alpha beta"
+	d, _ := Scan(src, 500, &BracketLang{})
+	if d.Base() != 500 {
+		t.Fatalf("precondition: the document carries a base of 500")
+	}
+	next := 0
+	for i, n := range d.Nodes() {
+		l := n.Location()
+		if l.Offset() != next {
+			t.Fatalf("node %d begins at %d; offsets must start at 0 regardless of base", i, l.Offset())
+		}
+		if got, want := src[l.Offset():l.Offset()+l.Length()], mustRender(t, n); got != want {
+			t.Fatalf("node %d: the source at its offset is %q, it renders %q", i, got, want)
+		}
+		next = l.Offset() + l.Length()
+	}
+	if next != len(src) {
+		t.Fatalf("the array ends at %d; the source is %d bytes", next, len(src))
+	}
+}
+
+func mustRender(t *testing.T, n Node) string {
+	t.Helper()
+	s, err := n.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+// CRC: crc-Loc.md | R89, R92
+func TestOriginIsSetByChaining(t *testing.T) {
+	o := &Origin{Name: "somewhere.go"}
+	plain := Source(3, 4)
+	if plain.Origin() != nil {
+		t.Fatalf("a location built without an origin must report none")
+	}
+	attributed := plain.In(o)
+	if attributed.Origin() != o {
+		t.Fatalf("In must attribute the location to the parse it is given")
+	}
+	if plain.Origin() != nil {
+		t.Fatalf("In must not mutate the location it was chained onto")
+	}
+	if attributed.Offset() != plain.Offset() || attributed.Length() != plain.Length() {
+		t.Fatalf("In must change nothing but the origin")
+	}
+}
+
+// CRC: crc-Loc.md | R90
+// The field is what makes Origin usable as an identity: Go may give every
+// zero-size allocation the same address, so an empty marker would compare equal
+// to an unrelated one.
+func TestDistinctOriginsAreDistinct(t *testing.T) {
+	a, b := &Origin{}, &Origin{}
+	if a == b {
+		t.Fatalf("two separately minted origins must not be the same identity")
+	}
+	if Source(0, 1).In(a).Origin() == Source(0, 1).In(b).Origin() {
+		t.Fatalf("locations from different parses must be distinguishable")
+	}
+}
+
+// CRC: crc-BracketContext.md | R91
+// One origin per parse, shared by every node it produces.
+func TestOneOriginPerParse(t *testing.T) {
+	const src = "a {b} c"
+	lang := codeLang()
+	d1, c1 := Scan(src, 0, lang)
+	d2, c2 := Scan(src, 0, lang)
+
+	if c1.Origin() == c2.Origin() {
+		t.Fatalf("two scans of the same source must be two parses")
+	}
+	carried := func(parse string, d *Doc, bc *BracketContext) {
+		t.Helper()
+		for i, n := range d.Nodes() {
+			if n.Location().Origin() != bc.Origin() {
+				t.Fatalf("%s parse: node %d does not carry its own parse's origin", parse, i)
+			}
+		}
+	}
+	carried("first", d1, c1)
+	carried("second", d2, c2)
+	// The whole point: same file, different parser, now answerable.
+	if d1.Nodes()[0].Location().Origin() == d2.Nodes()[0].Location().Origin() {
+		t.Fatalf("nodes from the same file but different parses must be distinguishable")
+	}
+}
+
+// CRC: crc-Loc.md | R93
+// A nil origin is unknown, not different — a synthesized node merges cleanly.
+func TestNilOriginIsAbsentNotDifferent(t *testing.T) {
+	o := &Origin{Name: "scanned"}
+	scanned := Source(0, 2).In(o)
+	cases := []struct {
+		name string
+		a, b Loc
+		want *Origin
+	}{
+		{"synthesized on the right", scanned, Synthetic(3), o},
+		{"synthesized on the left", Synthetic(3), scanned, o},
+		{"neither known", Synthetic(1), Synthetic(2), nil},
+	}
+	for _, c := range cases {
+		if got := mergeLocs(c.a, c.b).Origin(); got != c.want {
+			t.Errorf("%s: merged origin = %v; want %v", c.name, got, c.want)
+		}
+	}
+}
+
+// CRC: crc-Loc.md | R94
+// Merging across two parses is a programming error, not a data condition.
+func TestMergingAcrossOriginsPanics(t *testing.T) {
+	a := Source(0, 2).In(&Origin{Name: "one.go"})
+	b := Source(2, 2).In(&Origin{Name: "two.go"})
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatalf("merging locations from different parses must panic")
+		}
+		if !strings.Contains(fmt.Sprint(r), "different parses") {
+			t.Fatalf("the panic must say what went wrong; got %v", r)
+		}
+	}()
+	mergeLocs(a, b)
+}
+
+// CRC: crc-Loc.md | R95
+// Not the mutation-window sentinel, so Mutate re-raises it with its stack rather
+// than handing back an ordinary error.
+func TestCrossOriginPanicEscapesMutate(t *testing.T) {
+	one, two := &Origin{Name: "one"}, &Origin{Name: "two"}
+	a := NewText("aa", Source(0, 2).In(one))
+	b := NewText("bb", Source(2, 2).In(two))
+	d := New("aabb", 0, a, b)
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("a cross-parse merge must escape Mutate rather than arrive as an error")
+		}
+	}()
+	_ = d.Mutate(func() error {
+		_, err := d.Merge(a, b)
+		return err
+	})
 }

@@ -26,9 +26,57 @@ byte of the file — a plausible wrong answer that nothing would be forced to
 correct. Absence is the zero value, so a location nobody set cannot be mistaken
 for a location at the start of the document.
 
+## Offsets are relative to the document's own source
+
+An offset indexes the source of the document the node belongs to. It starts at 0
+for the first byte of that source, whatever the document's `base` may be — **the
+base never enters a location.** A consumer wanting a position in an outer document
+adds the base itself.
+
+This is what makes `Faithful` checkable: a faithful node renders exactly
+`source[Offset : Offset+Length]` of its own document, with no adjustment.
+
 `Faithful` is the question callers should actually be asking. A faithful node
 renders exactly the source span at its offset; an unfaithful one does not, and
 the two are not distinguishable from `Offset` alone.
+
+## Origin: which parse this came from
+
+An offset alone is not globally meaningful. Two nodes at offset 10 from different
+parses are indistinguishable, so a location also carries the **parse it came
+from**:
+
+```go
+// Origin identifies one parse, not one file. Two scans of the same source are
+// two Origins.
+type Origin struct {
+    Name string // a path, a URL, or whatever the caller finds useful
+}
+
+func (l Loc) Origin() *Origin  // nil when unknown
+func (l Loc) In(o *Origin) Loc // the parser's chained setter
+```
+
+**It is the parse context, not the document.** The context exists before the nodes
+do — a scan mints it, scans, and only then builds the document from what it
+emitted — so a document reference would need back-patching over every node.
+
+**It is a concrete type, not an interface.** Each schema's parse context is its
+own concrete type, so there is no single one for a location to hold; a small token
+that every parser mints and its context keeps is what makes this work without an
+abstraction, and it doubles as a lookup key. It carries a field rather than being
+an empty marker because Go may give every zero-size allocation the same address,
+and an empty `Origin` would fail as an identity exactly where it was needed.
+
+**Setting it changes no existing call site.** `Source(pos, n)` is unchanged, for
+the many places with no origin to give; a parser writes `Source(pos, n).In(o)`.
+
+**A nil origin is unknown, not different.** A synthesized node has none, and that
+is compatible with anything — the same way no provenance already is.
+
+`Equals` still never compares `Location`, so this reference cannot make two
+documents unequal. That is what distinguishes it from a node holding a pointer to
+its bracket group, which is forbidden for exactly that reason.
 
 ## `Altered` is derived, not stored
 
@@ -62,6 +110,16 @@ checked**. An altered node's `Offset` is historical while its `Length` is curren
 so the arithmetic proves nothing about it, and carrying adjacency past that point
 would mean tracking it across queued edits. The requirement still holds; only the
 check is absent.
+
+**Merging across two origins panics.** It is a programming error rather than a
+data condition: the offsets are in different coordinate systems and no result
+names anything true. The panic is not the mutation-window sentinel, so `Mutate`
+re-raises it with its stack rather than converting it to an error. A nil origin on
+either side is absent rather than different, and does not panic.
+
+This also settles adjacency across documents: `Merge` never reaches the arithmetic,
+so two faithful nodes from different parses whose offsets happen to satisfy
+`10+5 == 15` cannot be merged by accident.
 
 The merged node's location follows two rules:
 

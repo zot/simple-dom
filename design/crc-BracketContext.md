@@ -1,11 +1,12 @@
 # BracketContext
-**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87
+**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91
 
 The lexicon's parse context: a concrete type, not an interface. It carries the
 language through the scan and **outlives the parse** to own the pairing links.
 
 ## Knows
 - the language, while scanning
+- the **`Origin` it minted for this parse**, which every node it produces carries
 - the pairing links, afterwards:
   - an **opener** knows its closer and its enclosing opener
   - a **closer** knows its opener
@@ -13,6 +14,7 @@ language through the scan and **outlives the parse** to own the pairing links.
 - the structural generation it was built against
 
 ## Does
+- mints one origin per parse, before any node exists, and hands it to the scanner
 - hands the scanner the group currently open
 - records the pairing as the scan discovers it
 - reports whether its links are fresh, and rebuilds them when its stamp is stale

@@ -110,3 +110,14 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   specs/document.md and add a requirement for it (this gap ADDS a requirement rather than
   editing one — R38 stays true, it is merely not the whole story), then rewrite `nest()` to
   stop faking the shift, and correct the carve's test-4 wording at its source.
+- [ ] O10: A `test-*.md` entry can specify a test that no longer exists in the code, and nothing
+  detects it. Artifact checkboxes are per FILE, so `sdom/roundtrip_test.go` stayed checked while
+  one of the tests the design specifies for it was gone; `validate` stayed green, requirement
+  coverage stayed green, and the alarm anchored to that test had nothing to ring. Measured
+  2026-08-30: `TestStructuralRoundTripThroughAReparse` was destroyed by an index-to-index text
+  edit and the test count masked it — seven added and one deleted totalled exactly what was
+  expected without the deletion. It was found by a reviewer reading the design against the code,
+  which is the only mechanism that currently can. A checkable repair exists: a `test-*.md` entry
+  names its `**Code:**` file, and its `## Test:` headings could be required to correspond to
+  test functions in that file. That belongs in the mini-spec tool rather than here, so this gap
+  records the hole and the evidence rather than proposing a fix in this repository.
