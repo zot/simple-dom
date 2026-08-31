@@ -35,11 +35,7 @@ func (b *Bool) Text() *Text { return b.txt }
 // the way in, so "[ ]", "[]" and "[    ]" all read false and all render back
 // byte-exact.
 func (b *Bool) Value() bool {
-	switch strings.TrimSpace(b.txt.text) {
-	case "x", "X":
-		return true
-	}
-	return false
+	return strings.EqualFold(strings.TrimSpace(b.txt.text), "x")
 }
 
 // CRC: crc-Bool.md | R113
@@ -57,7 +53,7 @@ func (b *Bool) Set(v bool) {
 	}
 	if v {
 		b.txt.SetText("x")
-		return
+	} else {
+		b.txt.SetText(" ")
 	}
-	b.txt.SetText(" ")
 }

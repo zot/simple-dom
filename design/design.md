@@ -21,7 +21,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-Compound.md → `sdom/node.go`
 - [x] crc-Loc.md → `sdom/loc.go`, `sdom/origin.go`
 - [x] crc-Doc.md → `sdom/doc.go`
-- [x] crc-MutationWindow.md → `sdom/mutate.go`
+- [x] crc-MutationWindow.md → `sdom/mutate.go`, `sdom/alloc_test.go`
 - [x] crc-BracketGroup.md → `sdom/bracket.go`
 - [x] crc-BracketLang.md → `sdom/bracket.go`, `sdom/lang.go`
 - [x] crc-Marker.md → `sdom/marker.go`
@@ -41,7 +41,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 ### Test Designs
 - [x] test-Node.md → `sdom/node_test.go`
 - [x] test-Loc.md → `sdom/loc_test.go`
-- [x] test-Doc.md → `sdom/doc_test.go`
+- [x] test-Doc.md → `sdom/doc_test.go`, `sdom/alloc_test.go`
 - [x] test-roundtrip.md → `sdom/roundtrip_test.go`
 - [x] test-Lexer.md → `sdom/lexer_test.go`
 - [x] test-BracketContext.md → `sdom/context_test.go`
@@ -134,3 +134,15 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   needs to be. The repair is an API change: either `Scan` takes a name, or it takes an `*Origin`
   the caller minted. Deferred because no consumer names its parses yet, and because whichever
   shape is right will be obvious once one does.
+- [ ] O12: Whether `Doc.Merge`'s fast path actually avoids work is unestablished, as distinct
+  from whether its result is a slice — which R120 now asserts and
+  `TestMergeSlicesTheSourceWhenItCan` checks. The original implementation built
+  `ta.text + tb.text` unconditionally and discarded it in the faithful case, which a reviewer
+  caught as a defect. Measured 2026-08-31 with `testing.AllocsPerRun` over 200 runs: 13.0
+  allocations for the faithful path and 13.0 for the altered path, **and the same 13.0 with the
+  discarded concatenation re-introduced**. Either Go's SSA sinks the concatenation into the
+  branch that uses it — making the source-level defect cosmetic and the machine code identical
+  — or the probe was wrong; it ignored errors and is not trustworthy. Both readings are worth
+  knowing and neither is established. Repair: a careful benchmark that isolates `Merge` from the
+  window's index rebuild, or an inspection of the generated code. Until then the requirement
+  claims only what has been observed.

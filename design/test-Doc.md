@@ -94,6 +94,27 @@ lifts, which is why the property needed an assertion of its own.
 **Pulled:** 2026-08-30 — rang. Only this test failed, on `got <nil>` where the
 sentinel error was required; the other 30 held.
 
+## Test: merging faithful nodes shares the source's storage
+**Purpose:** R120 — the observable half of the fast path. Two strings with equal
+bytes are `==` whether one was sliced or freshly built, so only a check of
+*storage* can tell which path ran
+**Input:** two adjacent faithful nodes merged; then the same pair with one altered
+**Expected:** the faithful merge's text points into the document's source; the
+altered one's does not, because those bytes are not in the source at all. Both
+render the same
+**Refs:** crc-MutationWindow.md, crc-Doc.md
+**Code:** sdom/alloc_test.go
+**Alarm:** 7
+**Fire alarm:** Make `Merge` always concatenate, dropping the `bothFaithful`
+branch. Red: only this test. Every byte is identical and the render is unchanged —
+what is lost is that the result stopped sharing the source's storage, which no
+comparison of values can see.
+*Note what this alarm does NOT cover.* The original implementation built the
+concatenation and then discarded it in the faithful case; this test stayed green
+through that, because the discarded string still left a correct slice behind. That
+half of the claim is gap O12, and it is not asserted here.
+**Inject:** sdom/mutate.go:Doc.Merge
+
 ## Test: an escaping failure poisons the document
 **Purpose:** R54, R55 — no rollback, and no reset
 **Input:** a mutation function that applies one edit and then returns an error;

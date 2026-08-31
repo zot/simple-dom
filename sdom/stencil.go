@@ -69,14 +69,16 @@ func (b *StencilBuilder) span(start, end int) Loc {
 // Span is the location of the whole match — what the stencil node itself covers.
 func (b *StencilBuilder) Span() Loc { return b.span(b.match[0], b.match[1]) }
 
-// index returns the submatch index of a named group, or -1.
-func (b *StencilBuilder) index(name string) int {
+// mustIndex returns a named group's submatch index. A name the regex does not
+// define is a programming error in the schema rather than a data condition, so it
+// is refused here — at the call that used the wrong name.
+func (b *StencilBuilder) mustIndex(name string) int {
 	for i, n := range b.names {
 		if i > 0 && n == name {
 			return i
 		}
 	}
-	return -1
+	panic(fmt.Sprintf("sdom: no group named %q in this stencil", name))
 }
 
 // CRC: crc-StencilBuilder.md | R101, R108
@@ -90,10 +92,7 @@ func (b *StencilBuilder) index(name string) int {
 // offset. Absence is the zero value, so the two are distinguishable without a
 // third return.
 func (b *StencilBuilder) Group(name string) (string, Loc) {
-	i := b.index(name)
-	if i < 0 {
-		panic(fmt.Sprintf("sdom: no group named %q in this stencil", name))
-	}
+	i := b.mustIndex(name)
 	s, e := b.match[2*i], b.match[2*i+1]
 	if s < 0 {
 		return "", Loc{}
@@ -104,9 +103,7 @@ func (b *StencilBuilder) Group(name string) (string, Loc) {
 // CRC: crc-StencilBuilder.md | R102
 // Put patches a node the schema built into its group's slot.
 func (b *StencilBuilder) Put(name string, n Node) {
-	if b.index(name) < 0 {
-		panic(fmt.Sprintf("sdom: no group named %q in this stencil", name))
-	}
+	b.mustIndex(name)
 	b.slot[name] = n
 }
 
@@ -121,9 +118,7 @@ func (b *StencilBuilder) Put(name string, n Node) {
 // separate node, so omitting a group produces the IDENTICAL child list to a regex
 // that never named it.
 func (b *StencilBuilder) Omit(name string) {
-	if b.index(name) < 0 {
-		panic(fmt.Sprintf("sdom: no group named %q in this stencil", name))
-	}
+	b.mustIndex(name)
 	b.omit[name] = true
 }
 

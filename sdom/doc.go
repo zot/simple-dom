@@ -71,11 +71,23 @@ func oneParse(nodes []Node) {
 	if len(nodes) == 0 {
 		return
 	}
-	want := nodes[0].Location().Origin()
-	for i, n := range nodes[1:] {
-		if got := n.Location().Origin(); got != want {
+	var want *Origin
+	for i, n := range nodes {
+		got := n.Location().Origin()
+		if got == nil {
+			// A synthesized node makes no claim about coordinates, so it cannot
+			// contradict one — nil is UNKNOWN rather than different, exactly as
+			// mergeLocs treats it. Without this a hand-built document could not
+			// mix scanned and synthesized nodes, though Merge joins them happily.
+			continue
+		}
+		if want == nil {
+			want = got
+			continue
+		}
+		if got != want {
 			panic(fmt.Sprintf("sdom: node %d comes from %s, but the document is %s",
-				i+1, got, want))
+				i, got, want))
 		}
 	}
 }

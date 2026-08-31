@@ -17,35 +17,28 @@ func parseTodo(t *testing.T, line string) *TodoItem {
 	return item
 }
 
+// mustBuild starts a stencil over the whole of text. Every case here feeds the
+// pattern text it matches, so a non-match is a broken fixture rather than the
+// thing under test.
+func mustBuild(t *testing.T, re *regexp.Regexp, text string) *StencilBuilder {
+	t.Helper()
+	b, ok := NewStencilBuilder(re, text, Source(0, len(text)))
+	if !ok {
+		t.Fatalf("precondition: %v must match %q", re, text)
+	}
+	return b
+}
+
 // CRC: crc-StencilBuilder.md | Seq: seq-stencil.md#1.2.2 | R98
-// The author writes what they bind; everything else becomes text from the gaps.
+// The author writes what they bind; everything else becomes text from the gaps —
+// "- [" and "] " are children though todoRe never mentions them.
 func TestGlueIsComputedFromTheGaps(t *testing.T) {
 	item := parseTodo(t, "- [x] write the spec")
 	want := `T"- [" T"x" T"] " T"write the spec"`
-	if got := streamOf(item.Kids()); got != want {
+	if got := nodeStream(item.Kids()); got != want {
 		t.Fatalf("children =\n  %s\nwant\n  %s", got, want)
 	}
-	// "- [" and "] " appear as children though todoRe never mentions them.
-	if !strings.Contains(want, `T"- ["`) || !strings.Contains(want, `T"] "`) {
-		t.Fatal("the glue spans must be present")
-	}
 }
-
-// streamOf renders a child list compactly, like stream does for a document.
-func streamOf(kids []Node) string {
-	var b strings.Builder
-	for i, n := range kids {
-		if i > 0 {
-			b.WriteByte(' ')
-		}
-		s, _ := n.Render()
-		b.WriteString("T")
-		b.WriteString(quote(s))
-	}
-	return b.String()
-}
-
-func quote(s string) string { return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"` }
 
 // CRC: crc-StencilBuilder.md | R98, R110
 func TestChildrenTileTheMatch(t *testing.T) {
@@ -75,12 +68,8 @@ var twoGroups = regexp.MustCompile(`(?P<a>a)-(?P<b>b)`)
 
 // CRC: crc-StencilBuilder.md | Seq: seq-stencil.md#1.4.1 | R99, R105
 func TestUnfilledGroupPanics(t *testing.T) {
-	b, ok := NewStencilBuilder(twoGroups, "a-b", Source(0, 3))
-	if !ok {
-		t.Fatal("precondition: the regex matches")
-	}
-	s, l := b.Group("a")
-	b.Put("a", NewText(s, l))
+	b := mustBuild(t, twoGroups, "a-b")
+	b.Put("a", NewText(b.Group("a")))
 	defer func() {
 		r := recover()
 		if r == nil {
@@ -96,9 +85,8 @@ func TestUnfilledGroupPanics(t *testing.T) {
 // CRC: crc-StencilBuilder.md | Seq: seq-stencil.md#1.4.2 | R106
 // The only way a schema can break tiling from here.
 func TestMisSpannedPlugPanics(t *testing.T) {
-	b, _ := NewStencilBuilder(twoGroups, "a-b", Source(0, 3))
-	sa, la := b.Group("a")
-	b.Put("a", NewText(sa, la))
+	b := mustBuild(t, twoGroups, "a-b")
+	b.Put("a", NewText(b.Group("a")))
 	sb, _ := b.Group("b")
 	b.Put("b", NewText(sb, Source(99, 1))) // not the group's span
 	defer func() {
@@ -117,13 +105,9 @@ func TestOmittingAGroupIsTheSameAsNeverNamingIt(t *testing.T) {
 	unnamed := regexp.MustCompile(`(?P<a>a)-m-(?P<b>b)`)
 
 	build := func(re *regexp.Regexp, omit string) []Node {
-		bl, ok := NewStencilBuilder(re, text, Source(0, len(text)))
-		if !ok {
-			t.Fatalf("precondition: %v matches", re)
-		}
+		bl := mustBuild(t, re, text)
 		for _, n := range []string{"a", "b"} {
-			s, l := bl.Group(n)
-			bl.Put(n, NewText(s, l))
+			bl.Put(n, NewText(bl.Group(n)))
 		}
 		if omit != "" {
 			bl.Omit(omit)
@@ -137,11 +121,11 @@ func TestOmittingAGroupIsTheSameAsNeverNamingIt(t *testing.T) {
 
 	if len(withOmit) != len(without) {
 		t.Fatalf("omitting produced %d children, never naming produced %d:\n  %s\n  %s",
-			len(withOmit), len(without), streamOf(withOmit), streamOf(without))
+			len(withOmit), len(without), nodeStream(withOmit), nodeStream(without))
 	}
 	for i := range withOmit {
 		if !withOmit[i].Equals(without[i]) || withOmit[i].Location() != without[i].Location() {
-			t.Fatalf("child %d differs:\n  %s\n  %s", i, streamOf(withOmit), streamOf(without))
+			t.Fatalf("child %d differs:\n  %s\n  %s", i, nodeStream(withOmit), nodeStream(without))
 		}
 	}
 }
@@ -151,10 +135,7 @@ var branches = regexp.MustCompile(`(?:(?P<x>x)(?P<y>y))|(?P<z>z)`)
 // CRC: crc-StencilBuilder.md | R100, R101
 // The losing branch of an alternation has no bytes and owes nothing.
 func TestNonParticipatingGroupOwesNothing(t *testing.T) {
-	b, ok := NewStencilBuilder(branches, "z", Source(0, 1))
-	if !ok {
-		t.Fatal("precondition: the regex matches")
-	}
+	b := mustBuild(t, branches, "z")
 	if _, l := b.Group("x"); l != (Loc{}) {
 		t.Fatalf("a non-participating group must yield the zero Loc, got %+v", l)
 	}
@@ -165,7 +146,7 @@ func TestNonParticipatingGroupOwesNothing(t *testing.T) {
 	b.Put("z", NewText(s, l))
 	kids, _ := b.Done() // must not panic though x and y were never filled
 	if len(kids) != 1 {
-		t.Fatalf("expected one child, got %s", streamOf(kids))
+		t.Fatalf("expected one child, got %s", nodeStream(kids))
 	}
 }
 
@@ -174,10 +155,7 @@ func TestNonParticipatingGroupOwesNothing(t *testing.T) {
 // right for one input and out of range for the other.
 func TestBindingIsByNameNotPosition(t *testing.T) {
 	for _, c := range []struct{ text, name string }{{"xy", "x"}, {"z", "z"}} {
-		b, ok := NewStencilBuilder(branches, c.text, Source(0, len(c.text)))
-		if !ok {
-			t.Fatalf("%q: precondition", c.text)
-		}
+		b := mustBuild(t, branches, c.text)
 		s, l := b.Group(c.name)
 		if s == "" || l == (Loc{}) {
 			t.Fatalf("%q: group %q did not resolve", c.text, c.name)
@@ -269,5 +247,29 @@ func TestTodoItemRoundTripsAMarkdownList(t *testing.T) {
 	last := &TodoItem{}
 	if _, err := last.Parse(lines[5], Source(0, len(lines[5]))); err == nil {
 		t.Errorf("%q must not match", lines[5])
+	}
+}
+
+// CRC: crc-StencilBuilder.md | R97
+// A non-match is reported, and what it means is the schema's decision.
+func TestNoMatchIsReported(t *testing.T) {
+	if b, ok := NewStencilBuilder(twoGroups, "nothing here", Source(0, 12)); ok || b != nil {
+		t.Fatalf("a non-matching regex must report false and no builder")
+	}
+	item := &TodoItem{}
+	if _, err := item.Parse("not a todo", Source(0, 10)); err != ErrNoMatch {
+		t.Fatalf("a schema decides what a non-match means; got %v", err)
+	}
+}
+
+// CRC: crc-Doc.md | R118
+// A synthesized node makes no claim about coordinates, so it cannot contradict one.
+func TestASynthesizedNodeIsCompatibleWithAnyDocument(t *testing.T) {
+	o := &Origin{Name: "scanned"}
+	scanned := NewText("aa", Source(0, 2).In(o))
+	synth := NewText("bb", Synthetic(2))
+	d := New("aabb", 0, scanned, synth) // must not panic
+	if len(d.Nodes()) != 2 {
+		t.Fatalf("expected both nodes, got %d", len(d.Nodes()))
 	}
 }

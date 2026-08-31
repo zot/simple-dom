@@ -8,6 +8,9 @@
 unnamed spans present as `Text` despite the pattern never mentioning them
 **Refs:** crc-StencilBuilder.md, seq-stencil.md#1.2.2
 **Code:** sdom/stencil_test.go
+**Alarm:** 1
+**Fire alarm:** In `Done`, drop the `glue` calls so only bound groups become children. Red: this test, the tiling test and the round-trip — because this reproduces exactly the failure computed glue dissolves. `- [` and `] ` vanish from the render though the pattern never claimed them, which is the four-bytes-eaten case the old outer-group tiling requirement existed to catch.
+**Inject:** sdom/stencil.go:StencilBuilder.Done
 
 ## Test: the children tile the match
 **Purpose:** R98, R110 — contiguous, half-open, no byte unowned
@@ -32,6 +35,9 @@ end, and the stencil renders the line byte-exact
 itself altered
 **Refs:** crc-StencilBuilder.md, seq-stencil.md#1.4.2
 **Code:** sdom/stencil_test.go
+**Alarm:** 2
+**Fire alarm:** Remove the span comparison from `Done`. Red: **only this test**. A mis-spanned child leaves every byte present and the render correct, so the round-trip and the tiling assertions stay green; the compound simply reports itself *altered* forever after — a plausible wrong answer rather than a refusal, and invisible to everything that does not ask about faithfulness.
+**Inject:** sdom/stencil.go:StencilBuilder.Done
 
 ## Test: omitting a group is the same as never naming it
 **Purpose:** R103 — the falsifiable meaning of `Omit`, rather than an intention
@@ -43,6 +49,9 @@ sides rather than standing as a third `Text`, so no two adjacent children are bo
 plain glue
 **Refs:** crc-StencilBuilder.md, seq-stencil.md#1.3.2
 **Code:** sdom/stencil_test.go
+**Alarm:** 3
+**Fire alarm:** Make `Omit` a no-op, so an omitted group still counts as a bound one and the schema's `Put` is required for it. Red: **only this test**, and only because it compares two child lists rather than inspecting one. Every byte is in the same order, the tiling holds, the render is identical — the omitted span merely stands as a separate `Text` where it should have merged into the glue. This is the alarm that separates *Omit works* from *Omit happens to leave the bytes in the right order*.
+**Inject:** sdom/stencil.go:StencilBuilder.Omit
 
 ## Test: a non-participating group owes nothing
 **Purpose:** R100, R101 — the losing branch of an alternation has no bytes
@@ -53,6 +62,9 @@ returns the **zero location** for the branch that did not participate, and a rea
 one for a participating group even when its match is empty
 **Refs:** crc-StencilBuilder.md, crc-Loc.md
 **Code:** sdom/stencil_test.go
+**Alarm:** 4
+**Fire alarm:** In `Group`, return `b.span(0, 0)` instead of the zero `Loc` when a group did not participate. Red: this test. The distinction it destroys — absent versus present-but-empty — is exactly the one `Loc`'s zero value exists to make, and nothing else in the suite asks for it.
+**Inject:** sdom/stencil.go:StencilBuilder.Group
 
 ## Test: binding is by name, not position
 **Purpose:** R108 — alternation gives branches different group counts
@@ -79,6 +91,26 @@ offset, reports altered, and its length is now 1; the stencil is altered because
 child is; and the `Bool` still points at the same node in the child list
 **Refs:** crc-Bool.md, seq-stencil.md#2
 **Code:** sdom/stencil_test.go
+**Alarm:** 5
+**Fire alarm:** In `Bool.Set`, build a **new** `Text` and point at that instead of writing through the existing one. Red: this test, on the assertion that the `Bool` still points at the node in the child list. The render is unaffected — the child list keeps the old text — so a document would silently stop reflecting what the tool believed it had written.
+**Inject:** sdom/bound.go:Bool.Set
+
+## Test: setting a value already held changes nothing
+**Purpose:** R113 — an edit reformats what it touched, and confirming a value
+touches nothing
+**Input:** `- [X] a` with the checkbox set to true, which it already is
+**Expected:** the text is not rewritten, so the node stays faithful and the `X`
+survives
+**Refs:** crc-Bool.md
+**Code:** sdom/stencil_test.go
+**Alarm:** 6
+**Fire alarm:** Remove the early return from `Bool.Set` so it always writes. Red:
+only this test. The document still renders correctly — `x` for `X` — and the
+round-trip is blind to it, because the bytes it compares are the ones that were
+just written. What is lost is faithfulness: a node that was a faithful view of the
+source becomes altered for no reason, and every diagnostic downstream believes the
+line was edited.
+**Inject:** sdom/bound.go:Bool.Set
 
 ## Test: a todo item round-trips a real markdown list
 **Purpose:** R96 — the whole mechanism over real syntax rather than a fixture

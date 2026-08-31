@@ -46,7 +46,11 @@ the document's source, so `Merge` **slices** it rather than building a new strin
 When either is altered its bytes are not in the source at all, so a new string is
 unavoidable and `Merge` concatenates.
 
-Which path ran is not observable: the result is the same node either way.
+The two results hold equal *values*, so a test comparing bytes cannot tell them
+apart. What distinguishes them is **storage**: the faithful merge shares the
+source's, and only a check of that can see which path ran. R120 asserts exactly
+that and nothing more — whether the slower path is also avoided in compiled code
+is a separate question, and an open one.
 
 ## Navigation
 

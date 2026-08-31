@@ -7,11 +7,15 @@ import (
 	"testing"
 )
 
-// stream renders the node array compactly for assertions: O/C/S for the marker
-// kinds, T for text, each followed by its quoted bytes.
-func stream(d *Doc) string {
+// stream renders a document's node array compactly for assertions: O/C/S for the
+// marker kinds, T for text, each followed by its quoted bytes.
+func stream(d *Doc) string { return nodeStream(d.Nodes()) }
+
+// nodeStream is the same rendering for any node list, including the child lists
+// that never become a document of their own.
+func nodeStream(nodes []Node) string {
 	var b strings.Builder
-	for i, n := range d.Nodes() {
+	for i, n := range nodes {
 		if i > 0 {
 			b.WriteByte(' ')
 		}

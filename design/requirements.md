@@ -75,9 +75,9 @@
 - **R54:** A mutation window provides no rollback.
 - **R55:** An error or a panic escaping the mutation function poisons the document; there is no reset, and recovery is to re-parse.
 - **R56:** `sdom` provides no operation log, queued edit plan, transaction or undo.
-- **R118:** Every node in a document comes from the same parse; building a document from nodes of different parses panics.
+- **R118:** Every node in a document that names a parse names the same one; building a document from nodes of two different parses panics. A node with no origin makes no claim and is compatible with any document.
 - **R119:** A document's nodes must describe its source. Beyond the shared-parse check this is not verified, because the guard would cost more than the failure, which is loud in every other test.
-- **R120:** `Merge` produces its text by slicing the document's source when both operands are faithful, and by concatenating when either is altered; which path ran is not observable in the result.
+- **R120:** When both operands are faithful, a merged node's text is a slice of the document's source rather than a separate copy of it; when either is altered its bytes are not in the source, so a new string is unavoidable. The *values* are equal either way — what differs, and what is asserted, is whether the result shares the source's storage. *(See gap O12: whether the fast path also avoids building a string it discards is a separate claim, and an unmeasured one.)*
 
 ## Feature: bracket lexer
 **Source:** specs/bracket-lexer.md

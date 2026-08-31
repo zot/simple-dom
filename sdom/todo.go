@@ -57,13 +57,11 @@ func (t *TodoItem) Parse(text string, loc Loc) (string, error) {
 
 	// A Bool is not patched in — the Text goes in the children and the Bool points
 	// at it, so there is one copy of the bytes and nothing to keep in step.
-	cs, cl := b.Group("checked")
-	checked := NewText(cs, cl)
+	checked := NewText(b.Group("checked"))
 	t.checked = NewBool(checked)
 	b.Put("checked", checked)
 
-	ls, ll := b.Group("label")
-	t.label = NewText(ls, ll)
+	t.label = NewText(b.Group("label"))
 	b.Put("label", t.label)
 
 	kids, remain := b.Done()
