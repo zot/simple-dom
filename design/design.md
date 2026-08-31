@@ -188,3 +188,38 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - T1: R69 retired by R121 (2026-08-31 carve Item 4: the shipped set grows to six with
   LangTypeScript and LangLua, and its selection rule gains a second job — serving the
   languages mini-spec reads, not only covering every BracketGroup field.)
+- [ ] O17: `R129` says the package bundles declaration schemas for Go, TypeScript, JavaScript,
+  Lua and Shell. **Three exist** — `Go`, `Lua`, `Shell` — and there is no `TypeScript` or
+  `JavaScript` entry point. `validate` is green throughout, because `R129` has a design ref and
+  an inline ref in `schema.go`: coverage is formally satisfied while the behaviour is absent,
+  which is the failure mode requirement coverage cannot see. TypeScript and JavaScript are
+  **not** a table swap over the Go schema: their keyword sets differ (`function`, `class`,
+  `let`, `interface`, `enum`, and `export` prefixing any of them), so each needs its own pattern
+  and its own `Lang`, even though the walk is Go's shape. Repairing this gap edits `R129` — it
+  carries a back-link — because the requirement should either be met or should say what is
+  bundled today and what is pending. It is recorded rather than rushed because the three that
+  exist were chosen to cover the three distinct *shapes* (keyword in text, keyword as bracket
+  marker, no keyword at all), and TS and JS add a fourth of nothing; but a library's contract is
+  not sized by what its author found interesting, which is the lesson `O13` already records in
+  its other form.
+- [ ] O18: The declaration pass runs **one declaration per mutation window and re-scans the
+  whole document each time**, which is O(n^2) in declarations × nodes. The reason is structural
+  rather than lazy: targets must be resolved *before* entering a window, because navigation
+  refuses inside one, and carving invalidates the node references a later hit in the same node
+  would have needed. Measured 2026-08-31: the corpus test does 241 declarations over 24 files in
+  about 0.07s, so nothing is felt yet. The alternative is threading `carve`'s right-remainder
+  through hits that may span four nodes and two languages' walks, which is exactly the
+  shared-driver machinery carve Item 9 defers until three schemas exist to generalize from.
+  Measure before optimising; no consumer exists yet, and `O5` records the same judgement about
+  `Doc.find`.
+- [ ] O19: `R149` — skipped whitespace may contain statement separators, so the walk crosses
+  them — has **two halves living in two places**, and the test named for it covers only one.
+  Go's `func` ⏎ `foo(x int)` resolves inside a single text node, so its newline is crossed by
+  `goNameAfter`'s in-node prologue; the `skipForward` half is only reached when a
+  whitespace-only node sits between comments, as in `func /* a */  /* b */` ⏎ `/* c */ foo`.
+  Measured 2026-08-31 while pulling `test-DeclSchema.md#4`: a delegate found `isSpace` is
+  invoked **zero times** during `TestADeclarationMaySpanLines`, so the test named for the
+  property never exercises its main mechanism. Both halves are in fact covered — the second by
+  `TestCommentsAnywhereInASignature` — so this is not a coverage hole; it is a naming and
+  design one, and it was invisible until an injection was aimed at the site the alarm named.
+  Worth repairing by splitting the test so each half is asserted where it lives.

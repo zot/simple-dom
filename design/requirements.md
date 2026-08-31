@@ -166,7 +166,9 @@
 ## Feature: declaration schemas
 **Source:** specs/declaration-schemas.md
 - **R129:** The package bundles declaration schemas for Go, TypeScript, JavaScript, Lua and
-  Shell, with Python following the indent parser.
+  Shell, with Python following the indent parser. **Provisional — see gap O17:** only Go, Lua
+  and Shell are implemented today, and closing that gap either adds the other two or rewrites
+  this requirement to name what is bundled and what is pending.
 - **R130:** There is no shared recognition rule: each schema recognizes its own language's
   declarations from the parse it is given.
 - **R131:** A declaration keyword may be a substring of a text node or a bracket marker node,
