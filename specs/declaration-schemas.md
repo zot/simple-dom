@@ -78,7 +78,7 @@ arbitrarily further.
 which is a link the parse already owns.
 
 **How a schema recognizes a comment group is the schema's business**, as recognition
-always is. A comment and a string are both *scan-restricted* groups and the table
+always is. A comment and a string are both *parse-restricted* groups and the table
 does not distinguish them — deliberately, since there is no comment configuration.
 A schema knows its own comment markers (`//` and `/*`, or `--`, or `#`) and matches
 the opener's text against them.

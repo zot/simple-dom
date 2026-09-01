@@ -2,10 +2,10 @@
 **Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154
 
 The schema's parse context: a concrete type, not an interface. It carries the
-language through the scan and **outlives the parse** to own the pairing links.
+language through the parse and **outlives** it to own the pairing links.
 
 ## Knows
-- the language, while scanning
+- the language, during the parse
 - the **`Origin` it minted for this parse**, which every node it produces carries
 - the pairing links, afterwards:
   - an **opener** knows its closer and its enclosing opener
@@ -20,7 +20,7 @@ language through the scan and **outlives the parse** to own the pairing links.
 ## Does
 - mints one origin per parse, before any node exists, and hands it to the parser
 - hands the parser the group currently open
-- records the pairing as the scan discovers it
+- records the pairing as the parse discovers it
 - reports whether its links are fresh, and rebuilds them when its stamp is stale
 - **holds** the declaration links; it does not derive them
 
@@ -36,8 +36,8 @@ language through the scan and **outlives the parse** to own the pairing links.
   bracket pairs finds a node's enclosing opener **independently**, and must agree.
   That second path is the point: an index nothing can contradict is an assertion
 - **Separators join that cross-derivation rather than riding along.** They are
-  recorded by the scan *and* recovered by the same stack walk that recovers the
-  pairing, and the two must agree. Letting the scan be the only writer is precisely
+  recorded by the parse *and* recovered by the same stack walk that recovers the
+  pairing, and the two must agree. Letting the parse be the only writer is precisely
   how a representation change loses `R87` without anything going red
 - **One index, not four.** The pairing, the enclosure and the declaration links live
   in a single `map[Node]BracketInfo` rather than four maps. It is a **flat value
@@ -60,9 +60,9 @@ language through the scan and **outlives the parse** to own the pairing links.
 
 ## Collaborators
 - Doc: supplies the nodes and the generation this stamps against
-- BracketParser: the scan that populates it
+- BracketParser: the parse that populates it
 - Marker: the nodes the links pair
 
 ## Sequences
-- seq-scan.md
+- seq-parse.md
 - seq-pair.md

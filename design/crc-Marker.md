@@ -30,5 +30,5 @@ more.
 - BracketContext: owns the links that pair them
 
 ## Sequences
-- seq-scan.md
+- seq-parse.md
 - seq-pair.md

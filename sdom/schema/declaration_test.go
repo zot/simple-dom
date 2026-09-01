@@ -17,7 +17,7 @@ type pass func(*sdom.Doc, *sdom.BracketContext) error
 // asserts on the whole outcome rather than on a count.
 func decls(t *testing.T, src string, lang *sdom.BracketLang, p pass) string {
 	t.Helper()
-	d, ctx := sdom.Scan(src, 0, lang)
+	d, ctx := sdom.Parse(src, 0, lang)
 	if err := p(d, ctx); err != nil {
 		t.Fatalf("pass: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestGroupedDeclarationYieldsEveryName(t *testing.T) {
 // identically and is wrong, so only an assertion about the node's own bytes sees it.
 func TestANameIsSlicedOutOfTheMiddle(t *testing.T) {
 	src := "func /* a */ foo /* b */ (x) {\n}\n"
-	d, ctx := sdom.Scan(src, 0, &sdom.LangGo)
+	d, ctx := sdom.Parse(src, 0, &sdom.LangGo)
 	if err := Go(d, ctx); err != nil {
 		t.Fatalf("pass: %v", err)
 	}
@@ -198,8 +198,8 @@ func TestADeclarationPassIsAdditive(t *testing.T) {
 			t.Fatalf("%s: %v", f, err)
 		}
 		src := string(b)
-		plain, _ := sdom.Scan(src, 0, &sdom.LangGo)
-		d, ctx := sdom.Scan(src, 0, &sdom.LangGo)
+		plain, _ := sdom.Parse(src, 0, &sdom.LangGo)
+		d, ctx := sdom.Parse(src, 0, &sdom.LangGo)
 		if err := Go(d, ctx); err != nil {
 			t.Fatalf("%s: %v", f, err)
 		}

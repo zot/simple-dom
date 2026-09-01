@@ -21,7 +21,7 @@ func TestPairingIsRecordedBothWays(t *testing.T) {
 		{Open: []string{"{"}, Close: []string{"}"}},
 		{Open: []string{"["}, Close: []string{"]"}},
 	}}
-	d, ctx := Scan("a {b [c] d} e", 0, lang)
+	d, ctx := Parse("a {b [c] d} e", 0, lang)
 	var opens, closes []Node
 	for _, n := range d.Nodes() {
 		switch n.(type) {
@@ -45,7 +45,7 @@ func TestPairingIsRecordedBothWays(t *testing.T) {
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.3 | R84
 func TestEveryNodeKnowsItsEnclosingOpener(t *testing.T) {
-	d, ctx := Scan("a {b {c} d} e", 0, codeLang())
+	d, ctx := Parse("a {b {c} d} e", 0, codeLang())
 	ns := d.Nodes()
 	outer, inner := ns[1], ns[3] // the two openers
 	want := map[int]Node{
@@ -76,7 +76,7 @@ func TestEveryNodeKnowsItsEnclosingOpener(t *testing.T) {
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#2 | R87
 //
-// The check that makes the index a fact rather than an assertion. The scan
+// The check that makes the index a fact rather than an assertion. The parse
 // records links from its own recursion; rebuild derives them again from the
 // finished flat array. Two independent derivations, over the whole corpus, under
 // every shipped language — including the many combinations where the language is
@@ -85,19 +85,19 @@ func TestIndexAgreesWithTheIndependentDerivation(t *testing.T) {
 	langs := shippedLangs()
 	for path, src := range corpus(t) {
 		for name, lang := range langs {
-			_, ctx := Scan(src, 0, lang)
-			fromScan := maps.Clone(ctx.info)
+			_, ctx := Parse(src, 0, lang)
+			fromParse := maps.Clone(ctx.info)
 
 			ctx.rebuild() // the second derivation, from the data rather than the recursion
 
-			if len(fromScan) != len(ctx.info) {
-				t.Fatalf("%s under %s: the scan recorded %d entries; the independent "+
-					"walk found %d", path, name, len(fromScan), len(ctx.info))
+			if len(fromParse) != len(ctx.info) {
+				t.Fatalf("%s under %s: the parse recorded %d entries; the independent "+
+					"walk found %d", path, name, len(fromParse), len(ctx.info))
 			}
 			// Comparing the whole entry is what keeps EVERY link inside the
 			// cross-derivation. A field added later is covered by construction, and
-			// separators in particular cannot quietly become scan-only.
-			for n, want := range fromScan {
+			// separators in particular cannot quietly become parse-only.
+			for n, want := range fromParse {
 				if !sameInfo(ctx.info[n], want) {
 					t.Fatalf("%s under %s: the two derivations disagree about a node", path, name)
 				}
@@ -108,7 +108,7 @@ func TestIndexAgreesWithTheIndependentDerivation(t *testing.T) {
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.5 | R86
 func TestStaleStampRebuildsAndFreshDoesNot(t *testing.T) {
-	d, ctx := Scan("a {b} c", 0, codeLang())
+	d, ctx := Parse("a {b} c", 0, codeLang())
 	opener := d.Nodes()[1]
 
 	if ctx.Enclosing(d.Nodes()[2]) != opener {
@@ -133,7 +133,7 @@ func TestStaleStampRebuildsAndFreshDoesNot(t *testing.T) {
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.5.1 | R86
 // The context wrote no guard; it inherits one by reading the generation.
 func TestContextInheritsTheMutationGuard(t *testing.T) {
-	d, ctx := Scan("a {b} c", 0, codeLang())
+	d, ctx := Parse("a {b} c", 0, codeLang())
 	n := d.Nodes()[2]
 	err := d.Mutate(func() error {
 		ctx.Enclosing(n) // reads the generation, which refuses inside the window
@@ -150,7 +150,7 @@ func TestContextInheritsTheMutationGuard(t *testing.T) {
 // CRC: crc-BracketContext.md | R85
 // The reason Doc does not own this.
 func TestDocumentWithNoBracketsCarriesNoLinks(t *testing.T) {
-	d, ctx := Scan("# A markdown heading\n\nSome prose.\n", 0, &BracketLang{})
+	d, ctx := Parse("# A markdown heading\n\nSome prose.\n", 0, &BracketLang{})
 	if len(d.Nodes()) != 1 {
 		t.Fatalf("an empty table should produce one Text node, got %d", len(d.Nodes()))
 	}
@@ -160,12 +160,12 @@ func TestDocumentWithNoBracketsCarriesNoLinks(t *testing.T) {
 }
 
 // CRC: crc-BracketContext.md | R80
-// The context carries the language it scanned with, and hands it back.
+// The context carries the language it parsed with, and hands it back.
 func TestContextCarriesItsLanguage(t *testing.T) {
 	lang := codeLang()
-	_, ctx := Scan("a {b} c", 0, lang)
+	_, ctx := Parse("a {b} c", 0, lang)
 	if ctx.Language() != lang {
-		t.Fatalf("the context must report the table it scanned with")
+		t.Fatalf("the context must report the table it parsed with")
 	}
 }
 
@@ -178,8 +178,8 @@ func sameInfo(a, b BracketInfo) bool {
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.4 | R152, R153
 //
 // An opener knows its separators, in document order, and each names it back. This
-// forces a REBUILD before asking, because the hazard is not that the scan gets it
-// wrong — it is that the scan is the only thing that records it, which nothing
+// forces a REBUILD before asking, because the hazard is not that the parse gets it
+// wrong — it is that the parse is the only thing that records it, which nothing
 // notices until a structural edit makes the stamp stale.
 func TestAnOpenerKnowsItsSeparators(t *testing.T) {
 	for _, tc := range []struct {
@@ -192,7 +192,7 @@ func TestAnOpenerKnowsItsSeparators(t *testing.T) {
 			[]string{"then", "elif", "then", "else"}},
 		{"a group with none", "{ echo hi; }\n", "{", nil},
 	} {
-		d, ctx := Scan(tc.src, 0, &LangShell)
+		d, ctx := Parse(tc.src, 0, &LangShell)
 		// Force the independent walk to be what answers.
 		_ = d.Mutate(func() error { return nil })
 		ctx.rebuild()
@@ -231,10 +231,10 @@ func TestAnOpenerKnowsItsSeparators(t *testing.T) {
 //
 // A missing refresh only gives a WRONG answer once the document genuinely differs,
 // which is why this removes a separator rather than making some unrelated edit: the
-// scan's record still lists it, and only the rebuild the accessor is supposed to
+// parse's record still lists it, and only the rebuild the accessor is supposed to
 // trigger can notice it is gone.
 func TestSeparatorsRefreshesLikeEveryOtherAccessor(t *testing.T) {
-	d, ctx := Scan("for x in a b; do echo $x; done\n", 0, &LangShell)
+	d, ctx := Parse("for x in a b; do echo $x; done\n", 0, &LangShell)
 	var opener, sep Node
 	for _, n := range d.Nodes() {
 		if o, ok := n.(*Opener); ok && opener == nil {

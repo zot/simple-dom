@@ -4,11 +4,11 @@ import "fmt"
 
 // CRC: crc-Loc.md | R89, R90, R91
 //
-// Origin identifies one PARSE, not one file. Two scans of the same source are two
+// Origin identifies one PARSE, not one file. Two parses of the same source are two
 // Origins, which is what makes "same file, different parser" answerable.
 //
 // It is the parse CONTEXT rather than the document: a context exists before any
-// node does — a scan mints it, scans, and only then builds the document from what
+// node does — a parse mints it, runs, and only then builds the document from what
 // it emitted — so holding a document would need back-patching over every node.
 //
 // It is a concrete type rather than an interface, because each schema's context

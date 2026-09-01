@@ -65,7 +65,7 @@ func TestEveryFieldOfBracketGroupIsLiveSomewhere(t *testing.T) {
 // Comments and strings as groups, not special cases.
 func TestLangGo(t *testing.T) {
 	const src = "// c\n/* b */\ns := \"a\\\"b\"\nr := `raw \" { `\n"
-	d, _ := Scan(src, 0, &LangGo)
+	d, _ := Parse(src, 0, &LangGo)
 	assertContains(t, stream(d),
 		`O"//"`, `C"\n"`, // line comment is a group
 		`O"/*"`, `C"*/"`, // block comment likewise
@@ -77,10 +77,10 @@ func TestLangGo(t *testing.T) {
 // CRC: crc-BracketLang.md | R72
 // Word brackets with separators, which nothing else exercises.
 func TestLangShell(t *testing.T) {
-	d, _ := Scan("if a; then b; else c; fi\n", 0, &LangShell)
+	d, _ := Parse("if a; then b; else c; fi\n", 0, &LangShell)
 	assertContains(t, stream(d), `O"if"`, `S"then"`, `S"else"`, `C"fi"`)
 
-	d2, _ := Scan("while x; do y; done\n", 0, &LangShell)
+	d2, _ := Parse("while x; do y; done\n", 0, &LangShell)
 	got2 := stream(d2)
 	assertContains(t, got2, `O"while"`, `S"do"`, `C"done"`)
 	if strings.Contains(got2, `S"then"`) {
@@ -91,7 +91,7 @@ func TestLangShell(t *testing.T) {
 // CRC: crc-BracketLang.md | R59
 // The other word-bracket shape, and a language whose "{" is a comment.
 func TestLangPascal(t *testing.T) {
-	d, _ := Scan("begin { c } writeln('s'); (* o *) end", 0, &LangPascal)
+	d, _ := Parse("begin { c } writeln('s'); (* o *) end", 0, &LangPascal)
 	got := stream(d)
 	assertContains(t, got, `O"begin"`, `C"end"`, `O"{"`, `T" c "`, `O"(*"`, `C"*)"`)
 	// The brace comment must not act as a code bracket: its interior is literal.
@@ -105,7 +105,7 @@ func TestLangPascal(t *testing.T) {
 func TestLangJavaScript(t *testing.T) {
 	assertStream(t, &LangJavaScript, "`a ${b + `c ${d}`} e`",
 		"O\"`\" T\"a \" O\"${\" T\"b + \" O\"`\" T\"c \" O\"${\" T\"d\" C\"}\" C\"`\" C\"}\" T\" e\" C\"`\"")
-	top, _ := Scan("${x}", 0, &LangJavaScript)
+	top, _ := Parse("${x}", 0, &LangJavaScript)
 	if strings.Contains(stream(top), `O"${"`) {
 		t.Errorf("${ must not be an interpolation opener at top level:\n  %s", stream(top))
 	}

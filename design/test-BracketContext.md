@@ -36,7 +36,7 @@ skipping whole bracket pairs
 **Expected:** the two agree for every node of every file. **This is the test that
 would catch a wrong index**; nothing else in the suite reads the links twice
 **Note:** what this protects is a fact written in two places on purpose. The
-scan's rule — *everything but a closer records an enclosing opener* — and
+parse's rule — *everything but a closer records an enclosing opener* — and
 rebuild's rule — *closers get no enclosing* — are the same statement, expressed
 once in `parser.emit` and once in `BracketContext.rebuild`. That duplication is
 inherent to having two independent derivations, and this test is exactly the
@@ -44,7 +44,7 @@ thing that catches them drifting apart.
 **Refs:** crc-BracketContext.md, seq-pair.md#2
 **Code:** sdom/context_test.go
 **Alarm:** 2
-**Fire alarm:** Remove the `bc.closes(o, n)` condition from `rebuild`, so the stack walk pairs any closer with whatever opener is on top. **This is the real defect, hit while implementing:** on `( { )` the scan emits `)` unpaired via the any-close fallback while the walk pairs it with `{`. Red: the two derivations disagree, on most corpus files under most languages. Every other test stays green, because each derivation is individually self-consistent.
+**Fire alarm:** Remove the `bc.closes(o, n)` condition from `rebuild`, so the stack walk pairs any closer with whatever opener is on top. **This is the real defect, hit while implementing:** on `( { )` the parse emits `)` unpaired via the any-close fallback while the walk pairs it with `{`. Red: the two derivations disagree, on most corpus files under most languages. Every other test stays green, because each derivation is individually self-consistent.
 **Inject:** sdom/context.go:BracketContext.rebuild
 **Pulled:** 2026-08-31 — re-pulled after the index consolidation and rang again,
 disagreeing at the first corpus file it reached: *the scan recorded 192 entries; the
@@ -68,7 +68,7 @@ confusion
 **Refs:** crc-BracketContext.md, seq-pair.md#1.4
 **Code:** sdom/context_test.go
 **Alarm:** 3
-**Fire alarm:** Record separators only from the scan and drop them from `rebuild`'s
+**Fire alarm:** Record separators only from the parse and drop them from `rebuild`'s
 independent walk. ~~Red: **not immediately** — the links are right until a structural
 edit makes the stamp stale, and then the rebuilt index has none.~~ — **corrected
 2026-08-31 by pulling it:** red **immediately**, and in two places at once. See below.
@@ -81,7 +81,7 @@ This test failed as designed — `separators [], want [in do]` — and so did
 The prediction of a *delayed* failure assumed separators sat outside `R87`'s
 cross-check and would only surface once a stale stamp forced a rebuild. They do not:
 the corpus comparison is over whole `BracketInfo` entries, so a separator recorded by
-the scan and not by the walk is a disagreement the corpus test sees at once, with no
+the parse and not by the walk is a disagreement the corpus test sees at once, with no
 stale stamp needed.
 
 *That is the change worth keeping from this item.* Comparing the entry rather than
@@ -92,7 +92,7 @@ anything.
 
 ## Test: a stale stamp rebuilds, and a fresh one does not
 **Purpose:** R86 — the context is a derived index like any other
-**Input:** a scanned document; a freshness check, a membership change, another
+**Input:** a parsed document; a freshness check, a membership change, another
 check, and a third
 **Expected:** fresh, then stale-and-rebuilt exactly once, then fresh again — and
 `Doc` holds no reference to the context throughout
@@ -110,7 +110,7 @@ contains no guard of its own
 
 ## Test: a document with no brackets carries no links
 **Purpose:** R85 — the reason `Doc` does not own this
-**Input:** a markdown file scanned with a language whose table is empty
+**Input:** a markdown file parsed with a language whose table is empty
 **Expected:** the document is all `Text`, and no link storage is allocated
 **Refs:** crc-BracketContext.md
 **Code:** sdom/context_test.go
@@ -134,7 +134,7 @@ unalarmed site is a missing alarm rather than a passing one, which is the whole 
 for injecting past the list.
 
 Note the edit has to **remove** a separator. A merely unrelated structural change
-leaves the scan's record still correct, so a missing refresh would return the right
+leaves the parse's record still correct, so a missing refresh would return the right
 answer for the wrong reason and the test would prove nothing.
 **Inject:** sdom/context.go:BracketContext.Separators
 **Pulled:** 2026-08-31 — rang, *2, want 1*, with the tree restored clean.

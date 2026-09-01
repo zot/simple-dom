@@ -3,7 +3,7 @@
 
 ## Test: Replace keeps position and bumps the generation
 **Purpose:** R125 — the one new structural verb behaves like its siblings
-**Input:** a scanned document; inside a mutation window, replace one `*Text` with a
+**Input:** a parsed document; inside a mutation window, replace one `*Text` with a
 `*DeclarationName` carrying the same bytes and location
 **Expected:** the render is byte-identical, the node array has the same length, the
 replacement sits at the old node's index, and the structural generation advanced
@@ -22,7 +22,7 @@ green, which is the whole class of failure a stamped index has.
 
 ## Test: a declaration pass changes no bytes and no markers
 **Purpose:** R124 — the additive property, structurally rather than by convention
-**Input:** every Go file in `sdom/`, scanned twice: once plain, once with a
+**Input:** every Go file in `sdom/`, parsed twice: once plain, once with a
 declaration pass run over it
 **Expected:** the two renders are byte-identical, and the **flattened** node arrays
 are equal kind-for-kind except where a `Text` became a `DeclarationType` or
@@ -31,7 +31,7 @@ are equal kind-for-kind except where a `Text` became a `DeclarationType` or
 **Code:** sdom/schema/declaration_test.go
 **Alarm:** 2
 **Fire alarm:** Drop the top-level `Enclosing` guard in `goNext`, so commented-out
-code and string contents are scanned too. Red: the count over-reports — 17 in
+code and string contents are parsed too. Red: the count over-reports — 17 in
 `doc.go` where 15 exist, 24 in `loc_test.go` where 19 do. Bytes and marker counts
 stay identical, so only the count assertion sees it.
 **Inject:** sdom/schema/golang.go:goNext

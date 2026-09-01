@@ -55,7 +55,7 @@ var LangPascal = BracketLang{Brackets: []BracketGroup{
 
 // CRC: crc-BracketLang.md | R64, R66, R121
 // LangJavaScript is the only table exercising AllowedInner and AllowedParent
-// together: a template literal is scan-restricted with one escape hatch, and the
+// together: a template literal is parse-restricted with one escape hatch, and the
 // interpolation that hatch opens is recognized nowhere else.
 var LangJavaScript = BracketLang{Brackets: []BracketGroup{
 	{Open: []string{"//"}, Close: []string{"\n"}, AllowedInner: []string{}},

@@ -2,7 +2,7 @@
 
 ## Intent
 
-`sdom` is the lexical core of the simple DOM: a parse that models only what a
+`sdom` is the parsing core of the simple DOM: a parse that models only what a
 tool operates on, keeps every other byte where it was, and re-emits the source
 with nothing but the intended change in it.
 
@@ -39,7 +39,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 ### Sequences
 - [x] seq-mutate.md → `sdom/mutate.go`, `sdom/doc.go`
 - [x] seq-stamp.md → `sdom/doc.go`
-- [x] seq-scan.md → `sdom/parser.go`
+- [x] seq-parse.md → `sdom/parser.go`
 - [x] seq-pair.md → `sdom/context.go`
 - [x] seq-stencil.md → `sdom/stencil.go`
 - [x] seq-declare.md → `sdom/declaration.go`, `sdom/schema/schema.go`
@@ -104,9 +104,9 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   and it is the right default — an incremental rebuild would need `Doc` to describe what
   changed, which is exactly the coupling the design refuses. Revisit only if a consumer with a
   large document and frequent structural edits appears; measure before optimising.
-- [ ] O8: `matchOpen` and `matchAnyClose` walk the entire bracket table at every scan position,
-  so scanning costs positions × groups × markers with no dispatch on the first byte. Fine for
-  the corpus today (the whole suite scans every project file under four languages in well under
+- [ ] O8: `matchOpen` and `matchAnyClose` walk the entire bracket table at every parse position,
+  so parsing costs positions × groups × markers with no dispatch on the first byte. Fine for
+  the corpus today (the whole suite parses every project file under four languages in well under
   a second) but it is the obvious hot spot if a large file or a big table ever appears. A
   first-byte index over the markers would collapse most of it. No consumer needs it yet; measure
   before optimising.
@@ -134,12 +134,12 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   names its `**Code:**` file, and its `## Test:` headings could be required to correspond to
   test functions in that file. That belongs in the mini-spec tool rather than here, so this gap
   records the hole and the evidence rather than proposing a fix in this repository.
-- [ ] O11: `Scan` mints an unnamed `Origin`, and there is no way to name it at the call. A
+- [ ] O11: `Parse` mints an unnamed `Origin`, and there is no way to name it at the call. A
   caller wanting a useful name must reach through `ctx.Origin().Name = path` afterwards, which
-  works but means the common case — two scanned parses colliding — reports two unnamed
+  works but means the common case — two parses colliding — reports two unnamed
   identities in the panic message rather than two paths. `Origin.String` degrades gracefully (it
   prints the pointer when unnamed) so the diagnostic is still usable, but it is worse than it
-  needs to be. The repair is an API change: either `Scan` takes a name, or it takes an `*Origin`
+  needs to be. The repair is an API change: either `Parse` takes a name, or it takes an `*Origin`
   the caller minted. Deferred because no consumer names its parses yet, and because whichever
   shape is right will be obvious once one does.
 - [ ] O12: Whether `Doc.Merge`'s fast path actually avoids work is unestablished, as distinct

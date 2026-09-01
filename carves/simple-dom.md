@@ -4,7 +4,7 @@ Mini-spec reads and writes its own documents through scattered regexes and
 hand-rolled scanners that disagree with each other. The repair is a **simple
 DOM** — a parse that models only what the tool operates on, keeps every other
 byte exactly where it was, and re-emits the source with nothing but the intended
-change in it. This carve is that DOM, built clean, in **two packages**: a lexical
+change in it. This carve is that DOM, built clean, in **two packages**: a parsing
 layer another tool could consume, and mini-spec's readers on top of it.
 
 **Provenance.** Opened 2026-08-27. A throwaway prototype answered the feasibility
@@ -24,8 +24,9 @@ identifier.
 - [x] ~~**Item 7 — provenance carries its origin.**~~ **LANDED (`baec358`, 2026-08-30 — `#3`.)**
 - [x] ~~**Item 3 — regex compounds.**~~ **LANDED (`4b903a9`, 2026-08-31 — `#8`.)**
 - [x] ~~**Item 4 — declarations, as a post-pass.**~~ **LANDED (`df7a987`, 2026-08-31 — `#9`.)**
-- [ ] **Item 10 — one bracket index.** **OPEN (#11.)**
-- [ ] **Item 11 — separator links, completing the bracket contract.** **OPEN (#11.)**
+- [x] ~~**Item 10 — one bracket index.**~~ **LANDED (`efef190`, 2026-08-31 — `#11`.)**
+- [x] ~~**Item 11 — separator links, completing the bracket contract.**~~ **LANDED (`efef190`, 2026-08-31 — `#11`.)**
+- [ ] **Item 12 — the vocabulary, second pass: it is a parse, not a scan.** **OPEN (#12.)**
 - [ ] **Item 5 — indent scope.** **OPEN (not queued.)**
 - [ ] **Item 6 — the traceability reader.** **OPEN (not queued.)**
 - [ ] **Item 9 — generalize the schema work into `sdom` tools.** **OPEN (not queued.)**
@@ -35,7 +36,7 @@ identifier.
 
 **DECIDED (Bill, 2026-08-27): two packages.** `sdom` carries the protocol and the
 bracket and indent parsers; `minispecParser` carries mini-spec's readers. The
-split is so microfts2 can consume the lexical half — which means **nothing below
+split is so microfts2 can consume the parsing half — which means **nothing below
 the reader layer may know what a CRC card is**, and the boundary is enforced by
 the compiler rather than by discipline. The export surface this forces
 (constructors and accessors for what is currently package-internal) is part of
@@ -59,7 +60,7 @@ maps forever:
   checkable rather than merely believed
 
 The context therefore **outlives the parse**: it carries the language, the
-scanner's stack during scanning, and these links afterwards.
+parser's stack during the parse, and these links afterwards.
 
 **Compound nodes exist only for stenciling** — a region a tool writes *into*, such
 as a traceability comment, one of its fields, or a declaration. **Never for
@@ -91,7 +92,7 @@ a half-edited tree, which is a different wrong answer rather than a refusal.
 parse's output, never a re-parse of raw text.** A reader that re-parses bytes can
 *consume nodes the bracket parse already produced*: a declaration regex matching
 `func (s *Store) Index` from text swallows the receiver's parens, so the same
-file scanned with and without readers has different bracket structure. Grouping
+file parsed with and without readers has different bracket structure. Grouping
 existing nodes is **purely additive**: the flattened node array is identical
 with and without the readers, and only the top-level stream differs — which is
 what nesting means, and is *not* the same as a group having children.
@@ -194,7 +195,7 @@ never enters a location, and two nodes at offset 10 from different parses are
 indistinguishable. `Loc` gains a reference to the parse it came from.
 
 ```go
-// Origin identifies one PARSE, not one file. Two scans of the same source are
+// Origin identifies one PARSE, not one file. Two parses of the same source are
 // two Origins, which is what makes "same file, different parser" answerable.
 type Origin struct {
     Name string // a path, a URL, or whatever the caller finds useful
@@ -202,8 +203,8 @@ type Origin struct {
 ```
 
 **The parse context, not the `Doc`** — and not merely because context identity is
-the question being asked. The context **exists before the nodes do**: a scan mints
-it, scans, and only then builds the `Doc` from what it emitted. Holding a `*Doc`
+the question being asked. The context **exists before the nodes do**: a parse mints
+it, runs, and only then builds the `Doc` from what it emitted. Holding a `*Doc`
 would need a back-patching pass over every node once the document existed.
 
 **Concrete, not an interface.** Each schema's context is its own concrete type, so
@@ -387,14 +388,14 @@ either.
 ## Item 2
 
 A **table-driven** bracket parser. A string is not a special case: it is a bracket
-group with scanning turned off, which is why interpolation, word brackets and
+group with parsing turned off, which is why interpolation, word brackets and
 shell `if`/`then`/`fi` all fall out of one mechanism.
 
 ```go
 type BracketGroup struct {
     Open, Separators, Close []string
     Escape                  string
-    AllowedInner            []string // nil = code mode; non-nil = scan-restricted
+    AllowedInner            []string // nil = code mode; non-nil = parse-restricted
     AllowedParent           []string // nil = anywhere
 }
 ```
@@ -408,7 +409,7 @@ level where it is really a `$` followed by a `{`.
 Also required: **word-boundary matching** for alphanumeric markers, so `do` does
 not fire inside `download` nor `fi` inside `file`; `Separators` for mid-group
 markers; an **any-close fallback** so a stray `}` lands as a bracket rather than
-derailing the scan; and a scan that **always consumes at least one byte**, so
+derailing the parse; and a parse that **always consumes at least one byte**, so
 nothing stalls on input it does not understand.
 
 Output is **flat and document-order** — see the group-is-not-a-node decision
@@ -594,7 +595,7 @@ arbitrarily further. Skipping a comment backward is one hop, since a closer name
 its opener.
 
 *Which groups are comments is the schema's to know*, as recognition always is: a
-comment and a string are both scan-restricted and the table does not distinguish
+comment and a string are both parse-restricted and the table does not distinguish
 them, by design, so a schema matches an opener against the markers it knows.
 
 **And the skip runs before every decision in the walk, not once at its start**
@@ -818,7 +819,7 @@ taste:*
 
   **First export-surface finding, 2026-08-31:** `BracketContext` exposes
   `Language`, `Origin`, `Closer`, `Opener` and `Enclosing` — and **no `Doc()`**.
-  A schema building on it therefore holds the document `Scan` returned. Workable,
+  A schema building on it therefore holds the document `Parse` returned. Workable,
   possibly right (the context is deliberately not a document handle), and recorded
   because it is exactly what the two-package decision predicted would surface only
   once something outside `sdom` tried to build on it.
@@ -849,7 +850,7 @@ the tool should be.
 
 **DECIDED (Bill, 2026-08-31): the bracket tables stay in `sdom`, and `LangLua` and
 `LangTypeScript` join `lang.go`.** A `BracketLang` is not a declaration rule — it
-is the lexical shape the parser already consumes — so the tables do not follow the
+is the bracket shape the parser already consumes — so the tables do not follow the
 schemas up. This part adds the two missing ones, because a declaration schema for
 a language with no bracket table cannot be tested.
 
@@ -867,10 +868,10 @@ separator rather than an opener.
 {Open: []string{"while", "for"}, Separators: []string{"do"}, Close: []string{"done"}},
 ```
 
-*Recorded because this session got it wrong first:* a reading of `scanCode` showed
+*Recorded because this session got it wrong first:* a reading of `parseCode` showed
 openers matched before the enclosing group's separators, and that was written up as
 a conflict — on the assumption that `do` would need a group of its own. It does
-not. The scan order is real and it is not a problem here.
+not. The parse order is real and it is not a problem here.
 
 **The residual is narrow and worth carrying: Lua's standalone `do … end` block.**
 With `do` a separator of the enclosing group and `end` its closer, an inner
@@ -1057,7 +1058,9 @@ node of its own — is unchanged, so this is **not** a retirement.
 `specs/location.md`, `design/crc-Loc.md` and `sdom/context.go`. That is a
 capability token, not a lexical one, and it is correct as it stands.
 
-**DECIDED (Bill, 2026-08-31): the parser family, and `Scan` stays.** The words that
+**DECIDED (Bill, 2026-08-31): the parser family, and `Scan` stays.**
+**~~`Scan` stays~~ — superseded 2026-09-01 (Bill): `Scan` becomes `Parse`. See Item
+12.** The rest of this decision is unchanged and landed as written. The words that
 import the wrong model are *lexer* and *token*. **Scan** is a neutral verb for one
 pass over a source, so the exported entry point keeps its name and everything
 naming the **layer** becomes parser:
@@ -1211,7 +1214,7 @@ the **same stack walk** that recovers the pairing, so its independent
 cross-derivation survives — the whole point being that `rebuild` re-derives every
 link a *second* way, from the finished array rather than from the recursion that
 produced it. A representation change is exactly what can quietly lose that, by
-letting the scan be the only thing that records a separator — that
+letting the parse be the only thing that records a separator — that
 property being the one most easily lost when this index changes. Then an accessor
 in the shape of the three that exist, a requirement, a test, and an alarm.
 
@@ -1265,6 +1268,68 @@ around `=` while Lua's expects it. Python arrives with a third shape and no brac
 **DECIDED (Bill, 2026-08-31): Python declarations are part of Item 5**, because
 the indent parser needs them to be tested anyway. So this part's precondition is
 Items 4, 5 and 6 landing — not a fourth part that never existed.
+
+## Item 12
+
+Item 8 fixed the **layer's** name and left the **pass's**. `Scan` kept its name on
+the argument that it is a neutral verb; the prose then kept scanning, scanned,
+scans and the scan throughout. **Added 2026-09-01**, when the residue was measured.
+
+**DECIDED (Bill, 2026-09-01): `Scan` becomes `Parse`.** This reverses Item 8's
+`Scan` stays, which is marked superseded at its source. Everything else Item 8
+decided stands. Already done in the working tree when this part was opened:
+`sdom.Parse`, its call sites and tests, and `seq-scan.md` to `seq-parse.md` with
+every `**Refs:**` rewritten.
+
+**DECIDED (Bill, 2026-09-01): every scanning name goes — *we do not have a scanner,
+just a parser*.** `scanBody` and `scanCode` were called first, as misnomers —
+`scanBody` in particular *recurses*, which is the thing a scan is not — and the call
+then widened to `scanRestricted` and to the **term** `scan-restricted` itself, which
+becomes `parse-restricted` in specs, design, code and this document. Also the two
+test identifiers (`TestTheScanNeverStalls`, `fromScan`), the `Origin{Name:}` fixtures
+and the diagnostic strings.
+
+*This session argued for keeping `scan-restricted` and was wrong.* The case was that
+the term names a mode rather than a phase and imports no two-phase model. But a
+project with no scanner has no business owning a word for one, and the second half of
+the argument — that leaving it costs no alarm re-pull — was pricing the vocabulary by
+what it was convenient to avoid. `O13`'s mistake in a third form.
+
+**And the rule that decides every remaining case (Bill, 2026-09-01):**
+
+> **`parse` is the pass over bytes; `scan` is a walk over the finished array.**
+
+So R87's forward cross-derivation, `Doc.find`'s linear scan, and the declaration
+passes over top-level nodes all keep the word, **correctly and now unambiguously**.
+That is the part worth more than consistency: before this pass "the scan" named both
+the byte pass and R87's independent walk, whose entire point is that it does *not*
+trust the byte pass. Renaming only one of them **separates two things that were one
+word**, so R87 reads better than it did rather than merely differently.
+
+*Measured 2026-09-01 over tracked files* (`git ls-files`, after a first count was
+inflated three-fold by an editor's `~undo-tree~` backup beside the carve): about 180
+occurrences of the scan family, in four kinds — the pass (~120), the term (18), the
+parser internals (14), and R87's forward walk (6). Plus five stale `Scan` API
+references in prose and seven uses of *lexical*. Everything but the last group moved.
+`token` survives in four places, all of them `Origin`, which Item 8 ruled correct as a
+capability token and this part does not reopen.
+
+**One thing deliberately not rewritten: a dated `**Pulled:**` quote.**
+`test-BracketContext.md` quotes the corpus test's failure message verbatim in two
+pull records. The live format string moved to *the parse recorded*; the quotes keep
+the wording that was actually printed on 2026-08-30 and 2026-08-31. A record reports
+what happened, so rewriting it would falsify it rather than clarify it — the same
+reason Item 8 left `DONE.md` alone.
+
+**The one load-bearing site.** `design/test-Loc.md`'s alarm 4 anchors
+`**Inject:** sdom/parser.go:Scan` and names `Scan` in its `**Fire alarm:**` prose.
+That symbol no longer exists. The census reads verified only because the rename is
+uncommitted and git still sees `Scan` at HEAD — so the anchor must be repaired in
+the same commit, not after it.
+
+*Define the survey population with `git ls-files`.* A first count over the
+directories was inflated three-fold by an editor's `~undo-tree~` backup sitting
+beside the carve, which is gitignored but not invisible to grep.
 
 ---
 

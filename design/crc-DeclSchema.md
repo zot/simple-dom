@@ -6,10 +6,10 @@ and drives `sdom`'s machinery with that knowledge. Bundled: Go, TypeScript,
 JavaScript, Lua and Shell, with Python following the indent parser.
 
 ## Knows
-- its language's bracket table, and the context a scan of it produced
+- its language's bracket table, and the context a parse of it produced
 - what announces a declaration in that language
 - **which of its groups are comments** — the table cannot say, since a comment and
-  a string are both scan-restricted, and there is deliberately no comment
+  a string are both parse-restricted, and there is deliberately no comment
   configuration
 
 ## Does
@@ -49,7 +49,7 @@ JavaScript, Lua and Shell, with Python following the indent parser.
   lifting them into a shared tool waits until three exist
 
 ## Collaborators
-- BracketContext: the scan's links, and the declaration links this fills
+- BracketContext: the parse's links, and the declaration links this fills
 - Declaration: the kinds it produces
 - Doc: `Split` and `Replace`
 

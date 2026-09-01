@@ -6,7 +6,7 @@
 **Input:** `a {b {c} d} e` under a code-bracket language
 **Expected:** a single flat run of nodes; no node has children; the two `{` are
 `Opener`, the two `}` are `Closer`, and the depth appears nowhere in the array
-**Refs:** crc-BracketParser.md, seq-scan.md#1.5
+**Refs:** crc-BracketParser.md, seq-parse.md#1.5
 **Code:** sdom/parser_test.go
 
 ## Test: word markers respect boundaries
@@ -28,14 +28,14 @@ corpus round-trips stayed green.
 **Input:** `else` at top level, and `if x then y else z fi`
 **Expected:** the bare `else` is text; the one inside the `if` group is a
 `Separator`
-**Refs:** crc-BracketParser.md, seq-scan.md#1.3.3
+**Refs:** crc-BracketParser.md, seq-parse.md#1.3.3
 **Code:** sdom/parser_test.go
 
 ## Test: a stray closer lands as a bracket
-**Purpose:** R73 — the any-close fallback keeps an unbalanced file scannable
+**Purpose:** R73 — the any-close fallback keeps an unbalanced file parsable
 **Input:** `a } b` with nothing open
-**Expected:** the `}` is a `Closer`, the scan continues, and `b` is text
-**Refs:** crc-BracketParser.md, seq-scan.md#3.1
+**Expected:** the `}` is a `Closer`, the parse continues, and `b` is text
+**Refs:** crc-BracketParser.md, seq-parse.md#3.1
 **Code:** sdom/parser_test.go
 **Alarm:** 2
 **Fire alarm:** Make `matchAnyClose` always return no match. Red: the unmatched `}` becomes text instead of a `Closer`. Nothing else objects — no byte moves and the array still tiles — which is why a fallback that quietly stops firing needs its own assertion.
@@ -45,12 +45,12 @@ corpus round-trips stayed green.
 the fallback can recognize. **The recognition count did not catch it**, and
 neither corpus round-trip did.
 
-## Test: the scan never stalls
+## Test: the parse never stalls
 **Purpose:** R74 — the guarantee that makes unknown input safe
 **Input:** bytes no table entry mentions, including a lone `$`, high-bit bytes
 and a NUL
-**Expected:** the scan terminates and the array tiles the input
-**Refs:** crc-BracketParser.md, seq-scan.md#3.2
+**Expected:** the parse terminates and the array tiles the input
+**Refs:** crc-BracketParser.md, seq-parse.md#3.2
 **Code:** sdom/parser_test.go
 **No fire alarm, deliberately.** The obvious injection — remove the unconditional
 `lx.pos++` from the text branch — produces an **infinite loop**, which is the
@@ -64,7 +64,7 @@ fires. Recorded here so the missing alarm is a decision rather than an oversight
 **Input:** `func f() {` and `"unterminated` and `// trailing comment` with no
 newline
 **Expected:** each round-trips byte-exact and the array tiles the source
-**Refs:** crc-BracketParser.md, seq-scan.md#3.4
+**Refs:** crc-BracketParser.md, seq-parse.md#3.4
 **Code:** sdom/parser_test.go
 
 ## Test: whitespace folds into text
@@ -75,15 +75,15 @@ holding the whitespace, the newline and the words together
 **Refs:** crc-BracketParser.md
 **Code:** sdom/parser_test.go
 
-## Test: nothing inside a scan-restricted group is recognized
+## Test: nothing inside a parse-restricted group is recognized
 **Purpose:** R65 — the property that makes strings and comments the same case
 **Input:** `"a { b // c"` and `// a "b" { c` and `/* a "b" // c */`
 **Expected:** in each, one `Opener`, one literal `Text`, one `Closer`; the
 brackets, quotes and comment markers inside are text
-**Refs:** crc-BracketGroup.md, seq-scan.md#2.2
+**Refs:** crc-BracketGroup.md, seq-parse.md#2.2
 **Code:** sdom/parser_test.go
 **Alarm:** 3
-**Fire alarm:** Make `BracketGroup.Restricted` return false unconditionally. Red: every string and comment scans in code mode, so `{` inside a comment opens a group and `//` inside a string starts one. Bytes are preserved and the array still tiles, so the corpus round-trip stays green — this is the recognition-count failure class exactly.
+**Fire alarm:** Make `BracketGroup.Restricted` return false unconditionally. Red: every string and comment parses in code mode, so `{` inside a comment opens a group and `//` inside a string starts one. Bytes are preserved and the array still tiles, so the corpus round-trip stays green — this is the recognition-count failure class exactly.
 **Inject:** sdom/bracket.go:BracketGroup.Restricted
 **Pulled:** 2026-08-30 — rang, and widest of the batch: six tests failed,
 including `TestLangGo`, `TestLangJavaScript`, the escape test and the recognition
@@ -95,11 +95,11 @@ was parsing its interior as code.
 **Input:** `"a\"b"` with `Escape: "\\"`, and the same text with `Escape: ""`
 **Expected:** one string group with escaping; two with it disabled — the raw-mode
 case must differ, or the escape is doing nothing
-**Refs:** crc-BracketGroup.md, seq-scan.md#2.2.2
+**Refs:** crc-BracketGroup.md, seq-parse.md#2.2.2
 **Code:** sdom/parser_test.go
 **Alarm:** 4
-**Fire alarm:** In `scanRestricted`, advance past the escape sequence without consuming the byte after it. Red: the escaped quote closes the string, so one string becomes two plus stray text. The round-trip survives intact, because every byte is still emitted somewhere.
-**Inject:** sdom/parser.go:parser.scanRestricted
+**Fire alarm:** In `parseRestricted`, advance past the escape sequence without consuming the byte after it. Red: the escaped quote closes the string, so one string becomes two plus stray text. The round-trip survives intact, because every byte is still emitted somewhere.
+**Inject:** sdom/parser.go:parser.parseRestricted
 **Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestLangGo`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, on this test and `TestLangGo`. Both of this
 test's messages fired, including *disabling the escape changed nothing, so the
 escape does nothing* — the second assertion earning its place. The recognition
@@ -109,8 +109,8 @@ count and both corpus round-trips stayed green.
 **Purpose:** R64, R65 — the escape hatch that makes interpolation work
 **Input:** `` `text ${a + b} more` `` under `LangJavaScript`
 **Expected:** the backtick group is restricted, `${` opens a code-mode group
-inside it, `a + b` scans as code, and `}` closes back into the template
-**Refs:** crc-BracketGroup.md, seq-scan.md#2.2.3
+inside it, `a + b` parses as code, and `}` closes back into the template
+**Refs:** crc-BracketGroup.md, seq-parse.md#2.2.3
 **Code:** sdom/parser_test.go
 
 ## Test: AllowedParent suppresses a marker outside its context
@@ -121,7 +121,7 @@ template it is the interpolation opener
 **Refs:** crc-BracketGroup.md
 **Code:** sdom/parser_test.go
 **Alarm:** 5
-**Fire alarm:** Make `parentAllowed` return true unconditionally. Red: `${` opens an interpolation at top level, where it is really a `$` followed by a `{`. This is the failure the field exists to prevent, and it is invisible to everything except a test that scans `${` *outside* a template.
+**Fire alarm:** Make `parentAllowed` return true unconditionally. Red: `${` opens an interpolation at top level, where it is really a `$` followed by a `{`. This is the failure the field exists to prevent, and it is invisible to everything except a test that parses `${` *outside* a template.
 **Inject:** sdom/bracket.go:BracketGroup.parentAllowed
 **Pulled:** 2026-08-30 — rang, on this test and `TestLangJavaScript`. `${x}` at
 top level became an interpolation. Nothing else in 56 tests objected.
@@ -138,8 +138,8 @@ byte survives
 **Code:** sdom/parser_test.go
 
 ## Test: byte round-trip over the corpus, per language
-**Purpose:** R57 — scanning models more than `Text` did, and still loses nothing
-**Input:** every corpus file, scanned with each shipped language
+**Purpose:** R57 — parsing models more than `Text` did, and still loses nothing
+**Input:** every corpus file, parsed with each shipped language
 **Expected:** the document renders byte-identical to the source, and the array
 tiles it
 **Refs:** crc-BracketParser.md

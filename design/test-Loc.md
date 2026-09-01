@@ -95,20 +95,20 @@ also rang alone against 29 other tests.
 ## Test: offsets are relative to the document's own source
 **Purpose:** R88 — a document's base is metadata about its source, not part of any
 location. This is what gap O9 was about
-**Input:** a document scanned with a base of 500
+**Input:** a document parsed with a base of 500
 **Expected:** its nodes still begin at offset 0 and tile to the length of the
 source, and each renders exactly the source at its own offset with no adjustment
 **Refs:** crc-Loc.md, crc-Doc.md
 **Code:** sdom/loc_test.go
 **Alarm:** 4
-**Fire alarm:** In `Scan`, thread the base into the parser and add it in `at`, so
+**Fire alarm:** In `Parse`, thread the base into the parser and add it in `at`, so
 locations come out base-relative. Red: **only this test** — measured twice, on
 2026-08-30 and 2026-08-31. Every offset in the document is wrong by the base and
 nothing else objects, because `Render` never consults an offset. ~~and the tiling
 assertions with it, loud rather than silent~~ — that prediction was wrong both
-times it was checked, and the tiling tests scan at base 0, where the injection
+times it was checked, and the tiling tests parse at base 0, where the injection
 changes nothing at all.
-**Inject:** sdom/parser.go:Scan, sdom/parser.go:parser.at
+**Inject:** sdom/parser.go:Parse, sdom/parser.go:parser.at
 **Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, and again **only this test failed** — the second measurement agreeing with the first, and with neither agreeing with the prescription above. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and less loudly than predicted. **Only this test
 failed**, out of 64. Every offset in the document was wrong by 500 and the corpus
 round-trip, the tiling test and the faithful-span check all stayed green, because
@@ -151,7 +151,7 @@ version reddens five tests including this one.
 ## Test: one origin per parse, carried by every node
 **Purpose:** R91 — the question the whole item exists to answer: same file,
 different parser
-**Input:** the same source scanned twice with the same language
+**Input:** the same source parsed twice with the same language
 **Expected:** two distinct origins; every node of each parse carries its own; and
 nodes from the two are distinguishable despite identical bytes and offsets
 **Refs:** crc-BracketContext.md
@@ -168,9 +168,9 @@ cross-derivation check and every corpus round-trip are all indifferent to
 provenance, which is why attribution needs an assertion of its own.
 
 ## Test: a nil origin is absent, not different
-**Purpose:** R93 — a synthesized node has no origin, and merging it into scanned
+**Purpose:** R93 — a synthesized node has no origin, and merging it into parsed
 material is legitimate
-**Input:** a scanned location merged with a synthesized one, in both orders; and
+**Input:** a parsed location merged with a synthesized one, in both orders; and
 two synthesized ones
 **Expected:** the known origin survives from either side; two unknowns merge to
 unknown

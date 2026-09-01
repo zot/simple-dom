@@ -152,7 +152,7 @@ func goGroupBody(d *sdom.Doc, ctx *sdom.BracketContext, kwNode sdom.Node, after 
 
 // CRC: crc-GoSchema.md | Seq: seq-declare.md#2 | R122, R124, R125, R126, R127, R128, R140, R148
 //
-// Go runs the Go declaration pass over an already-scanned document.
+// Go runs the Go declaration pass over an already-parsed document.
 //
 // One declaration per mutation window, because targets must be resolved BEFORE
 // entering one — navigation refuses inside — and carving invalidates the node

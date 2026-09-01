@@ -41,18 +41,18 @@ func codeLang() *BracketLang {
 	}}
 }
 
-// assertStream scans src with lang and checks the whole node stream against
+// assertStream parses src with lang and checks the whole node stream against
 // want, returning the document for any further assertions.
 func assertStream(t *testing.T, lang *BracketLang, src, want string) *Doc {
 	t.Helper()
-	d, _ := Scan(src, 0, lang)
+	d, _ := Parse(src, 0, lang)
 	if got := stream(d); got != want {
 		t.Errorf("%q:\n  got  %s\n  want %s", src, got, want)
 	}
 	return d
 }
 
-// checkCovers asserts the two properties a lossless scan always has: the
+// checkCovers asserts the two properties a lossless parse always has: the
 // document renders back to src byte for byte, and its nodes tile src in order
 // with no gap and no overlap. what names the case in a failure.
 func checkCovers(t *testing.T, d *Doc, src, what string) {
@@ -73,7 +73,7 @@ func checkCovers(t *testing.T, d *Doc, src, what string) {
 	}
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#1.5 | R77
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.5 | R77
 // The nesting lives on the call stack and is absent from the data.
 func TestOpenerContentsAndCloserAreSiblings(t *testing.T) {
 	d := assertStream(t, codeLang(), "a {b {c} d} e",
@@ -95,9 +95,9 @@ func TestWordMarkersRespectBoundaries(t *testing.T) {
 		`T"download " O"do" T" file " C"fi" T" begin_ " C"end"`)
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#1.3.3 | R72
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.3.3 | R72
 func TestSeparatorsOnlyInsideTheirGroup(t *testing.T) {
-	d, _ := Scan("else if x then y else z fi", 0, &LangShell)
+	d, _ := Parse("else if x then y else z fi", 0, &LangShell)
 	got := stream(d)
 	if strings.Count(got, `S"else"`) != 1 {
 		t.Fatalf("expected exactly one separator else; got\n  %s", got)
@@ -107,27 +107,27 @@ func TestSeparatorsOnlyInsideTheirGroup(t *testing.T) {
 	}
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#3.1 | R73
-// The any-close fallback keeps an unbalanced file scannable.
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.1 | R73
+// The any-close fallback keeps an unbalanced file parsable.
 func TestStrayCloserLandsAsABracket(t *testing.T) {
 	assertStream(t, codeLang(), "a } b", `T"a " C"}" T" b"`)
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#3.2 | R74
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.2 | R74
 // The guarantee that makes unknown input safe.
-func TestTheScanNeverStalls(t *testing.T) {
+func TestTheParseNeverStalls(t *testing.T) {
 	src := "$ \x00 \xff\xfe unknown ~`!@#%^&*"
-	d, _ := Scan(src, 0, codeLang())
+	d, _ := Parse(src, 0, codeLang())
 	if got, err := d.Render(); err != nil || got != src {
 		t.Fatalf("unrecognized input must still round-trip (err %v)", err)
 	}
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#3.4 | R75
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.4 | R75
 // An unbalanced file drops no bytes.
 func TestUnclosedGroupClosesAtEndOfInput(t *testing.T) {
 	for _, src := range []string{"func f() {", `s := "unterminated`, "// trailing", "`raw"} {
-		d, _ := Scan(src, 0, &LangGo)
+		d, _ := Parse(src, 0, &LangGo)
 		checkCovers(t, d, src, fmt.Sprintf("%q", src))
 	}
 }
@@ -138,7 +138,7 @@ func TestWhitespaceFoldsIntoText(t *testing.T) {
 	assertStream(t, codeLang(), "{ a  b\n  c }", `O"{" T" a  b\n  c " C"}"`)
 }
 
-// CRC: crc-BracketGroup.md | Seq: seq-scan.md#2.2 | R65
+// CRC: crc-BracketGroup.md | Seq: seq-parse.md#2.2 | R65
 // The property that makes strings and comments the same case.
 func TestNothingInsideARestrictedGroupIsRecognized(t *testing.T) {
 	cases := []struct{ src, want string }{
@@ -151,7 +151,7 @@ func TestNothingInsideARestrictedGroupIsRecognized(t *testing.T) {
 	}
 }
 
-// CRC: crc-BracketGroup.md | Seq: seq-scan.md#2.2.2 | R61
+// CRC: crc-BracketGroup.md | Seq: seq-parse.md#2.2.2 | R61
 // An escaped closer must not close — and disabling the escape must change that,
 // or the escape is doing nothing.
 func TestEscapeConsumesItselfAndTheNextByte(t *testing.T) {
@@ -163,13 +163,13 @@ func TestEscapeConsumesItselfAndTheNextByte(t *testing.T) {
 		}}
 	}
 	withEsc := assertStream(t, stringLang(`\`), src, `O"\"" T"a\\\"b" C"\""`)
-	withoutEsc, _ := Scan(src, 0, stringLang(""))
+	withoutEsc, _ := Parse(src, 0, stringLang(""))
 	if stream(withEsc) == stream(withoutEsc) {
 		t.Fatalf("disabling the escape changed nothing, so the escape does nothing")
 	}
 }
 
-// CRC: crc-BracketGroup.md | Seq: seq-scan.md#2.2.3 | R64
+// CRC: crc-BracketGroup.md | Seq: seq-parse.md#2.2.3 | R64
 // The escape hatch that makes interpolation work.
 func TestAllowedInnerReachesBackIntoCodeMode(t *testing.T) {
 	assertStream(t, &LangJavaScript, "`text ${a + b} more`",
@@ -179,11 +179,11 @@ func TestAllowedInnerReachesBackIntoCodeMode(t *testing.T) {
 // CRC: crc-BracketGroup.md | R66
 // The dual, and the reason it is not optional.
 func TestAllowedParentSuppressesOutsideItsContext(t *testing.T) {
-	top, _ := Scan("${x}", 0, &LangJavaScript)
+	top, _ := Parse("${x}", 0, &LangJavaScript)
 	if got, want := stream(top), `T"$" O"{" T"x" C"}"`; got != want {
 		t.Fatalf("at top level ${ must be a $ then a {:\n  got  %s\n  want %s", got, want)
 	}
-	inner, _ := Scan("`${x}`", 0, &LangJavaScript)
+	inner, _ := Parse("`${x}`", 0, &LangJavaScript)
 	if !strings.Contains(stream(inner), `O"${"`) {
 		t.Fatalf("inside a template ${ must open an interpolation; got\n  %s", stream(inner))
 	}
@@ -219,7 +219,7 @@ func TestRecognitionCountPerLanguage(t *testing.T) {
 			map[string]int{"O`": 2, "C`": 2, "O${": 2, "C}": 2, "O//": 1, "C\n": 1}},
 	}
 	for _, c := range cases {
-		d, _ := Scan(c.src, 0, c.lang)
+		d, _ := Parse(c.src, 0, c.lang)
 		got := map[string]int{}
 		for _, n := range d.Nodes() {
 			var kind string
@@ -246,12 +246,12 @@ func TestRecognitionCountPerLanguage(t *testing.T) {
 }
 
 // CRC: crc-BracketParser.md | R57, R77
-// Scanning models far more than Text did, and still loses nothing.
+// Parsing models far more than Text did, and still loses nothing.
 func TestByteRoundTripPerLanguageOverTheCorpus(t *testing.T) {
 	langs := shippedLangs()
 	for path, src := range corpus(t) {
 		for name, lang := range langs {
-			d, _ := Scan(src, 0, lang)
+			d, _ := Parse(src, 0, lang)
 			checkCovers(t, d, src, fmt.Sprintf("%s under %s", path, name))
 		}
 	}

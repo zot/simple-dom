@@ -180,7 +180,7 @@ func TestEqualsIgnoresTheParseItCameFrom(t *testing.T) {
 
 // CRC: crc-Node.md | R10, R57
 //
-// The structural round-trip in its real form: mutate a scanned document, render
+// The structural round-trip in its real form: mutate a parsed document, render
 // it, RE-PARSE that output, and require the two to compare equal node for node.
 // Passing proves both that the parse is stable under its own output and that
 // Equals ignores provenance.
@@ -189,7 +189,7 @@ func TestEqualsIgnoresTheParseItCameFrom(t *testing.T) {
 // enters a location, so varying it would change nothing (gap O9).
 func TestStructuralRoundTripThroughAReparse(t *testing.T) {
 	const src = "func f(a int) {\n\t// note\n\treturn 1\n}\n"
-	d, _ := Scan(src, 0, &LangGo)
+	d, _ := Parse(src, 0, &LangGo)
 
 	var target *Text
 	for _, n := range d.Nodes() {
@@ -213,7 +213,7 @@ func TestStructuralRoundTripThroughAReparse(t *testing.T) {
 		t.Fatal(err)
 	}
 	const prefix = "// shifted\n"
-	reparsed, _ := Scan(prefix+out, 0, &LangGo)
+	reparsed, _ := Parse(prefix+out, 0, &LangGo)
 	skip := 0
 	for _, n := range reparsed.Nodes() {
 		l := n.Location()

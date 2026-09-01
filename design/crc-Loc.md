@@ -34,7 +34,7 @@ the moment anything is edited, which is why they are not one field.
 - **A faithful node renders exactly the source span at its offset**
 
 ## Origin
-A concrete token identifying **one parse, not one file**, so two scans of the same
+A concrete token identifying **one parse, not one file**, so two parses of the same
 source are two origins and "same file, different parser" is answerable.
 
 - It holds a `Name` — a path, a URL, whatever the caller finds useful. It carries a

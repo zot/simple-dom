@@ -200,7 +200,7 @@ func TestSplitThenMergeIsTheIdentity(t *testing.T) {
 // A document's base is metadata about its source, not part of any location.
 func TestOffsetsAreRelativeToTheDocumentsOwnSource(t *testing.T) {
 	const src = "alpha beta"
-	d, _ := Scan(src, 500, &BracketLang{})
+	d, _ := Parse(src, 500, &BracketLang{})
 	if d.Base() != 500 {
 		t.Fatalf("precondition: the document carries a base of 500")
 	}
@@ -273,11 +273,11 @@ func TestDistinctOriginsAreDistinct(t *testing.T) {
 func TestOneOriginPerParse(t *testing.T) {
 	const src = "a {b} c"
 	lang := codeLang()
-	d1, c1 := Scan(src, 0, lang)
-	d2, c2 := Scan(src, 0, lang)
+	d1, c1 := Parse(src, 0, lang)
+	d2, c2 := Parse(src, 0, lang)
 
 	if c1.Origin() == c2.Origin() {
-		t.Fatalf("two scans of the same source must be two parses")
+		t.Fatalf("two parses of the same source must be two origins")
 	}
 	carried := func(parse string, d *Doc, bc *BracketContext) {
 		t.Helper()
@@ -298,15 +298,15 @@ func TestOneOriginPerParse(t *testing.T) {
 // CRC: crc-Loc.md | R93
 // A nil origin is unknown, not different — a synthesized node merges cleanly.
 func TestNilOriginIsAbsentNotDifferent(t *testing.T) {
-	o := &Origin{Name: "scanned"}
-	scanned := Source(0, 2).In(o)
+	o := &Origin{Name: "parsed"}
+	parsed := Source(0, 2).In(o)
 	cases := []struct {
 		name string
 		a, b Loc
 		want *Origin
 	}{
-		{"synthesized on the right", scanned, Synthetic(3), o},
-		{"synthesized on the left", Synthetic(3), scanned, o},
+		{"synthesized on the right", parsed, Synthetic(3), o},
+		{"synthesized on the left", Synthetic(3), parsed, o},
 		{"neither known", Synthetic(1), Synthetic(2), nil},
 	}
 	for _, c := range cases {

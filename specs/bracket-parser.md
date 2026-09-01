@@ -3,14 +3,14 @@
 A **table-driven** parser that turns a source into a flat, document-order stream
 of `sdom` nodes. Adding a language means adding a table entry, not code.
 
-A string is not a special case: it is a bracket group with scanning turned off.
+A string is not a special case: it is a bracket group with parsing turned off.
 Neither is a comment. That is why interpolation, word brackets, shell
 `if`/`then`/`fi` and `/* … */` all fall out of one mechanism.
 
 ## The table
 
 ```go
-// BracketLang is the lexical table for one language.
+// BracketLang is the bracket table for one language.
 type BracketLang struct {
     Brackets []BracketGroup
 }
@@ -22,14 +22,14 @@ type BracketGroup struct {
     Close      []string // closers: {"}"}, {"end","done","fi"}, {"\n"}
     Escape     string   // escape sequence inside the group; "" for none
 
-    AllowedInner  []string // nil = code mode; non-nil (even empty) = scan-restricted
+    AllowedInner  []string // nil = code mode; non-nil (even empty) = parse-restricted
     AllowedParent []string // nil = anywhere; non-nil = only inside these openers
 }
 ```
 
 **There is no comment configuration.** A line comment is a group opening `//` and
 closing `\n`; a block comment opens `/*` and closes `*/`. Both are
-scan-restricted, which is exactly what makes a comment non-nesting and its
+parse-restricted, which is exactly what makes a comment non-nesting and its
 interior literal. A language whose block comments *do* nest says so by listing its
 own opener in `AllowedInner`.
 
@@ -37,8 +37,8 @@ own opener in `AllowedInner`.
 
 **`AllowedInner` decides what is recognized inside the group.**
 
-- **nil — code mode.** Full scanning: every other group's openers are recognized.
-- **non-nil, including empty — scan-restricted.** Only three things are
+- **nil — code mode.** Full parsing: every other group's openers are recognized.
+- **non-nil, including empty — parse-restricted.** Only three things are
   recognized: this group's `Close`, its `Escape`, and the openers listed. Every
   other byte is literal. An empty list is pure raw mode; a non-empty one names the
   escape hatches back into code.
@@ -93,7 +93,7 @@ data that changes rarely and is written by developers.
 A consumer that needs *per-project* language settings manages its own
 configuration. Mini-spec already does this, in `.minispec/config.yaml`.
 
-## Scanning rules
+## Parsing rules
 
 - **Word-boundary matching for alphanumeric markers**, so `do` does not fire
   inside `download` nor `fi` inside `file`. A marker whose first byte is a word
@@ -102,8 +102,8 @@ configuration. Mini-spec already does this, in `.minispec/config.yaml`.
   and its closer.
 - **An any-close fallback**: when nothing else matches, any code-mode group's
   closer is recognized, so a stray `}` lands as a bracket rather than derailing
-  the scan.
-- **The scan always consumes at least one byte**, so nothing stalls on input it
+  the parse.
+- **The parse always consumes at least one byte**, so nothing stalls on input it
   does not understand.
 - **A group left open at end of input closes there.** The bytes are already
   accounted for; nothing is dropped.
@@ -138,7 +138,7 @@ parse context.
 ## The context, and the links it owns
 
 Each schema has its own parse context, a concrete type rather than an interface.
-The parser's carries the language while scanning, and **outlives the parse** to
+The parser's carries the language during the parse, and **outlives** it to
 carry the pairing links:
 
 - an opener knows its **closer**, its **separators**, and its **enclosing opener**

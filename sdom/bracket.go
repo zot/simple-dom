@@ -4,12 +4,12 @@ import "slices"
 
 // CRC: crc-BracketLang.md | R58, R59, R60, R62, R68, R70
 //
-// BracketLang is a language's whole lexical table, and nothing else. Supporting a
+// BracketLang is a language's whole bracket table, and nothing else. Supporting a
 // new language means adding an entry, not writing code.
 //
 // There is no comment configuration. A line comment is a group closing on a
 // newline; a block comment is a group closing on its terminator. Both are
-// scan-restricted, which is what makes a comment non-nesting with a literal
+// parse-restricted, which is what makes a comment non-nesting with a literal
 // interior — a string is the same shape with different markers.
 //
 // There are no indent parameters and no flag enabling indentation. A language
@@ -35,7 +35,7 @@ type BracketLang struct {
 // AllowedInner decides what is recognized inside the group:
 //
 //	nil            code mode — every group's openers are recognized inside
-//	non-nil        scan-restricted — only this group's Close, its Escape, and the
+//	non-nil        parse-restricted — only this group's Close, its Escape, and the
 //	               listed openers are recognized; every other byte is literal.
 //	               An empty (but non-nil) slice is pure raw mode.
 //
@@ -44,7 +44,7 @@ type BracketLang struct {
 // it is really a "$" followed by a "{".
 //
 //	nil            recognized in any context
-//	non-nil        recognized only while scanning inside one of the listed openers
+//	non-nil        recognized only while parsing inside one of the listed openers
 //
 // A block comment nests only when its own opener appears in its AllowedInner.
 // Nesting is not a field.
@@ -59,7 +59,7 @@ type BracketGroup struct {
 }
 
 // CRC: crc-BracketGroup.md | R64, R65, R67
-// Restricted reports scan-restricted mode. nil means code mode; non-nil, even
+// Restricted reports parse-restricted mode. nil means code mode; non-nil, even
 // empty, means restricted — which is why this is a nil test and not a length one.
 func (g *BracketGroup) Restricted() bool { return g.AllowedInner != nil }
 

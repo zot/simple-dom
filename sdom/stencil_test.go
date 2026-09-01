@@ -265,10 +265,10 @@ func TestNoMatchIsReported(t *testing.T) {
 // CRC: crc-Doc.md | R118
 // A synthesized node makes no claim about coordinates, so it cannot contradict one.
 func TestASynthesizedNodeIsCompatibleWithAnyDocument(t *testing.T) {
-	o := &Origin{Name: "scanned"}
-	scanned := NewText("aa", Source(0, 2).In(o))
+	o := &Origin{Name: "parsed"}
+	parsed := NewText("aa", Source(0, 2).In(o))
 	synth := NewText("bb", Synthetic(2))
-	d := New("aabb", 0, scanned, synth) // must not panic
+	d := New("aabb", 0, parsed, synth) // must not panic
 	if len(d.Nodes()) != 2 {
 		t.Fatalf("expected both nodes, got %d", len(d.Nodes()))
 	}

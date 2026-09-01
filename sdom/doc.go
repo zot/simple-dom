@@ -78,7 +78,7 @@ func oneParse(nodes []Node) {
 			// A synthesized node makes no claim about coordinates, so it cannot
 			// contradict one — nil is UNKNOWN rather than different, exactly as
 			// mergeLocs treats it. Without this a hand-built document could not
-			// mix scanned and synthesized nodes, though Merge joins them happily.
+			// mix parsed and synthesized nodes, though Merge joins them happily.
 			continue
 		}
 		if want == nil {

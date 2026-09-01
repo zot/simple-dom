@@ -9,7 +9,7 @@ all. Code brackets, strings and comments are all this one type.
 - `Open`, `Separators`, `Close`: its markers
 - `Escape`: the sequence that consumes itself and the byte after it
 - `AllowedInner`: what is recognized inside — **nil is code mode**, non-nil (even
-  empty) is scan-restricted
+  empty) is parse-restricted
 - `AllowedParent`: where it may be recognized — nil is anywhere, non-nil only
   inside the listed openers
 
@@ -32,4 +32,4 @@ all. Code brackets, strings and comments are all this one type.
 - BracketParser: asks it what matches here
 
 ## Sequences
-- seq-scan.md
+- seq-parse.md

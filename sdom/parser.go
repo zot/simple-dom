@@ -2,16 +2,16 @@ package sdom
 
 import "strings"
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md | R57, R77
+// CRC: crc-BracketParser.md | Seq: seq-parse.md | R57, R77
 //
-// Scan parses src with lang into a flat, document-order array of nodes, and
+// Parse parses src with lang into a flat, document-order array of nodes, and
 // returns the document together with the context owning its pairing links.
 //
 // base is the document's own position within an outer document; node offsets are
 // relative to src.
-func Scan(src string, base int, lang *BracketLang) (*Doc, *BracketContext) {
+func Parse(src string, base int, lang *BracketLang) (*Doc, *BracketContext) {
 	p := &parser{src: src, lang: lang, ctx: newBracketContext(lang)}
-	p.scanBody(nil, nil)
+	p.parseBody(nil, nil)
 	d := New(src, base, p.out...)
 	p.ctx.attach(d)
 	return d, p.ctx
@@ -19,7 +19,7 @@ func Scan(src string, base int, lang *BracketLang) (*Doc, *BracketContext) {
 
 // parser walks the source once, appending nodes in the order it meets them.
 //
-// The nesting lives on the CALL STACK — scanBody recurses — and is simply absent
+// The nesting lives on the CALL STACK — parseBody recurses — and is simply absent
 // from the data afterwards, which is what makes the emitted array flat without
 // anything having to flatten it. The stack field exists only so an emitted node
 // can be told which opener contains it.
@@ -34,12 +34,12 @@ type parser struct {
 }
 
 // CRC: crc-BracketParser.md | R89, R91
-// at builds a location for a span of this scan, attributed to its parse.
+// at builds a location for a span of this parse, attributed to its origin.
 func (p *parser) at(pos, length int) Loc {
 	return Source(pos, length).In(p.ctx.origin)
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#1.5 | R76, R77
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.5 | R76, R77
 // flushText emits the bytes accumulated since the last marker. Whitespace is not
 // a node of its own, so a text run is everything between two recognized markers.
 func (p *parser) flushText() {
@@ -67,7 +67,7 @@ func (p *parser) take(n Node) {
 	p.textStart = p.pos
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#1.4 | R82, R83
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.4 | R82, R83
 //
 // closeGroup ends the open group when one of its closers is at pos, pairing the
 // two nodes BOTH WAYS, and reports whether it did. Code mode and restricted mode
@@ -88,22 +88,22 @@ func (p *parser) closeGroup(g *BracketGroup, opener Node) bool {
 	return true
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#1 | R64, R65
-// scanBody scans until enclosing's closer is found, or to end of input. enclosing
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1 | R64, R65
+// parseBody parses until enclosing's closer is found, or to end of input. enclosing
 // is nil at top level.
-func (p *parser) scanBody(enclosing *BracketGroup, opener Node) {
+func (p *parser) parseBody(enclosing *BracketGroup, opener Node) {
 	if enclosing != nil && enclosing.Restricted() {
-		p.scanRestricted(enclosing, opener)
+		p.parseRestricted(enclosing, opener)
 		return
 	}
-	p.scanCode(enclosing, opener)
+	p.parseCode(enclosing, opener)
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#1.3 | R72, R73, R74, R75
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.3 | R72, R73, R74, R75
 //
-// scanCode scans in code mode: openers of any group allowed here, then the open
+// parseCode parses in code mode: openers of any group allowed here, then the open
 // group's closers, then its separators, then the any-close fallback, then text.
-func (p *parser) scanCode(enclosing *BracketGroup, opener Node) {
+func (p *parser) parseCode(enclosing *BracketGroup, opener Node) {
 	for p.pos < len(p.src) {
 		if g, m := p.matchOpen(enclosing); g != nil {
 			p.open(g, m)
@@ -119,25 +119,25 @@ func (p *parser) scanCode(enclosing *BracketGroup, opener Node) {
 			}
 		}
 		// The any-close fallback: a stray closer lands as a bracket rather than
-		// derailing the scan.
+		// derailing the parse.
 		if m := p.matchAnyClose(); m != "" {
 			p.take(NewCloser(m, p.at(p.pos, len(m))))
 			continue
 		}
 		// Nothing matched here, so this byte is text. Advancing unconditionally is
-		// what guarantees the scan always consumes at least one byte.
+		// what guarantees the parse always consumes at least one byte.
 		p.pos++
 	}
 	p.flushText() // a group left open at end of input closes there; no bytes drop
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#2 | R65
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#2 | R65
 //
-// scanRestricted scans inside a string or a comment: only this group's Close, its
+// parseRestricted parses inside a string or a comment: only this group's Close, its
 // Escape, and the openers named in AllowedInner are recognized. Every other byte
 // is literal — comments inside strings are not comments, and brackets inside
 // comments are not brackets.
-func (p *parser) scanRestricted(g *BracketGroup, opener Node) {
+func (p *parser) parseRestricted(g *BracketGroup, opener Node) {
 	for p.pos < len(p.src) {
 		if p.closeGroup(g, opener) {
 			return
@@ -158,12 +158,12 @@ func (p *parser) scanRestricted(g *BracketGroup, opener Node) {
 	p.flushText()
 }
 
-// open emits an opener for g and scans its body.
+// open emits an opener for g and parses its body.
 func (p *parser) open(g *BracketGroup, marker string) {
 	o := NewOpener(marker, p.at(p.pos, len(marker)))
 	p.take(o)
 	p.stack = append(p.stack, o)
-	p.scanBody(g, o)
+	p.parseBody(g, o)
 	p.stack = p.stack[:len(p.stack)-1]
 }
 
@@ -197,7 +197,7 @@ func (p *parser) matchInner(g *BracketGroup) (*BracketGroup, string) {
 	return nil, ""
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-scan.md#3.1 | R73
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.1 | R73
 // matchAnyClose recognizes any code-mode group's closer, so depth stays
 // consistent even when the document is unbalanced.
 func (p *parser) matchAnyClose() string {

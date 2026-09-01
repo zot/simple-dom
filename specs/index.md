@@ -3,13 +3,13 @@
 Every spec in this project, by system. The per-feature specs are canonical; this
 index is a pointer, not a copy.
 
-## sdom — the lexical core
+## sdom — the parsing core
 
 Module `github.com/zot/simple-dom`, package `sdom`. A parse that models only what
 a tool operates on, keeps every other byte where it was, and re-emits the source
 with nothing but the intended change in it. **Nothing in this system knows what a
 CRC card is** — the boundary is enforced by the compiler, so another tool can
-consume the lexical half.
+consume the parsing half.
 
 - [node-protocol.md](node-protocol.md) — what a node is, the `Node` interface,
   per-kind equality, and the kinds `sdom` defines.

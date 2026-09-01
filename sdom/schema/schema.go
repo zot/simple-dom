@@ -41,7 +41,7 @@ type Lang struct {
 // CRC: crc-DeclSchema.md | R146
 //
 // isComment reports whether n opens a comment. The language table cannot answer
-// this: a comment and a string are both scan-restricted, and there is deliberately
+// this: a comment and a string are both parse-restricted, and there is deliberately
 // no comment configuration. So a schema matches the opener against the markers it
 // knows, which is language knowledge and belongs here.
 func (l Lang) isComment(n sdom.Node) bool {

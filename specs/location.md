@@ -47,7 +47,7 @@ parses are indistinguishable, so a location also carries the **parse it came
 from**:
 
 ```go
-// Origin identifies one parse, not one file. Two scans of the same source are
+// Origin identifies one parse, not one file. Two parses of the same source are
 // two Origins.
 type Origin struct {
     Name string // a path, a URL, or whatever the caller finds useful
@@ -58,7 +58,7 @@ func (l Loc) In(o *Origin) Loc // the parser's chained setter
 ```
 
 **It is the parse context, not the document.** The context exists before the nodes
-do — a scan mints it, scans, and only then builds the document from what it
+do — a parse mints it, runs, and only then builds the document from what it
 emitted — so a document reference would need back-patching over every node.
 
 **It is a concrete type, not an interface.** Each schema's parse context is its

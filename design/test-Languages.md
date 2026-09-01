@@ -16,7 +16,7 @@ least one group. A field live in no table is dead code
 **Purpose:** R59, R62 — comments and strings as groups, not special cases
 **Input:** a Go fixture with `//` and `/* */` comments, a `"..."` string with an
 escaped quote, and a backtick raw string containing a quote and a brace
-**Expected:** both comment forms scan as restricted groups; the escaped quote does
+**Expected:** both comment forms parse as restricted groups; the escaped quote does
 not close the string; nothing inside the raw string is recognized
 **Refs:** crc-BracketLang.md
 **Code:** sdom/lang_test.go
@@ -37,7 +37,7 @@ not act as a code bracket
 **Refs:** crc-BracketLang.md
 **Code:** sdom/lang_test.go
 **Alarm:** 1
-**Fire alarm:** Move the `(*` group after the bare `(` group in `LangPascal`. Red: `(*` never fires, because `(` matches first and wins — Pascal's block comments stop being recognized and their interiors scan as code. The round-trip stays green and no byte moves; only the recognition assertions see it. This is what the ordering comment in the table is protecting.
+**Fire alarm:** Move the `(*` group after the bare `(` group in `LangPascal`. Red: `(*` never fires, because `(` matches first and wins — Pascal's block comments stop being recognized and their interiors parse as code. The round-trip stays green and no byte moves; only the recognition assertions see it. This is what the ordering comment in the table is protecting.
 **Inject:** sdom/lang.go:LangPascal
 **Pulled:** 2026-08-30 — rang, but **only on this test**, out of 56 — and that
 corrected the alarm's own prediction. `TestRecognitionCountPerLanguage` stayed

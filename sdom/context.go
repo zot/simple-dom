@@ -11,7 +11,7 @@ import (
 // interface (R12). An interface here would exist only to let one signature serve
 // heterogeneous node kinds, which nothing requires — each schema's context is
 // shaped for its own needs, and generic core code that needs only the document
-// takes *Doc. It carries the language through the scan and OUTLIVES the parse to
+// takes *Doc. It carries the language through the parse and OUTLIVES it to
 // own the bracket pairing links.
 //
 // Doc does not own these links. Not every document has brackets, and a markdown
@@ -98,12 +98,12 @@ func (bc *BracketContext) enclose(n, open Node) {
 }
 
 // CRC: crc-BracketContext.md | R80
-// Language returns the table this context scanned with.
+// Language returns the table this context parsed with.
 func (bc *BracketContext) Language() *BracketLang { return bc.lang }
 
 // CRC: crc-BracketContext.md | R91
 //
-// Origin returns the token identifying this parse, which every node the scan
+// Origin returns the token identifying this parse, which every node the parse
 // produced carries. It is minted before any node exists, which is why a location
 // holds the context's token rather than a document reference. Its Name is the
 // caller's to set.
@@ -224,7 +224,7 @@ func (bc *BracketContext) refresh() {
 // CRC: crc-BracketContext.md | R81, R82, R83, R84, R152, R153
 //
 // rebuild derives every link a second way: by walking the finished flat array
-// with a stack, rather than from the recursion that produced it. The scan records
+// with a stack, rather than from the recursion that produced it. The parse records
 // links from its own control flow; this recovers them from the resulting data.
 // The two are independent derivations and must agree — which is what makes the
 // index checkable rather than merely believed (R87).
@@ -240,7 +240,7 @@ func (bc *BracketContext) rebuild() {
 		case *Closer:
 			// Pair only when this closer belongs to the open group. The group is
 			// resolved from the OPENER'S TEXT through the table, not from anything
-			// the scan recorded — a node holds no group pointer, and this
+			// the parse recorded — a node holds no group pointer, and this
 			// derivation must stay independent of the one it checks. Without it a
 			// stray closer, which the any-close fallback emits unpaired, would be
 			// paired here and the two derivations would disagree on every
@@ -257,7 +257,7 @@ func (bc *BracketContext) rebuild() {
 		default:
 			// A Separator lands here, and enclose gives it BOTH directions: it
 			// learns its opener, and its opener learns it. Recovering separators
-			// from this walk rather than trusting the scan is what keeps them
+			// from this walk rather than trusting the parse is what keeps them
 			// inside R87's cross-derivation instead of riding along beside it.
 			if open != nil {
 				bc.enclose(n, open)
@@ -284,9 +284,9 @@ func (bc *BracketContext) closes(opener, closer Node) bool {
 	return slices.Contains(g.Close, ct)
 }
 
-// attach binds the context to the document it was scanned from and stamps it
-// with the generation the scan's own links describe, so the first read of a
-// freshly scanned document rebuilds nothing.
+// attach binds the context to the document it was parsed from and stamps it
+// with the generation the parse's own links describe, so the first read of a
+// freshly parsed document rebuilds nothing.
 func (bc *BracketContext) attach(d *Doc) {
 	bc.doc = d
 	bc.stamp = d.Generation()

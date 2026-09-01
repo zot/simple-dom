@@ -1,7 +1,7 @@
 # BracketLang
 **Requirements:** R58, R59, R60, R62, R68, R70, R121
 
-A language's whole lexical table, and nothing else. Supporting a new language is
+A language's whole bracket table, and nothing else. Supporting a new language is
 adding an entry, not writing code.
 
 ## Knows
@@ -10,12 +10,12 @@ adding an entry, not writing code.
 ## Does
 - resolves an opener string back to the group that owns it, which is how
   `AllowedInner` reaches a nested group
-- offers its groups in order, which is the precedence the BracketParser scans by
+- offers its groups in order, which is the precedence the BracketParser parses by
 
 ## Constraints
 - **No comment configuration exists.** A line comment is a group closing on a
   newline; a block comment is a group closing on its terminator. Both are
-  scan-restricted, which is what makes a comment non-nesting with a literal
+  parse-restricted, which is what makes a comment non-nesting with a literal
   interior. Strings are the same shape with different markers
 - **No indent parameters and no flag.** A language needing indent scope is a type
   that **embeds** `BracketLang` and adds what it needs, and *the type is the
@@ -39,4 +39,4 @@ job alone.
 - BracketContext: carries the language through the parse
 
 ## Sequences
-- seq-scan.md
+- seq-parse.md

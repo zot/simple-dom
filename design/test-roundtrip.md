@@ -48,8 +48,8 @@ real thing does not have. Found by an alarm that failed to ring; see gap O9.
 ## Test: structural round-trip through a re-parse
 **Purpose:** R10, R57 — the real form of the property. Passing proves both that
 the parse is stable under its own output and that `Equals` ignores provenance
-**Input:** a Go source scanned, one text node's content rewritten inside a
-mutation, the document rendered, and that output **re-scanned at a different
+**Input:** a Go source parsed, one text node's content rewritten inside a
+mutation, the document rendered, and that output **re-parsed at a different
 base**
 **Expected:** the two node arrays compare equal, node for node, despite every
 offset differing and the edited node being altered on one side and freshly
