@@ -109,7 +109,7 @@ assertions with it, loud rather than silent~~ — that prediction was wrong both
 times it was checked, and the tiling tests parse at base 0, where the injection
 changes nothing at all.
 **Inject:** sdom/parser.go:Parse, sdom/parser.go:parser.at
-**Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, and again **only this test failed** — the second measurement agreeing with the first, and with neither agreeing with the prescription above. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and less loudly than predicted. **Only this test
+**Pulled:** 2026-09-01 — re-pulled after the vocabulary pass and rang a **third** time, still **only this test**, out of a larger suite. The anchor resolved under the new name `Parse` — the one thing a rename can genuinely break, and the reason this pull was worth taking when the property could not have moved. Previously 2026-08-31 — re-pulled after the parser rename and rang again, and again **only this test failed** — the second measurement agreeing with the first, and with neither agreeing with the prescription above. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and less loudly than predicted. **Only this test
 failed**, out of 64. Every offset in the document was wrong by 500 and the corpus
 round-trip, the tiling test and the faithful-span check all stayed green, because
 `Render` never consults an offset. The prediction of "loud" was wrong.

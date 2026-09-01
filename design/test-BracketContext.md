@@ -17,9 +17,9 @@ level report none
 **Refs:** crc-BracketContext.md, seq-pair.md#1.3
 **Code:** sdom/context_test.go
 **Alarm:** 1
-**Fire alarm:** In `parser.open`, push the opener onto the stack *before* emitting it rather than after. Red: an opener records **itself** as its own enclosing opener instead of the one containing it. Nothing about the bytes, the tiling or the pairing changes, so this is silent everywhere else — and it would quietly corrupt any layer walking enclosure to find scope.
+**Fire alarm:** In `parser.open`, push the opener onto the stack *before* emitting it rather than after. Red: an opener records **itself** as its own enclosing opener instead of the one containing it. The bytes, the tiling and the pairing are untouched. ~~so this is silent everywhere else~~ — **corrected 2026-09-01: it is now the loudest alarm in the suite**, because the rest of this sentence came true: it *would quietly corrupt any layer walking enclosure to find scope*, and Item 4 built one.
 **Inject:** sdom/parser.go:parser.open
-**Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, on the same two tests — this one and the cross-check. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and wider than designed. This test failed and so
+**Pulled:** 2026-09-01 — re-pulled after the vocabulary pass and rang **far louder than at any previous pull** — not because the property moved, but because the coverage grew into the hazard this alarm had already named. **13 failures across both packages:** this test, the corpus cross-check, and **eleven declaration tests** in `sdom/schema`, ending with `TestADeclarationPassIsAdditive` reporting **0 declarations over 24 files** against an independent count of 251. The mechanism is exactly the one the prose predicted: the declaration pass reads *top level* as `Enclosing(n) == nil`, so an index where every opener encloses itself leaves **nothing** top-level and the whole layer sees an empty document. On 2026-08-30 that consumer did not exist. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on the same two tests — this one and the cross-check. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and wider than designed. This test failed and so
 did the cross-check, **in the opposite column** from the alarm above: pairs equal
 at 316, enclosings 974 vs 962. The blast radius is larger than predicted, because
 `take` flushes pending text *before* emitting: pushing first means the text
@@ -46,7 +46,7 @@ thing that catches them drifting apart.
 **Alarm:** 2
 **Fire alarm:** Remove the `bc.closes(o, n)` condition from `rebuild`, so the stack walk pairs any closer with whatever opener is on top. **This is the real defect, hit while implementing:** on `( { )` the parse emits `)` unpaired via the any-close fallback while the walk pairs it with `{`. Red: the two derivations disagree, on most corpus files under most languages. Every other test stays green, because each derivation is individually self-consistent.
 **Inject:** sdom/context.go:BracketContext.rebuild
-**Pulled:** 2026-08-31 — re-pulled after the index consolidation and rang again,
+**Pulled:** 2026-09-01 — re-pulled after the vocabulary pass and rang again, at `stencil_test.go under shell: the parse recorded 655 entries; the independent walk found 664`. **Only this test failed**, both packages otherwise green — the claim that each derivation stays individually self-consistent, confirmed a third time. (That message now says *the parse recorded*; the quotes further down keep the wording actually printed on their own dates.) Previously 2026-08-31 — re-pulled after the index consolidation and rang again,
 disagreeing at the first corpus file it reached: *the scan recorded 192 entries; the
 independent walk found 194*. The message reads differently from the 2026-08-30 pull
 because the comparison is now over whole `BracketInfo` entries rather than two
@@ -73,7 +73,7 @@ independent walk. ~~Red: **not immediately** — the links are right until a str
 edit makes the stamp stale, and then the rebuilt index has none.~~ — **corrected
 2026-08-31 by pulling it:** red **immediately**, and in two places at once. See below.
 **Inject:** sdom/context.go:BracketContext.rebuild
-**Pulled:** 2026-08-31 — rang, and **more loudly than predicted, which is the
+**Pulled:** 2026-09-01 — re-pulled after the vocabulary pass and rang in **three** places rather than two: this test (`separators [], want [in do]`), the corpus cross-check, and `TestSeparatorsRefreshesLikeEveryOtherAccessor`, which did not exist when the two-place record below was written — it came out of Item 11's own inject-past-the-list probe, so that probe is still earning its keep. Previously 2026-08-31 — rang, and **more loudly than predicted, which is the
 widened cross-derivation paying off.**
 
 This test failed as designed — `separators [], want [in do]` — and so did

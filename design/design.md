@@ -261,3 +261,21 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   than 2.3×), or move `separators` to a side map, since `LangGo` produces **zero** separators
   and pays 24 bytes an entry for them regardless. Measure before optimising; 1 MB of index for
   100 KB of source is not a constraint mini-spec or microfts2 will feel.
+- [ ] O23: An alarm's `**Fire alarm:**` prose can go stale without the census noticing, because
+  the census compares the `**Pulled:**` date against the date git last changed the `**Inject:**`
+  symbol — it tracks whether the *code* moved, never whether the *prediction* is still true.
+  Measured 2026-09-01 while re-pulling for an unrelated rename: `test-BracketContext.md#1` says
+  the injection "is silent everywhere else", which was accurate when written on 2026-08-30 and
+  became false the moment carve Item 4 landed a declaration pass that reads *top level* as
+  `Enclosing(n) == nil`. An index where every opener encloses itself leaves nothing top-level,
+  so the pass sees an empty document: the injection now fails **13 tests across two packages**
+  instead of two in one, with `TestADeclarationPassIsAdditive` reporting 0 declarations over 24
+  files against an independent count of 251. Nothing detected the drift — the alarm's own
+  subject (`parser.open`) had not changed, so the census called it verified for two days, and it
+  surfaced only because a rename forced a re-pull. This instance drifted in the **safe**
+  direction, a prediction understating its blast radius. The opposite drift is equally invisible
+  and far worse: an alarm whose injection has stopped reaching the property it names still reads
+  as a passing proof. Like `O10`, `O16` and `O20`, the repair belongs in the mini-spec tool
+  rather than in this repository, so this records the hole and the evidence. It is also the
+  argument for re-pulling after a pure rename, which is otherwise hard to justify: the pull is
+  what re-reads the prediction.
