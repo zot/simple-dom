@@ -26,7 +26,7 @@ identifier.
 - [x] ~~**Item 4 — declarations, as a post-pass.**~~ **LANDED (`df7a987`, 2026-08-31 — `#9`.)**
 - [x] ~~**Item 10 — one bracket index.**~~ **LANDED (`efef190`, 2026-08-31 — `#11`.)**
 - [x] ~~**Item 11 — separator links, completing the bracket contract.**~~ **LANDED (`efef190`, 2026-08-31 — `#11`.)**
-- [ ] **Item 12 — the vocabulary, second pass: it is a parse, not a scan.** **OPEN (#12.)**
+- [x] ~~**Item 12 — the vocabulary, second pass: it is a parse, not a scan.**~~ **LANDED (`f9008c6`, 2026-09-01 — `#12`.)**
 - [ ] **Item 5 — indent scope.** **OPEN (not queued.)**
 - [ ] **Item 6 — the traceability reader.** **OPEN (not queued.)**
 - [ ] **Item 9 — generalize the schema work into `sdom` tools.** **OPEN (not queued.)**
@@ -981,13 +981,170 @@ case.
 **This part relates declarations, so it follows Item 4.**
 
 Scope is a **derived index**, not a schema: a scope frame is opened by a bracket,
-or by a significant indent increase, and each frame remembers the declaration on
-the line that opened it. A declaration's parent is the nearest enclosing frame
-that *has* one — which is what steps correctly over an `if {` or a `for {` that is
-not a declaration. Tab expansion advances to the next multiple of a configured
-width.
+or by a significant indent increase. Tab expansion advances to the next multiple of
+a configured width, and the column is **derived from the node's text**, never
+stored — the dual-ported rule again.
+
+~~each frame remembers the declaration on the line that opened it. A declaration's
+parent is the nearest enclosing frame that *has* one — which is what steps correctly
+over an `if {` or a `for {` that is not a declaration.~~ — **superseded 2026-09-01
+(Bill): not an invariant, and not the parser's job.** *"We parse. We do a second pass
+to find declarations, slice text, and insert nodes. That's it."* The relation is
+computable by a consumer from the scope index and Item 4's declaration links;
+requiring the parser to encode it invented a requirement. Written 2026-08-27, before
+declarations became a post-pass owning their own links.
 
 ### Item 5's decisions
+
+**DECIDED (Bill, 2026-09-01): indent is parsed in ONE PASS, not post-processed — and
+that needs a way for parsers to collaborate over text.** A `Parse` that only moves
+forward when it finds a node at the head of the input, with an outer loop
+accumulating pending text when none does.
+
+**It is not a new mechanism.** `parseCode` already runs exactly that loop; this opens
+its matcher list. The forcing reason is cost: a post-pass must split text nodes at
+line starts, which is `O18`'s shape — one target per mutation window, `Doc.find`
+re-scanning each time, O(n²) — with **per-line** targets instead of `O18`'s
+per-declaration 251 over 24 files. The additive property also stops needing an
+argument, since nothing is consumed and re-carved.
+
+**The shapes.** `parser` becomes exported **`ParserState`**, which owns the loop, the
+pending text, `flushText`, and the **`Origin`** — one parse, one origin, which is what
+keeps `mergeLocs` from panicking when an indent node and a bracket node merge. A new
+**`Parser`** interface carries `Parse(st *ParserState)` and `HasNode` for lookahead.
+`ParserState` holds **one** `Parser` that may delegate: `IndentParser` owns its own
+`BracketParser` and hands off when it does not match. **Precedence is the parser's
+business, not `ParserState`'s.** Each parser owns its own context, so
+`Parse(src, base, parser) *Doc` needs no `any` and nobody type-asserts — the shape
+Item 1 says to watch for.
+
+**Keep the recursion.** `open()` takes the loop until its closer rather than returning
+a position, so *indentation is significant only at bracket depth 0* stops being a check
+and becomes **structural**: the indent parser sits in the top-level loop's matcher list
+and the recursive calls never offer it a position. Exclusivity inside a string falls out
+the same way — two unrelated suppression rules from one structural choice.
+
+**DECIDED (Bill, 2026-09-01): the loop's "no change" test reads BOTH `pos` and the node
+count.** Neither alone is sound. `pos` alone misses a zero-length node, and a dedent to
+column 0 may begin with a bracket opener — `"a string statement"`, `(1)`,
+`[x for x in ()]` and `"""doc"""` are all legal Python statements there, so the opener
+would be eaten as text. Node count alone is sufficient only *by accident*:
+`parseRestricted` advances 1–2 bytes for an escape and emits nothing, and that is
+invisible to the outer loop only because restricted regions run inside the
+BracketParser's own loop. **The tiling invariant does not license the shortcut** —
+contiguity is satisfied by *pending* text, so it never required a node per advance. One
+integer comparison, and the failure it prevents is a **skipped marker** rather than lost
+bytes: round-trip green, visible only to a recognition count.
+
+**DECIDED (Bill, 2026-09-01): a node for every indent change; the column-0 return is
+zero-length.** An indent node carries its line's leading whitespace; a return to column
+0 has no bytes to own. Parent is the nearest enclosing **smaller** column, and the
+document opens with a zero-length node for the root — which is what gives the root frame
+an identity instead of a nil special case. Consecutive same-level lines share the frame
+opened by the last change-node. Blank and comment-only lines do not change the level,
+measured against CPython — which *does* indent on a docstring line, so the parser must
+tell a comment from a string. See the `Kind` decision below, which is what supplies that.
+
+**DECIDED (Bill, 2026-09-01): one map, in `IndentContext`** — brackets cannot contain
+indents, so the indent context is the outer one and owns the whole index. The parse
+records the links and `rebuild` re-derives them independently from the columns, so indent
+gets `R87`'s checkable-not-believed treatment for free, wanting its own requirement and
+its own alarm.
+
+**DECIDED (Bill, 2026-09-01): this overrides part of Item 9's deferral, knowingly.**
+Item 9 defers the shared driver because *"extracting from one is guessing, and the guess
+would be built into `sdom`'s export surface."* That reasoning was about extracting with
+**no forcing need** from **one** instance. This has a forcing need — indent is genuinely
+bad as a post-pass — and **two** instances in hand, brackets and indent: extraction from
+evidence rather than from a guess. Item 9 keeps the rest. The *declaration* driver still
+waits for three worked schemas, and **declarations do not join the one-pass protocol**,
+because a declaration's name sits forward of its keyword, past nodes another parser has
+yet to produce.
+
+**DECIDED (Bill, 2026-09-01): `BracketGroup` gains a `Kind` field, and no special cases.**
+An indent language's parser marks its own comment groups `"comment"` and leaves the rest
+unlabelled. This is what makes the `Parser` interface's lookahead **`NodeType`** rather
+than `HasNode`: a comment opener and a string opener are both `*Opener`, so a lookahead
+reporting mere presence cannot answer the question it exists for.
+
+*Two heuristics were considered and refused.* Testing whether the group closes on a
+newline needs no configuration and works for Python and YAML — and misses **every block
+comment**, with Pascal already in the shipped tables having nothing but block comments.
+A generalization exactly two languages wide. Injecting a predicate from the schema
+avoids the reversal below but consolidates nothing.
+
+**It reverses neither `R62` nor `R146`** — *this session claimed it reversed both, and Bill
+asked the question that disproved it: does any bracket-parser logic involve comments?* It
+does not. The only mentions of "comment" in `parser.go` sit inside one doc comment
+explaining that restricted groups cover strings and comments alike.
+
+- **`R62` stands untouched.** Its claim is that comments need no comment-specific
+  *machinery* — they are ordinary parse-restricted groups, "a string is the same shape with
+  different markers". `Kind` adds no parsing behaviour, so that stays exactly true.
+- **`R146` keeps its number and gets edited text.** Its claim — *recognizing which groups
+  are comments is the language layer's business, not `sdom`'s* — is **unchanged**; the
+  indent parser or schema still does the marking. Only its *mechanism* moves, from
+  string-matching an opener at read time to writing the fact into the table. Claim
+  unchanged, wording changed: Item 8's `R76` precedent exactly.
+
+**DECIDED (Bill, 2026-09-01): the kind string itself lives on `IndentLang`**, and the
+bracket table's groups are marked with it. *"I suspect comment kind will always be
+`comment`, but we can put it in indent lang."*
+
+**That placement is what keeps `sdom` ignorant, which is a better reason than the value
+varying.** Had `sdom`'s indent parser written `if g.Kind == "comment"`, the layering would
+be gone — `sdom` would know what a comment is. Comparing two configured strings, it never
+spells the word.
+
+So the opacity rule is not *"`Kind` is never read by parser logic"*, which is now false, but:
+
+> The **bracket** parser never reads `Kind`. The **indent** parser reads it only by
+> comparing against a value its own language supplied. `sdom` therefore holds no comment
+> knowledge — only *groups matching this configured kind are transparent to indentation*.
+
+`sdom/schema` may spell `"comment"` freely, being the language layer; only `sdom` may not.
+**No `KindComment` constant in `sdom`** — that would restore exactly the nominal knowledge
+this avoids.
+
+*Three consequences.* The **aliasing hazard dissolves** when kinds are set at declaration —
+`LangPython` declares `Kind` inline, with no runtime write to a shared `Brackets` array; it
+returns only if someone marks an existing brace table at runtime, so the rule is *mark at
+declaration, or copy the slice first*. A **single string suffices** rather than a list,
+since one kind value already covers several groups (Go's `//` and `/*` alike). And the
+field's role is *the kind whose lines do not change the level*, so a name like
+`TransparentKind` would put the last "comment" in `sdom` out of reach — cosmetic, and
+unlike *lexer* it imports no wrong model.
+
+**Export-surface finding, the third:** `BracketLang.groupFor` is **unexported**, so
+`sdom/schema` cannot reach a group from an opener at all. Deleting `Lang.Comments` needs
+`sdom` to export `GroupFor`, or a narrower `KindOf(opener string) string`. After
+`BracketContext` having no `Doc()`, this is the two-package decision predicting itself
+again — *driving the machinery from outside is what finds the accessors the export surface
+is missing.*
+
+What it still buys is the consolidation: it **deletes** `sdom/schema`'s `Lang.Comments`
+rather than duplicating it onto `IndentLang`, because two independent consumers were
+re-deriving by string-match what the table can state once.
+
+*Two constraints on the shape, both from decisions already in force:*
+
+- **`Kind` goes on the group, never on the node.** Item 2 refused a group pointer on
+  marker nodes because `Equals` would compare it; a `Kind` copied onto a node has the
+  identical defect. The lookup is `lang.groupFor(text).Kind`, the path `closes()` already
+  takes.
+- **Marking must not mutate a shared table.** `LangTypeScript = LangJavaScript` copies the
+  struct header while both share one `Brackets` backing array, so a runtime write to one
+  marks the other, silently and across consumers. Either the shipped tables carry `Kind` at
+  declaration, or a parser that marks copies the slice first.
+
+*What Item 5 owes when it implements this:* edit `R146`'s text, and reconcile the three
+prose sources that state the old **mechanism** — `specs/declaration-schemas.md`,
+`design/crc-DeclSchema.md`, `sdom/schema/schema.go` — plus a note at Item 4's decision in
+this document. `specs/bracket-parser.md` and `sdom/bracket.go` say *there is no comment
+configuration* about the parser, and both **stand**. No retirements.
+
+*The reasoning, the measurements and the worked examples are in `.scratch/INDENTS.md`.
+The calls are here.*
 
 **DECIDED (Bill, 2026-08-27): YAML is its own DOM, reusing this mechanism — not a
 mode on the markdown or code one.** It shares the indent rule and shares no
