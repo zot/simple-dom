@@ -27,7 +27,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-Marker.md → `sdom/marker.go`
 - [ ] crc-ParserState.md → `sdom/parser.go`
 - [ ] crc-Parser.md → `sdom/parser.go`
-- [x] crc-BracketParser.md → `sdom/parser.go`
+- [x] crc-BracketParser.md → `sdom/bracket_parser.go`
 - [ ] crc-IndentLang.md → `sdom/indent.go`, `sdom/lang.go`
 - [ ] crc-IndentParser.md → `sdom/indent.go`
 - [ ] crc-IndentContext.md → `sdom/indent.go`
@@ -45,8 +45,8 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 ### Sequences
 - [x] seq-mutate.md → `sdom/mutate.go`, `sdom/doc.go`
 - [x] seq-stamp.md → `sdom/doc.go`
-- [ ] seq-collaborate.md → `sdom/parser.go`
-- [x] seq-parse.md → `sdom/parser.go`
+- [x] seq-collaborate.md → `sdom/parser.go`, `sdom/bracket_parser.go`
+- [x] seq-parse.md → `sdom/bracket_parser.go`
 - [ ] seq-indent.md → `sdom/indent.go`
 - [x] seq-pair.md → `sdom/context.go`
 - [x] seq-stencil.md → `sdom/stencil.go`
