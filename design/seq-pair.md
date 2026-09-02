@@ -27,10 +27,17 @@ checked rather than believed.
 
 ## 2. The independent answer
 
-2. The same question, asked a second way
-   2.1. Scan forward from the node, skipping **whole bracket pairs** rather than
-        descending into them
-   2.2. The first unmatched opener encountered is the enclosing opener
-   2.3. That answer is reached without consulting the index at all
-   2.4. It must agree with the index. **This second path is the point** — an index
-        that nothing can contradict is an assertion rather than a fact
+2. The same question, asked from outside
+   2.1. A consumer walks the flat array from the start, keeping its own stack of
+        open openers — the source and the table are all it needs
+   2.2. At each node the innermost opener still unclosed is that node's enclosing
+        opener; a closer pops instead, and records none
+   2.3. Whether a closer *belongs* to the opener on top is decided from the
+        **opener's own bytes** through the table. Without that a stray closer,
+        which the any-close fallback emits unpaired, is paired here and the two
+        answers differ on every unbalanced file
+   2.4. No index is consulted anywhere in this, which is what makes the answer
+        independent of the one it checks
+   2.5. It must agree with what the context reports. **That is the point** — an
+        index nothing outside can contradict is an assertion rather than a fact,
+        and tools that query documents by walking links need the stronger thing

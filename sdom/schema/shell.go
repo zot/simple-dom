@@ -22,7 +22,7 @@ var shellAssignRe = regexp.MustCompile(`(?:^|[\n;])[ \t]*(?P<name>[\pL_][\pL\pN_
 var shellTailRe = regexp.MustCompile(`[\pL_][\pL\pN_]*$`)
 
 // ShellLang is the Shell schema: no keyword for either shape it recognizes.
-var ShellLang = Lang{Bracket: &sdom.LangShell, Comments: []string{"#"}}
+var ShellLang = Lang{Bracket: &sdom.LangShell}
 
 const shellSeps = "\n;"
 

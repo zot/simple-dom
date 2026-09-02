@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+// parse drives a BracketParser over src and hands back the document with the
+// context it filled — the pair every test here wants, which the API deliberately
+// splits so that no caller type-asserts a context back out of a return value.
+func parse(src string, base int, lang *BracketLang) (*Doc, *BracketContext) {
+	bp := NewBracketParser(lang)
+	return Parse(src, base, bp), bp.Context()
+}
+
 // stream renders a document's node array compactly for assertions: O/C/S for the
 // marker kinds, T for text, each followed by its quoted bytes.
 func stream(d *Doc) string { return nodeStream(d.Nodes()) }
@@ -45,7 +53,7 @@ func codeLang() *BracketLang {
 // want, returning the document for any further assertions.
 func assertStream(t *testing.T, lang *BracketLang, src, want string) *Doc {
 	t.Helper()
-	d, _ := Parse(src, 0, lang)
+	d, _ := parse(src, 0, lang)
 	if got := stream(d); got != want {
 		t.Errorf("%q:\n  got  %s\n  want %s", src, got, want)
 	}
@@ -97,7 +105,7 @@ func TestWordMarkersRespectBoundaries(t *testing.T) {
 
 // CRC: crc-BracketParser.md | Seq: seq-parse.md#1.3.3 | R72
 func TestSeparatorsOnlyInsideTheirGroup(t *testing.T) {
-	d, _ := Parse("else if x then y else z fi", 0, &LangShell)
+	d, _ := parse("else if x then y else z fi", 0, &LangShell)
 	got := stream(d)
 	if strings.Count(got, `S"else"`) != 1 {
 		t.Fatalf("expected exactly one separator else; got\n  %s", got)
@@ -117,7 +125,7 @@ func TestStrayCloserLandsAsABracket(t *testing.T) {
 // The guarantee that makes unknown input safe.
 func TestTheParseNeverStalls(t *testing.T) {
 	src := "$ \x00 \xff\xfe unknown ~`!@#%^&*"
-	d, _ := Parse(src, 0, codeLang())
+	d, _ := parse(src, 0, codeLang())
 	if got, err := d.Render(); err != nil || got != src {
 		t.Fatalf("unrecognized input must still round-trip (err %v)", err)
 	}
@@ -127,7 +135,7 @@ func TestTheParseNeverStalls(t *testing.T) {
 // An unbalanced file drops no bytes.
 func TestUnclosedGroupClosesAtEndOfInput(t *testing.T) {
 	for _, src := range []string{"func f() {", `s := "unterminated`, "// trailing", "`raw"} {
-		d, _ := Parse(src, 0, &LangGo)
+		d, _ := parse(src, 0, &LangGo)
 		checkCovers(t, d, src, fmt.Sprintf("%q", src))
 	}
 }
@@ -163,7 +171,7 @@ func TestEscapeConsumesItselfAndTheNextByte(t *testing.T) {
 		}}
 	}
 	withEsc := assertStream(t, stringLang(`\`), src, `O"\"" T"a\\\"b" C"\""`)
-	withoutEsc, _ := Parse(src, 0, stringLang(""))
+	withoutEsc, _ := parse(src, 0, stringLang(""))
 	if stream(withEsc) == stream(withoutEsc) {
 		t.Fatalf("disabling the escape changed nothing, so the escape does nothing")
 	}
@@ -179,11 +187,11 @@ func TestAllowedInnerReachesBackIntoCodeMode(t *testing.T) {
 // CRC: crc-BracketGroup.md | R66
 // The dual, and the reason it is not optional.
 func TestAllowedParentSuppressesOutsideItsContext(t *testing.T) {
-	top, _ := Parse("${x}", 0, &LangJavaScript)
+	top, _ := parse("${x}", 0, &LangJavaScript)
 	if got, want := stream(top), `T"$" O"{" T"x" C"}"`; got != want {
 		t.Fatalf("at top level ${ must be a $ then a {:\n  got  %s\n  want %s", got, want)
 	}
-	inner, _ := Parse("`${x}`", 0, &LangJavaScript)
+	inner, _ := parse("`${x}`", 0, &LangJavaScript)
 	if !strings.Contains(stream(inner), `O"${"`) {
 		t.Fatalf("inside a template ${ must open an interpolation; got\n  %s", stream(inner))
 	}
@@ -219,7 +227,7 @@ func TestRecognitionCountPerLanguage(t *testing.T) {
 			map[string]int{"O`": 2, "C`": 2, "O${": 2, "C}": 2, "O//": 1, "C\n": 1}},
 	}
 	for _, c := range cases {
-		d, _ := Parse(c.src, 0, c.lang)
+		d, _ := parse(c.src, 0, c.lang)
 		got := map[string]int{}
 		for _, n := range d.Nodes() {
 			var kind string
@@ -251,7 +259,7 @@ func TestByteRoundTripPerLanguageOverTheCorpus(t *testing.T) {
 	langs := shippedLangs()
 	for path, src := range corpus(t) {
 		for name, lang := range langs {
-			d, _ := Parse(src, 0, lang)
+			d, _ := parse(src, 0, lang)
 			checkCovers(t, d, src, fmt.Sprintf("%s under %s", path, name))
 		}
 	}

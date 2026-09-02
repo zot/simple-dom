@@ -1,5 +1,5 @@
 # BracketLang
-**Requirements:** R58, R59, R60, R62, R68, R70, R121
+**Requirements:** R58, R59, R60, R62, R68, R70, R121, R169, R170, R171, R172, R173
 
 A language's whole bracket table, and nothing else. Supporting a new language is
 adding an entry, not writing code.
@@ -33,6 +33,19 @@ field of `BracketGroup` is dead code and the recognition count has languages tha
 recognize something; and they now serve **the languages mini-spec reads**, with
 Python following the indent parser. `LangPascal` earns its place under the first
 job alone.
+
+- **`LangPython` is shipped, and is the first `IndentLang`.** It is also the only
+  table modelling string **prefixes**, and only the `f` forms get groups: they
+  interpolate, so they are restricted with `{` as the one escape hatch. `r`, `b`
+  and `u` need none — the prefix letter falls through as text and the quote that
+  follows opens the ordinary group
+- **Raw does not mean unescaped.** A backslash escapes the closing quote even in a
+  raw string, so every Python string group carries the same `Escape` and raw needs
+  no group of its own
+- **The `f` groups come first, longest quote form first**, so `f"""` is matched
+  before `f"`. A plain `"""` never competes: at the `f` it cannot match at all
+- **Interpolation needs no group.** `AllowedInner` names Python's own code brace,
+  so the inside of `{…}` is full code mode and a dict display parses like any other
 
 ## Collaborators
 - BracketGroup: its entries

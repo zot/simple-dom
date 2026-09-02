@@ -11,13 +11,21 @@ import (
 	"github.com/zot/simple-dom/sdom"
 )
 
+// parse drives a bracket parser over src and hands back the document with its
+// context — and driving sdom from OUTSIDE it is what keeps its export surface
+// honest, which is why the schemas live in their own package.
+func parse(src string, base int, lang *sdom.BracketLang) (*sdom.Doc, *sdom.BracketContext) {
+	bp := sdom.NewBracketParser(lang)
+	return sdom.Parse(src, base, bp), bp.Context()
+}
+
 type pass func(*sdom.Doc, *sdom.BracketContext) error
 
 // decls runs a schema and reports what it found as "kw[name name] ", so a test
 // asserts on the whole outcome rather than on a count.
 func decls(t *testing.T, src string, lang *sdom.BracketLang, p pass) string {
 	t.Helper()
-	d, ctx := sdom.Parse(src, 0, lang)
+	d, ctx := parse(src, 0, lang)
 	if err := p(d, ctx); err != nil {
 		t.Fatalf("pass: %v", err)
 	}
@@ -157,7 +165,7 @@ func TestGroupedDeclarationYieldsEveryName(t *testing.T) {
 // identically and is wrong, so only an assertion about the node's own bytes sees it.
 func TestANameIsSlicedOutOfTheMiddle(t *testing.T) {
 	src := "func /* a */ foo /* b */ (x) {\n}\n"
-	d, ctx := sdom.Parse(src, 0, &sdom.LangGo)
+	d, ctx := parse(src, 0, &sdom.LangGo)
 	if err := Go(d, ctx); err != nil {
 		t.Fatalf("pass: %v", err)
 	}
@@ -198,8 +206,8 @@ func TestADeclarationPassIsAdditive(t *testing.T) {
 			t.Fatalf("%s: %v", f, err)
 		}
 		src := string(b)
-		plain, _ := sdom.Parse(src, 0, &sdom.LangGo)
-		d, ctx := sdom.Parse(src, 0, &sdom.LangGo)
+		plain, _ := parse(src, 0, &sdom.LangGo)
+		d, ctx := parse(src, 0, &sdom.LangGo)
 		if err := Go(d, ctx); err != nil {
 			t.Fatalf("%s: %v", f, err)
 		}

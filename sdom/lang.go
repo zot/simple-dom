@@ -17,8 +17,8 @@ package sdom
 // LangGo exercises code brackets, both comment forms, a string with an escape,
 // and a raw string without one.
 var LangGo = BracketLang{Brackets: []BracketGroup{
-	{Open: []string{"//"}, Close: []string{"\n"}, AllowedInner: []string{}},
-	{Open: []string{"/*"}, Close: []string{"*/"}, AllowedInner: []string{}},
+	{Open: []string{"//"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"/*"}, Close: []string{"*/"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
 	{Open: []string{"'"}, Close: []string{"'"}, Escape: `\`, AllowedInner: []string{}},
 	{Open: []string{"`"}, Close: []string{"`"}, AllowedInner: []string{}},
@@ -30,7 +30,7 @@ var LangGo = BracketLang{Brackets: []BracketGroup{
 // CRC: crc-BracketLang.md | R121, R72
 // LangShell exercises word brackets with separators, which nothing else does.
 var LangShell = BracketLang{Brackets: []BracketGroup{
-	{Open: []string{"#"}, Close: []string{"\n"}, AllowedInner: []string{}},
+	{Open: []string{"#"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
 	{Open: []string{"'"}, Close: []string{"'"}, AllowedInner: []string{}},
 	{Open: []string{"if"}, Separators: []string{"then", "elif", "else"}, Close: []string{"fi"}},
@@ -45,8 +45,8 @@ var LangShell = BracketLang{Brackets: []BracketGroup{
 // LangPascal exercises the other word-bracket shape, and a language whose "{" is
 // a comment rather than a code bracket.
 var LangPascal = BracketLang{Brackets: []BracketGroup{
-	{Open: []string{"(*"}, Close: []string{"*)"}, AllowedInner: []string{}},
-	{Open: []string{"{"}, Close: []string{"}"}, AllowedInner: []string{}},
+	{Open: []string{"(*"}, Close: []string{"*)"}, AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"{"}, Close: []string{"}"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"'"}, Close: []string{"'"}, AllowedInner: []string{}},
 	{Open: []string{"begin"}, Close: []string{"end"}},
 	{Open: []string{"("}, Close: []string{")"}},
@@ -58,8 +58,8 @@ var LangPascal = BracketLang{Brackets: []BracketGroup{
 // together: a template literal is parse-restricted with one escape hatch, and the
 // interpolation that hatch opens is recognized nowhere else.
 var LangJavaScript = BracketLang{Brackets: []BracketGroup{
-	{Open: []string{"//"}, Close: []string{"\n"}, AllowedInner: []string{}},
-	{Open: []string{"/*"}, Close: []string{"*/"}, AllowedInner: []string{}},
+	{Open: []string{"//"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"/*"}, Close: []string{"*/"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"${"}, Close: []string{"}"}, AllowedParent: []string{"`"}},
 	{Open: []string{"`"}, Close: []string{"`"}, Escape: `\`, AllowedInner: []string{"${"}},
 	{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
@@ -91,8 +91,8 @@ var LangTypeScript = LangJavaScript
 // the first match wins; and `elseif` precedes `else` among the separators, since
 // `else` is a prefix of it.
 var LangLua = BracketLang{Brackets: []BracketGroup{
-	{Open: []string{"--[["}, Close: []string{"]]"}, AllowedInner: []string{}},
-	{Open: []string{"--"}, Close: []string{"\n"}, AllowedInner: []string{}},
+	{Open: []string{"--[["}, Close: []string{"]]"}, AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"--"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"[["}, Close: []string{"]]"}, AllowedInner: []string{}},
 	{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
 	{Open: []string{"'"}, Close: []string{"'"}, Escape: `\`, AllowedInner: []string{}},
@@ -103,3 +103,56 @@ var LangLua = BracketLang{Brackets: []BracketGroup{
 	{Open: []string{"{"}, Close: []string{"}"}},
 	{Open: []string{"["}, Close: []string{"]"}},
 }}
+
+// CRC: crc-IndentLang.md | R169, R170, R171, R172, R173
+//
+// LangPython is the first IndentLang, and the only table modelling string PREFIXES.
+//
+// Only the f forms get groups, because only they change how the text parses: an
+// f-string interpolates, so it is restricted with "{" as its one escape hatch —
+// naming Python's OWN code brace, so the inside of {…} is full code mode and a dict
+// display parses like any other. r, b and u need nothing: the prefix letter falls
+// through as text and the quote that follows opens the ordinary group.
+//
+// Raw does not mean unescaped. `r"\""` compiles and `r"\"` does not, so a backslash
+// escapes the closing quote even in a raw string — a lexical rule rather than a
+// semantic one — and every string group carries the same Escape.
+//
+// All ten f spellings are listed rather than the six strictly necessary: rf" would
+// parse without one, since r falls through and f" matches at the next byte, but the
+// prefix would then straddle two nodes and a literal is one thing.
+//
+// Order: f groups first, longest quote form first, so f""" is matched before f".
+// A plain """ never competes — at the f it cannot match at all.
+var LangPython = IndentLang{
+	BracketLang: BracketLang{Brackets: []BracketGroup{
+		{Open: []string{"#"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
+
+		{Open: []string{`f"""`, `F"""`, `fr"""`, `fR"""`, `Fr"""`, `FR"""`, `rf"""`, `rF"""`, `Rf"""`, `RF"""`},
+			Close: []string{`"""`}, Escape: `\`, AllowedInner: []string{"{"}},
+		{Open: []string{"f'''", "F'''", "fr'''", "fR'''", "Fr'''", "FR'''", "rf'''", "rF'''", "Rf'''", "RF'''"},
+			Close: []string{"'''"}, Escape: `\`, AllowedInner: []string{"{"}},
+		{Open: []string{`f"`, `F"`, `fr"`, `fR"`, `Fr"`, `FR"`, `rf"`, `rF"`, `Rf"`, `RF"`},
+			Close: []string{`"`}, Escape: `\`, AllowedInner: []string{"{"}},
+		{Open: []string{"f'", "F'", "fr'", "fR'", "Fr'", "FR'", "rf'", "rF'", "Rf'", "RF'"},
+			Close: []string{"'"}, Escape: `\`, AllowedInner: []string{"{"}},
+
+		{Open: []string{`"""`}, Close: []string{`"""`}, Escape: `\`, AllowedInner: []string{}},
+		{Open: []string{"'''"}, Close: []string{"'''"}, Escape: `\`, AllowedInner: []string{}},
+		{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
+		{Open: []string{"'"}, Close: []string{"'"}, Escape: `\`, AllowedInner: []string{}},
+
+		{Open: []string{"("}, Close: []string{")"}},
+		{Open: []string{"["}, Close: []string{"]"}},
+		{Open: []string{"{"}, Close: []string{"}"}},
+	}},
+
+	// CPython expands a tab to the next multiple of eight.
+	Tab: 8,
+
+	// The Kind this table marks its comments with. sdom compares this against a
+	// group's label and never learns what the word means.
+	Transparent: "comment",
+
+	Continuation: `\`,
+}

@@ -1,13 +1,16 @@
 # BracketParser
-**Requirements:** R57, R72, R73, R74, R75, R76, R77, R78
+**Requirements:** R57, R72, R73, R74, R75, R76, R77, R78, R165, R166, R192
 
 The parser. It walks a source once and appends nodes to the document in the
 order it meets them.
 
 ## Knows
-- the source and its position in it
+- its language table, its `BracketContext`, and its stack of open openers — all
+  three being **its own** rather than the walk's, since the walk holds no language
 - the group currently open, which it receives rather than looks up — the node
   driving the loop *is* the enclosing context
+
+The source and the position belong to `ParserState`, which it is handed.
 
 ## Does
 - parses in **code mode**: recognizes every group's openers subject to
@@ -32,12 +35,19 @@ order it meets them.
 - **A group left open at end of input closes there**, with no bytes dropped
 - **Whitespace is not a node of its own.** A text run is everything between two recognized
   markers, not a run of non-whitespace. A layer wanting line or indent boundaries
-  scans a text node for them and splits only if it wants them addressable
+  contributes a parser to the same pass and emits them where they occur, rather than
+  splitting text afterwards
+- **It is a `Parser`**, and it **takes the loop** on an opener — recursing until the
+  matching closer. That is what makes a restricted group's exclusivity structural
+  rather than a flag, and what leaves a parser registered only in the outermost loop
+  with no position offered inside a group at all
 
 ## Collaborators
+- ParserState: the walk it is handed; the source, the position and `Emit`
 - BracketLang / BracketGroup: the table it parses by
-- BracketContext: carries the language, and receives the links it discovers
+- BracketContext: the index it hands to a caller, and which it does not write to
 - Doc: receives the nodes, in order
 
 ## Sequences
 - seq-parse.md
+- seq-collaborate.md

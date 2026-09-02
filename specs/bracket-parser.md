@@ -24,6 +24,8 @@ type BracketGroup struct {
 
     AllowedInner  []string // nil = code mode; non-nil (even empty) = parse-restricted
     AllowedParent []string // nil = anywhere; non-nil = only inside these openers
+
+    Kind string // an uninterpreted label for a layer above; never read here
 }
 ```
 
@@ -32,6 +34,13 @@ closing `\n`; a block comment opens `/*` and closes `*/`. Both are
 parse-restricted, which is exactly what makes a comment non-nesting and its
 interior literal. A language whose block comments *do* nest says so by listing its
 own opener in `AllowedInner`.
+
+**`Kind` does not change that, because this parser never reads it.** It is an
+uninterpreted string carried through for a layer above — indent scope needs to know
+which groups are transparent to the level, and no property of a group's *shape*
+answers that, since a comment and a string are the same shape with different markers.
+A label the parser stores and ignores is not a mode: the parsing rules below are
+identical whatever it says, and a language that labels nothing parses the same.
 
 ### The two mode fields
 
@@ -73,6 +82,8 @@ Tables are **Go values**, exported from the package:
 - **`LangTypeScript`** — the same brackets as JavaScript; types add none.
 - **`LangLua`** — `function`/`do`/`if` … `end`, `repeat`/`until`, `[[ ]]` long
   strings and `--[[ ]]` block comments.
+- **`LangPython`** — the first `IndentLang`, and the only table modelling string
+  **prefixes**. See below.
 
 **The set has two jobs, and it used to have one.** It still covers the mechanism:
 between them every field of `BracketGroup` is live, so no mode is dead code and the
@@ -81,6 +92,39 @@ recognition count has languages that actually recognize something. It now also
 Shell, with Python following the indent parser. `LangPascal` earns its place under
 the first job alone. A consumer needing a language outside the set still constructs
 its own `BracketLang`.
+
+### Python's string prefixes, and why only some are modelled
+
+Python writes a string as an optional prefix, then one of four quote forms —
+`"""`, `'''`, `"`, `'`. The prefixes are `r`, `b`, `u`, `f` and the legal pairs of
+`f` or `b` with `r`, in either order and either case.
+
+**Only the `f` forms get groups**, because only they change how the text parses: an
+f-string interpolates, so it is parse-restricted **with `{` as its one escape hatch**
+— the same shape as a JavaScript template literal. Everything else is a plain
+restricted group whatever its prefix, so `r`, `b` and `u` need nothing: the prefix
+letter falls through as text and the quote that follows opens the ordinary group. The
+string still parses correctly; only the prefix sits outside the literal's node.
+
+**Raw does not mean unescaped.** `r"\""` compiles and `r"\"` does not — a backslash
+still escapes the closing quote even in a raw string, which is a lexical rule rather
+than a semantic one. So every string group carries the same `Escape`, and raw strings
+need no group of their own.
+
+**The `f` groups come first, longest quote form first**, so `f"""` is matched before
+`f"`. The plain forms follow under the ordering they already need, `"""` before
+`"`. Groups are tried in order and openers are matched at the position the parse has
+reached, so a plain `"""` never competes with `f"""`: at the `f` it cannot match at
+all.
+
+**Interpolation needs no group of its own.** `AllowedInner` names `{`, which is
+already Python's code-brace group — so the inside of `{…}` is full code mode, and a
+dict display within an interpolation parses like any other.
+
+**All ten `f` spellings are listed rather than the six that are strictly necessary.**
+`rf"` would parse correctly without one, because `r` falls through as text and `f"`
+matches at the next byte; but the prefix would then straddle two nodes, and a literal
+is one thing.
 
 **They are code, not a config-file format**, and `sdom` ships no loader for one.
 The decisive reason is that **`nil` and an empty slice are semantically distinct
@@ -92,6 +136,18 @@ data that changes rarely and is written by developers.
 
 A consumer that needs *per-project* language settings manages its own
 configuration. Mini-spec already does this, in `.minispec/config.yaml`.
+
+## How it is driven
+
+The bracket parser is one implementation of the **`Parser`** interface — see
+[the parser protocol](parser-protocol.md), which owns the entry point, the walk, and
+the rule for when a position was not recognized. What belongs here is only what this
+parser recognizes.
+
+It **takes the loop** on an opener, recursing until the matching closer, which is
+what makes a restricted group's exclusivity structural rather than a flag — and what
+lets a layer registered in the outermost loop, such as indent scope, be offered no
+position inside a group at all.
 
 ## Parsing rules
 
@@ -109,9 +165,11 @@ configuration. Mini-spec already does this, in `.minispec/config.yaml`.
   accounted for; nothing is dropped.
 
 **Whitespace is not a node of its own.** It folds into text, so a text run is *everything
-between two recognized markers* rather than a run of non-whitespace. A layer that
-needs line or indent boundaries — Item 5 — scans a text node for them and splits
-it only if it wants them addressable.
+between two recognized markers* rather than a run of non-whitespace. A layer that needs
+line or indent boundaries **contributes a parser to the same pass** and emits them where
+they occur — see [the parser protocol](parser-protocol.md). It does not split text
+afterwards: a boundary is per line rather than per declaration, and re-carving them one
+mutation window at a time is quadratic in a way the pass is not.
 
 ## Output
 
@@ -160,5 +218,9 @@ rebuilds when the stamp is stale.
 **How they are stored is not part of this contract.** Whether the context keeps one
 map or several is its own business; what it owes is the answers above.
 
-**The index is checkable rather than merely believed.** A forward scan that skips
-whole bracket pairs finds a node's enclosing opener independently, and must agree.
+**The index is checkable rather than merely believed.** Every link is derivable
+from the flat array alone, so a consumer walking it with its own stack reaches the
+same answers — the index is a convenience over structure the array already carries,
+never a fact only the index holds. That is also why the parse records nothing: one
+derivation, on demand, and nothing to fall out of step with.
+

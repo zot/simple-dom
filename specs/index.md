@@ -17,8 +17,12 @@ consume the parsing half.
   `Split` / `Merge` as re-granulation.
 - [document.md](document.md) — `Doc`, the flat array, the structural generation,
   and the mutation window.
+- [parser-protocol.md](parser-protocol.md) — one source, one pass, several parsers:
+  the walk, the `Parser` interface, and the entry point.
 - [bracket-parser.md](bracket-parser.md) — the table-driven parser, its two mode
   fields, and the pairing links the schema's context owns.
+- [indent-parser.md](indent-parser.md) — indentation as scope, significant only at
+  bracket depth 0, and the frame links its context owns.
 - [declarations.md](declarations.md) — the declaration machinery: the two typed
   node kinds, `Replace`, and the links a schema owns.
 - [stencils.md](stencils.md) — compounds that parse by regex: the builder a schema
@@ -51,6 +55,9 @@ None yet.
 
 - **The array is flat.** Nesting is never node children; it is links owned by the
   layer that needs them. A bracket group is not a node.
+- **One source, one pass.** A layer that needs its own nodes contributes a parser to
+  the same walk rather than splitting and re-carving the array afterwards. Nesting a
+  parser inside another is how a language composes them; the walk arbitrates nothing.
 - **Derived state is stamped, not registered.** A layer holding an index over
   document structure stamps itself with the document's structural generation and
   rebuilds when stale. The document knows nothing of what is above it.

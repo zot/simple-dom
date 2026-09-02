@@ -25,7 +25,12 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-BracketGroup.md → `sdom/bracket.go`
 - [x] crc-BracketLang.md → `sdom/bracket.go`, `sdom/lang.go`
 - [x] crc-Marker.md → `sdom/marker.go`
+- [ ] crc-ParserState.md → `sdom/parser.go`
+- [ ] crc-Parser.md → `sdom/parser.go`
 - [x] crc-BracketParser.md → `sdom/parser.go`
+- [ ] crc-IndentLang.md → `sdom/indent.go`, `sdom/lang.go`
+- [ ] crc-IndentParser.md → `sdom/indent.go`
+- [ ] crc-IndentContext.md → `sdom/indent.go`
 - [x] crc-BracketContext.md → `sdom/context.go`
 - [x] crc-StencilBuilder.md → `sdom/stencil.go`
 - [x] crc-Bool.md → `sdom/bound.go`
@@ -35,11 +40,14 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-GoSchema.md → `sdom/schema/golang.go`
 - [x] crc-LuaSchema.md → `sdom/schema/lua.go`
 - [x] crc-ShellSchema.md → `sdom/schema/shell.go`
+- [ ] crc-PythonSchema.md → `sdom/schema/python.go`
 
 ### Sequences
 - [x] seq-mutate.md → `sdom/mutate.go`, `sdom/doc.go`
 - [x] seq-stamp.md → `sdom/doc.go`
+- [ ] seq-collaborate.md → `sdom/parser.go`
 - [x] seq-parse.md → `sdom/parser.go`
+- [ ] seq-indent.md → `sdom/indent.go`
 - [x] seq-pair.md → `sdom/context.go`
 - [x] seq-stencil.md → `sdom/stencil.go`
 - [x] seq-declare.md → `sdom/declaration.go`, `sdom/schema/schema.go`
@@ -53,6 +61,9 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] test-BracketContext.md → `sdom/context_test.go`
 - [x] test-Languages.md → `sdom/lang_test.go`
 - [x] test-Stencil.md → `sdom/stencil_test.go`
+- [ ] test-Protocol.md → `sdom/protocol_test.go`
+- [ ] test-Indent.md → `sdom/indent_test.go`
+- [ ] test-PythonSchema.md → `sdom/schema/python_test.go`
 - [x] test-Declaration.md → `sdom/declaration_test.go`, `sdom/schema/declaration_test.go`
 - [x] test-DeclSchema.md → `sdom/schema/declaration_test.go`
 

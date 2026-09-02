@@ -189,7 +189,7 @@ func TestEqualsIgnoresTheParseItCameFrom(t *testing.T) {
 // enters a location, so varying it would change nothing (gap O9).
 func TestStructuralRoundTripThroughAReparse(t *testing.T) {
 	const src = "func f(a int) {\n\t// note\n\treturn 1\n}\n"
-	d, _ := Parse(src, 0, &LangGo)
+	d, _ := parse(src, 0, &LangGo)
 
 	var target *Text
 	for _, n := range d.Nodes() {
@@ -213,7 +213,7 @@ func TestStructuralRoundTripThroughAReparse(t *testing.T) {
 		t.Fatal(err)
 	}
 	const prefix = "// shifted\n"
-	reparsed, _ := Parse(prefix+out, 0, &LangGo)
+	reparsed, _ := parse(prefix+out, 0, &LangGo)
 	skip := 0
 	for _, n := range reparsed.Nodes() {
 		l := n.Location()

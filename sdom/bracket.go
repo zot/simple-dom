@@ -56,12 +56,26 @@ type BracketGroup struct {
 
 	AllowedInner  []string
 	AllowedParent []string
+
+	// R168: an uninterpreted label for a layer above; NEVER read here. Indent scope
+	// needs to know which groups are transparent to the level, and no property of a
+	// group's shape answers that — a comment and a string are the same shape with
+	// different markers. Storing and ignoring it is not a mode: the parsing rules
+	// are identical whatever it says, and a language that labels nothing parses the
+	// same. Nothing in this package may branch on it, or "there is no comment
+	// configuration" stops being true.
+	Kind string
 }
 
 // CRC: crc-BracketGroup.md | R64, R65, R67
 // Restricted reports parse-restricted mode. nil means code mode; non-nil, even
 // empty, means restricted — which is why this is a nil test and not a length one.
 func (g *BracketGroup) Restricted() bool { return g.AllowedInner != nil }
+
+// CRC: crc-BracketLang.md | R146
+// GroupFor resolves an opener string back to the group that owns it, exported so a
+// layer outside this package can read a group's Kind from a marker node it holds.
+func (l *BracketLang) GroupFor(open string) *BracketGroup { return l.groupFor(open) }
 
 // CRC: crc-BracketLang.md | R58
 // groupFor resolves an opener string back to the group that owns it, which is how

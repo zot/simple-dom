@@ -25,7 +25,7 @@ var luaDeclRe = regexp.MustCompile(
 // LuaLang is the Lua schema — the case that breaks anything written against Go,
 // because `function` is a BRACKET OPENER rather than text and the name it
 // introduces sits inside the group it opened.
-var LuaLang = Lang{Bracket: &sdom.LangLua, Comments: []string{"--", "--[["}}
+var LuaLang = Lang{Bracket: &sdom.LangLua}
 
 const luaSeps = "\n;"
 

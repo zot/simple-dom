@@ -32,13 +32,14 @@ language through the parse and **outlives** it to own the pairing links.
   structural generation and rebuilds when stale — so `Doc` keeps no registry and
   issues no callbacks, and reading the generation inside a mutation window refuses,
   which reaches this index without it knowing a guard exists
-- **The index is checkable, not merely believed.** A forward scan that skips whole
-  bracket pairs finds a node's enclosing opener **independently**, and must agree.
-  That second path is the point: an index nothing can contradict is an assertion
-- **Separators join that cross-derivation rather than riding along.** They are
-  recorded by the parse *and* recovered by the same stack walk that recovers the
-  pairing, and the two must agree. Letting the parse be the only writer is precisely
-  how a representation change loses `R87` without anything going red
+- **The index is checkable, not merely believed.** Every link is derivable from the
+  flat array alone, so a consumer walking it reaches the same answers. An index
+  nothing outside can contradict is an assertion
+- **It is the only derivation, and that is the simplification.** The parse records
+  nothing — one copy of a fact the array already implies, built on demand. What
+  checks it is a walk written *outside* the library, since an index verified by code
+  sharing its author and its helpers is verified by something liable to share its
+  misconceptions
 - **One index, not four.** The pairing, the enclosure and the declaration links live
   in a single `map[Node]BracketInfo` rather than four maps. It is a **flat value
   struct**, and it won on allocations rather than size: a boxed `NodeInfo` hierarchy

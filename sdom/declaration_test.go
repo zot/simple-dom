@@ -13,7 +13,7 @@ import (
 // and nothing about the bytes would say so.
 func TestReplaceKeepsPositionAndBumpsGeneration(t *testing.T) {
 	src := "func Index(a int) int {\n}\n"
-	d, _ := Parse(src, 0, &LangGo)
+	d, _ := parse(src, 0, &LangGo)
 	before := d.Generation()
 	n := d.Nodes()[0]
 	want := len(d.Nodes())
@@ -39,7 +39,7 @@ func TestReplaceKeepsPositionAndBumpsGeneration(t *testing.T) {
 // CRC: crc-MutationWindow.md | R125
 // Replace refuses outside a mutation window, like every other structural edit.
 func TestReplaceNeedsAWindow(t *testing.T) {
-	d, _ := Parse("a\n", 0, &LangGo)
+	d, _ := parse("a\n", 0, &LangGo)
 	n := d.Nodes()[0]
 	if err := d.Replace(n, NewDeclarationType("a\n", n.Location())); !errors.Is(err, ErrNotMutating) {
 		t.Errorf("got %v, want ErrNotMutating", err)
@@ -53,7 +53,7 @@ func TestReplaceNeedsAWindow(t *testing.T) {
 // "this keyword declares nothing", which is the plausible wrong answer IndexOf
 // already refuses on the same grounds.
 func TestStaleDeclarationsRefuse(t *testing.T) {
-	d, ctx := Parse("func Index(a int) int {\n}\n", 0, &LangGo)
+	d, ctx := parse("func Index(a int) int {\n}\n", 0, &LangGo)
 	kw := NewDeclarationType("x", Synthetic(1))
 	one := NewDeclarationName("y", Synthetic(1))
 	two := NewDeclarationName("z", Synthetic(1))
@@ -109,7 +109,7 @@ func TestDeclarationKindsAreDistinct(t *testing.T) {
 // stamps differ and the refusal is correct. The hole is a rebuild firing while they
 // agree.
 func TestDeclarationsSurviveALaterRebuild(t *testing.T) {
-	d, ctx := Parse("func Index(a int) int {\n}\n", 0, &LangGo)
+	d, ctx := parse("func Index(a int) int {\n}\n", 0, &LangGo)
 	kw := NewDeclarationType("func", Synthetic(4))
 	nm := NewDeclarationName("Index", Synthetic(5))
 
@@ -136,7 +136,7 @@ func TestDeclarationsSurviveALaterRebuild(t *testing.T) {
 // keeps nothing. Consolidating the maps turned it into a merge, because writing
 // entry-by-entry leaves untouched entries alone where assigning a whole map did not.
 func TestSetDeclarationsReplaces(t *testing.T) {
-	_, ctx := Parse("a\n", 0, &LangGo)
+	_, ctx := parse("a\n", 0, &LangGo)
 	first := NewDeclarationType("first", Synthetic(5))
 	second := NewDeclarationType("second", Synthetic(6))
 	nm := NewDeclarationName("n", Synthetic(1))

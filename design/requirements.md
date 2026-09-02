@@ -79,6 +79,39 @@
 - **R119:** A document's nodes must describe its source. Beyond the shared-parse check this is not verified, because the guard would cost more than the failure, which is loud in every other test.
 - **R120:** When both operands are faithful, a merged node's text is a slice of the document's source rather than a separate copy of it; when either is altered its bytes are not in the source, so a new string is unavoidable. The *values* are equal either way — what differs, and what is asserted, is whether the result shares the source's storage. *(See gap O12: whether the fast path also avoids building a string it discards is a separate claim, and an unmeasured one.)*
 
+## Feature: parser protocol
+**Source:** specs/parser-protocol.md
+
+- **R155:** One source is walked once, and several parsers may contribute nodes to that single
+  pass rather than a later layer splitting and re-carving the array.
+- **R156:** `ParserState` owns the walk — the position, the pending text and the nodes emitted so
+  far — and exposes `Src`, `Pos`, `SetPos`, `At`, `Emit` and `NodeCount`.
+- **R157:** `ParserState` mints and owns the parse's `Origin`, so a document produced by several
+  collaborating parsers carries exactly one.
+- **R158:** `ParserState` exposes `Emit` and `NodeCount` rather than the emitted node slice, so no
+  live array is handed to a parser.
+- **R159:** A `Parser` either recognizes something at the head of the input and emits it, or does
+  nothing at all.
+- **R160:** `Parser.NodeType` reports the kind of the node `Parse` would emit at this position
+  without emitting it, and reports separately that it would emit nothing — the two being different
+  claims.
+- **R161:** `Parse(src, base, parser)` returns only the document; each parser owns its own context,
+  which a caller reads from the parser it constructed.
+- **R162:** `ParserState` holds one parser, which may delegate to others. Composition and
+  precedence are the parser's own business and the walk arbitrates nothing.
+- **R163:** Each position is offered to the parser exactly once.
+- **R164:** A position counts as unrecognized only when **neither** the position **nor** the
+  emitted-node count changed, and the loop then takes one byte as text. Position alone misses a
+  zero-length node; node count alone misses a parser that advances without emitting.
+- **R165:** A parser may recognize one thing and return, leaving the loop to offer the next
+  position, or take the loop and recurse until its own terminator.
+- **R166:** A parser registered only in the outermost loop is offered no position inside a group,
+  which is what makes suppression structural rather than a check.
+- **R192:** `Parser.Done` is called once after the document is built, which is where a parser
+  binds a derived index to it — nothing earlier can, the nodes being emitted first.
+- **R167:** Progress is a byte or a node, so the loop terminates. A parser that emits at one
+  position without ever advancing is a parser bug and is stated rather than guarded.
+
 ## Feature: bracket parser
 **Source:** specs/bracket-parser.md
 
@@ -112,7 +145,10 @@
 - **R84:** Any node that is not a bracket marker knows its enclosing opener.
 - **R85:** The pairing links are owned by the parse context and never by `Doc`.
 - **R86:** The pairing links are a derived index: the context stamps itself with the document's structural generation and rebuilds when that stamp is stale.
-- **R87:** A forward scan that skips whole bracket pairs finds a node's enclosing opener independently, and must agree with the index.
+- **R87:** Every bracket link is derivable from the flat array alone: a consumer walking it with
+  its own stack reaches the same closer, opener, enclosing opener and separators the context
+  reports. The index is a convenience over structure the array already carries, never a fact
+  only the index holds.
 - **R121:** The package exports the language tables `LangGo`, `LangShell`, `LangPascal`,
   `LangJavaScript`, `LangTypeScript` and `LangLua`, chosen both so that every field of
   `BracketGroup` is exercised by at least one of them and so that the languages mini-spec reads
@@ -122,6 +158,52 @@
 - **R153:** A separator knows its opener.
 - **R154:** How the parse context stores its links is not part of its contract: what it owes is
   the answers, and whether it keeps one map or several is its own business.
+
+- **R168:** `BracketGroup` carries an uninterpreted `Kind` label, which the bracket parser never
+  reads and which leaves a group's shape and the parsing rules unchanged.
+- **R169:** `LangPython` is shipped, and is the first `IndentLang`.
+- **R170:** Only Python's `f`-prefixed string forms get groups of their own, parse-restricted with
+  `{` as the one escape hatch; other prefixes need none, since the prefix falls through as text
+  and the quote that follows opens the ordinary group.
+- **R171:** Every Python string group carries the same escape, because a backslash escapes the
+  closing quote even in a raw string.
+- **R172:** Python's `f` groups precede the plain forms, longest quote form first, so `f"""` is
+  matched before `f"`.
+- **R173:** Python's f-string interpolation names the language's own code brace in `AllowedInner`
+  and needs no group of its own, so the inside of `{…}` is full code mode.
+
+## Feature: indent scope
+**Source:** specs/indent-parser.md
+
+- **R174:** Indentation is significant only at bracket depth 0.
+- **R175:** `IndentLang` embeds `BracketLang` and adds `Tab`, `Transparent` and `Continuation`;
+  the type is the flag and there is no boolean.
+- **R176:** `Transparent` names a `Kind` value rather than a syntax, so this package compares two
+  configured strings and never learns what a comment is.
+- **R177:** An `Indent` node holds the leading whitespace of the line whose level it announces.
+- **R178:** One `Indent` node is emitted at every change of level and none where the level is
+  unchanged; consecutive lines at one column share the frame opened by the last change, and their
+  leading whitespace stays ordinary text.
+- **R179:** A non-empty indent-parsed source opens with a zero-length root `Indent`, emitted by the
+  indent parser when no node has yet been emitted; an empty source produces no nodes at all.
+- **R180:** A return to column 0 is a zero-length `Indent`, having no whitespace to own.
+- **R181:** A dedent is not a node of its own: the column is the level, so closing several levels
+  at once is one node with a smaller column.
+- **R182:** An `Indent` node's column is derived from its text with tabs expanded by `Tab`, and is
+  never stored.
+- **R183:** A blank line, and a line holding only groups of the `Transparent` kind, do not change
+  the level.
+- **R184:** A line following a `Continuation` marker is not indented, and the marker counts only at
+  bracket depth 0 — so one inside a comment group does not continue, and one inside a string needs
+  no rule because the group is still open at the next line start.
+- **R185:** An indent frame's parent is the nearest preceding `Indent` with a strictly smaller
+  column, so two frames at one column under one parent are siblings.
+- **R186:** The indent context answers a frame's parent and its direct children, and owns one index.
+- **R187:** Every indent link is derivable from the flat array alone: an `Indent` node carries its
+  own whitespace, so a consumer walking with a stack of open columns reaches the same parent and
+  children the context reports, needing no language knowledge to do it.
+- **R188:** A dedent to a column matching no open level parents to the nearest smaller column
+  rather than being refused, `sdom` being no syntax checker.
 
 ## Feature: stencils
 **Source:** specs/stencils.md
@@ -162,9 +244,7 @@
   changes membership, so it bumps the structural generation and requires an open mutation
   window.
 - **R126:** A `DeclarationType` holds no reference to its names; the declaration links live on
-  `BracketContext`. ~~beside the bracket pairing links~~ — *edited 2026-08-31: that phrase
-  described storage, which R154 says is not part of the contract, and it stops being true when
-  the links are folded into one index. The claim it qualified is unchanged.*
+  `BracketContext`.
 - **R127:** The declaration link is one-to-many: a keyword maps to every name it declares, one
   for a plain declaration and several for a group.
 - **R128:** `sdom` provides the declaration link map and a schema fills it in, because filling
@@ -199,7 +279,9 @@
   a repeated capture group reports only its last iteration.
 - **R141:** Declarations are sought over top-level nodes; scanning another depth is the same
   operation against a different node set.
-- **R142:** Indentation is not part of a declaration and gets no node.
+- **R142:** Indentation is not part of a declaration: a declaration has no indent field and no
+  indent node of its own. Where indentation carries scope it is a separate mechanism with its
+  own nodes, and not a declaration's business.
 - **R143:** Which declarations ought to carry a traceability comment is a reader's policy, not a
   schema's.
 - **R144:** Each schema carries its own recognition pass, and generalizing them into a shared
@@ -208,9 +290,9 @@
   and any interleaving, whenever it walks the array — backward to test whether a match begins
   a statement, and forward to find a name. Skipping a comment group backward is one hop, because
   a closer names its opener.
-- **R146:** Recognizing which groups are comments is a schema's own business: a comment and a
-  string are both parse-restricted and the language table does not distinguish them, so a schema
-  matches an opener against the comment markers it knows.
+- **R146:** Which groups are comments is the language layer's business, said once in the table: a
+  language marks its comment groups with a `Kind` and a schema reads that back from an opener. A
+  comment and a string remain the same shape, which is why no property of a group could answer it.
 - **R147:** The skip of R145 runs before every decision in the walk, not once at its start; a
   receiver group is recognized as an opener met after skipping, and is jumped to its closer
   before skipping again.
@@ -224,3 +306,9 @@
 - **R151:** Go's schema requires a func's name to reach its opening parenthesis without
   crossing a newline — not to abut it, since a space or a comment between them is legal while a
   comment carrying a newline is not; the rule binds func alone and no other schema inherits it.
+- **R189:** Python announces a declaration with `def` or `class` at a statement start, and the
+  name follows in the same text with no group intervening.
+- **R190:** Python's declarations sit at bracket depth 0 at any indent depth, indent frames not
+  being bracket groups, so the top-level predicate is unchanged.
+- **R191:** Which depths a language's declarations live at is a fact about that language rather
+  than a parameter, which is why recognition is a per-schema pass and not a shared driver setting.

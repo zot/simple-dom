@@ -200,7 +200,7 @@ func TestSplitThenMergeIsTheIdentity(t *testing.T) {
 // A document's base is metadata about its source, not part of any location.
 func TestOffsetsAreRelativeToTheDocumentsOwnSource(t *testing.T) {
 	const src = "alpha beta"
-	d, _ := Parse(src, 500, &BracketLang{})
+	d, _ := parse(src, 500, &BracketLang{})
 	if d.Base() != 500 {
 		t.Fatalf("precondition: the document carries a base of 500")
 	}
@@ -273,8 +273,8 @@ func TestDistinctOriginsAreDistinct(t *testing.T) {
 func TestOneOriginPerParse(t *testing.T) {
 	const src = "a {b} c"
 	lang := codeLang()
-	d1, c1 := Parse(src, 0, lang)
-	d2, c2 := Parse(src, 0, lang)
+	d1, c1 := parse(src, 0, lang)
+	d2, c2 := parse(src, 0, lang)
 
 	if c1.Origin() == c2.Origin() {
 		t.Fatalf("two parses of the same source must be two origins")

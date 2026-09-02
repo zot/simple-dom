@@ -3,7 +3,6 @@ package sdom
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -21,7 +20,7 @@ func TestPairingIsRecordedBothWays(t *testing.T) {
 		{Open: []string{"{"}, Close: []string{"}"}},
 		{Open: []string{"["}, Close: []string{"]"}},
 	}}
-	d, ctx := Parse("a {b [c] d} e", 0, lang)
+	d, ctx := parse("a {b [c] d} e", 0, lang)
 	var opens, closes []Node
 	for _, n := range d.Nodes() {
 		switch n.(type) {
@@ -45,7 +44,7 @@ func TestPairingIsRecordedBothWays(t *testing.T) {
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.3 | R84
 func TestEveryNodeKnowsItsEnclosingOpener(t *testing.T) {
-	d, ctx := Parse("a {b {c} d} e", 0, codeLang())
+	d, ctx := parse("a {b {c} d} e", 0, codeLang())
 	ns := d.Nodes()
 	outer, inner := ns[1], ns[3] // the two openers
 	want := map[int]Node{
@@ -76,39 +75,154 @@ func TestEveryNodeKnowsItsEnclosingOpener(t *testing.T) {
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#2 | R87
 //
-// The check that makes the index a fact rather than an assertion. The parse
-// records links from its own recursion; rebuild derives them again from the
-// finished flat array. Two independent derivations, over the whole corpus, under
-// every shipped language — including the many combinations where the language is
-// wrong for the file, which is exactly where a parser misbehaves.
+// independentLinks derives every bracket link from the flat array ALONE — a stack
+// of open openers, the source, and the table. No parse, no context, no index.
+//
+// This is the second derivation R87 promises a consumer can perform, and it lives
+// HERE rather than in the library on purpose: an index checked by code that shares
+// its author, its file and its helpers is checked by something liable to share its
+// misconceptions too. What the library owes is that the answer is reproducible from
+// the array; proving it is a consumer's job, and a test is a consumer.
+func independentLinks(d *Doc, lang *BracketLang) (closerOf, openerOf, enclosing map[Node]Node, seps map[Node][]Node) {
+	closerOf, openerOf, enclosing = map[Node]Node{}, map[Node]Node{}, map[Node]Node{}
+	seps = map[Node][]Node{}
+	var stack []Node
+	top := func() Node {
+		if len(stack) == 0 {
+			return nil
+		}
+		return stack[len(stack)-1]
+	}
+	// closes resolves the group from the OPENER'S OWN BYTES, never from anything
+	// recorded. Without it a stray closer — which the any-close fallback emits
+	// unpaired — would be paired here and the two answers would differ on every
+	// unbalanced file.
+	closes := func(opener, closer Node) bool {
+		ot, err := opener.Render()
+		if err != nil {
+			return false
+		}
+		g := lang.GroupFor(ot)
+		if g == nil {
+			return false
+		}
+		ct, err := closer.Render()
+		return err == nil && slices.Contains(g.Close, ct)
+	}
+	for _, n := range d.Nodes() {
+		switch n.(type) {
+		case *Closer:
+			// A closer records NO enclosing opener — it is paired with its own
+			// instead. A stray one, which the any-close fallback emits unpaired,
+			// records nothing at all and does not pop.
+			if o := top(); o != nil && closes(o, n) {
+				stack = stack[:len(stack)-1]
+				closerOf[o], openerOf[n] = n, o
+			}
+		case *Opener:
+			if e := top(); e != nil {
+				enclosing[n] = e
+			}
+			stack = append(stack, n)
+		case *Separator:
+			if e := top(); e != nil {
+				enclosing[n] = e
+				seps[e] = append(seps[e], n)
+			}
+		default:
+			if e := top(); e != nil {
+				enclosing[n] = e
+			}
+		}
+	}
+	return
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#2 | R87
+//
+// The check that makes the index a fact rather than an assertion. The context
+// derives its links from the finished array; this derives them again, from the same
+// array, with code the library does not share. Over the whole corpus under every
+// shipped language — including the many combinations where the language is wrong
+// for the file, which is exactly where a parser misbehaves.
+//
+// It reads the index through the PUBLIC accessors, because what R87 promises is
+// what a consumer can see.
 func TestIndexAgreesWithTheIndependentDerivation(t *testing.T) {
 	langs := shippedLangs()
 	for path, src := range corpus(t) {
 		for name, lang := range langs {
-			_, ctx := Parse(src, 0, lang)
-			fromParse := maps.Clone(ctx.info)
+			d, ctx := parse(src, 0, lang)
+			closerOf, openerOf, enclosing, seps := independentLinks(d, lang)
 
-			ctx.rebuild() // the second derivation, from the data rather than the recursion
-
-			if len(fromParse) != len(ctx.info) {
-				t.Fatalf("%s under %s: the parse recorded %d entries; the independent "+
-					"walk found %d", path, name, len(fromParse), len(ctx.info))
-			}
-			// Comparing the whole entry is what keeps EVERY link inside the
-			// cross-derivation. A field added later is covered by construction, and
-			// separators in particular cannot quietly become parse-only.
-			for n, want := range fromParse {
-				if !sameInfo(ctx.info[n], want) {
-					t.Fatalf("%s under %s: the two derivations disagree about a node", path, name)
+			for _, n := range d.Nodes() {
+				if got, want := ctx.Enclosing(n), enclosing[n]; got != want {
+					t.Fatalf("%s under %s: the two derivations disagree on an enclosing opener", path, name)
+				}
+				switch n.(type) {
+				case *Opener:
+					if got, want := ctx.Closer(n), closerOf[n]; got != want {
+						t.Fatalf("%s under %s: the two derivations disagree on a closer", path, name)
+					}
+					if got, want := ctx.Separators(n), seps[n]; !slices.Equal(got, want) {
+						t.Fatalf("%s under %s: the two derivations disagree on separators", path, name)
+					}
+				case *Closer:
+					if got, want := ctx.Opener(n), openerOf[n]; got != want {
+						t.Fatalf("%s under %s: the two derivations disagree on an opener", path, name)
+					}
 				}
 			}
 		}
 	}
 }
 
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#2 | R87
+//
+// The same guarantee, checked by a genuinely DIFFERENT algorithm rather than a
+// second stack walk: for each node, rescan from the start of the document counting
+// depth, and take the innermost opener still unclosed when the node is reached.
+//
+// It is O(n) per node, so it runs on a fixture rather than the corpus — and that is
+// the trade worth making. The corpus check above shares an idea with the library
+// even though it shares no code; this one shares neither, so it is the one that
+// would catch a mistake common to both.
+func TestTheIndexAgreesWithARescanPerNode(t *testing.T) {
+	d, ctx := parse("a {b [c] d} e (f) g", 0, codeLang())
+	ns := d.Nodes()
+	for i, n := range ns {
+		if _, isCloser := n.(*Closer); isCloser {
+			// A closer is paired with its opener rather than enclosed by one.
+			if got := ctx.Enclosing(n); got != nil {
+				t.Fatalf("node %d: a closer must record no enclosing opener", i)
+			}
+			continue
+		}
+		var stack []Node
+		for _, m := range ns[:i] {
+			switch m.(type) {
+			case *Opener:
+				stack = append(stack, m)
+			case *Closer:
+				if len(stack) > 0 {
+					stack = stack[:len(stack)-1]
+				}
+			}
+		}
+		var want Node
+		if len(stack) > 0 {
+			want = stack[len(stack)-1]
+		}
+		if got := ctx.Enclosing(n); got != want {
+			s, _ := n.Render()
+			t.Fatalf("node %d (%q): index says %v, a rescan says %v", i, s, got, want)
+		}
+	}
+}
+
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.5 | R86
 func TestStaleStampRebuildsAndFreshDoesNot(t *testing.T) {
-	d, ctx := Parse("a {b} c", 0, codeLang())
+	d, ctx := parse("a {b} c", 0, codeLang())
 	opener := d.Nodes()[1]
 
 	if ctx.Enclosing(d.Nodes()[2]) != opener {
@@ -133,7 +247,7 @@ func TestStaleStampRebuildsAndFreshDoesNot(t *testing.T) {
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.5.1 | R86
 // The context wrote no guard; it inherits one by reading the generation.
 func TestContextInheritsTheMutationGuard(t *testing.T) {
-	d, ctx := Parse("a {b} c", 0, codeLang())
+	d, ctx := parse("a {b} c", 0, codeLang())
 	n := d.Nodes()[2]
 	err := d.Mutate(func() error {
 		ctx.Enclosing(n) // reads the generation, which refuses inside the window
@@ -150,7 +264,7 @@ func TestContextInheritsTheMutationGuard(t *testing.T) {
 // CRC: crc-BracketContext.md | R85
 // The reason Doc does not own this.
 func TestDocumentWithNoBracketsCarriesNoLinks(t *testing.T) {
-	d, ctx := Parse("# A markdown heading\n\nSome prose.\n", 0, &BracketLang{})
+	d, ctx := parse("# A markdown heading\n\nSome prose.\n", 0, &BracketLang{})
 	if len(d.Nodes()) != 1 {
 		t.Fatalf("an empty table should produce one Text node, got %d", len(d.Nodes()))
 	}
@@ -163,7 +277,7 @@ func TestDocumentWithNoBracketsCarriesNoLinks(t *testing.T) {
 // The context carries the language it parsed with, and hands it back.
 func TestContextCarriesItsLanguage(t *testing.T) {
 	lang := codeLang()
-	_, ctx := Parse("a {b} c", 0, lang)
+	_, ctx := parse("a {b} c", 0, lang)
 	if ctx.Language() != lang {
 		t.Fatalf("the context must report the table it parsed with")
 	}
@@ -192,7 +306,7 @@ func TestAnOpenerKnowsItsSeparators(t *testing.T) {
 			[]string{"then", "elif", "then", "else"}},
 		{"a group with none", "{ echo hi; }\n", "{", nil},
 	} {
-		d, ctx := Parse(tc.src, 0, &LangShell)
+		d, ctx := parse(tc.src, 0, &LangShell)
 		// Force the independent walk to be what answers.
 		_ = d.Mutate(func() error { return nil })
 		ctx.rebuild()
@@ -234,7 +348,7 @@ func TestAnOpenerKnowsItsSeparators(t *testing.T) {
 // parse's record still lists it, and only the rebuild the accessor is supposed to
 // trigger can notice it is gone.
 func TestSeparatorsRefreshesLikeEveryOtherAccessor(t *testing.T) {
-	d, ctx := Parse("for x in a b; do echo $x; done\n", 0, &LangShell)
+	d, ctx := parse("for x in a b; do echo $x; done\n", 0, &LangShell)
 	var opener, sep Node
 	for _, n := range d.Nodes() {
 		if o, ok := n.(*Opener); ok && opener == nil {

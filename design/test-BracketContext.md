@@ -28,19 +28,29 @@ showed this test's message was lossy — it printed nil-ness rather than which
 node, so a real failure could read `got true, want true`. Message rewritten
 afterwards to name the node; the assertion is unchanged, so this record stands.
 
-## Test: the independent forward scan agrees, over the corpus
+## Test: an independent derivation agrees, over the corpus
 **Purpose:** R87 — the check that makes the index a fact rather than an assertion
-**Input:** every corpus file under each shipped language; for every node, the
-enclosing opener from the index, and the one found by scanning forward while
-skipping whole bracket pairs
+**Input:** every corpus file under each shipped language; every link the context
+reports through its **public accessors**, against the same links derived by a stack
+walk written in the test rather than in the library
 **Expected:** the two agree for every node of every file. **This is the test that
-would catch a wrong index**; nothing else in the suite reads the links twice
-**Note:** what this protects is a fact written in two places on purpose. The
-parse's rule — *everything but a closer records an enclosing opener* — and
-rebuild's rule — *closers get no enclosing* — are the same statement, expressed
-once in `parser.emit` and once in `BracketContext.rebuild`. That duplication is
-inherent to having two independent derivations, and this test is exactly the
-thing that catches them drifting apart.
+would catch a wrong index**; nothing else in the suite derives the links twice
+**Note:** the second derivation lives outside the library on purpose. An index
+checked by code sharing its author, its file and its helpers is checked by
+something liable to share its misconceptions. What the library owes is that the
+answer is reproducible from the array; proving it is a consumer's job, and a test
+is a consumer.
+
+## Test: a rescan per node agrees, on a fixture
+**Purpose:** R87 — the same guarantee by a genuinely different algorithm
+**Input:** for each node, a rescan from the start of the document counting depth,
+taking the innermost opener still unclosed when that node is reached
+**Expected:** it agrees with the index, and a closer reports **no** enclosing
+opener at all
+**Note:** O(n) per node, so a fixture rather than the corpus — and that is the
+trade worth making. The corpus check shares an *idea* with the library even though
+it shares no code; this shares neither, so it is the one that would catch a
+mistake common to both.
 **Refs:** crc-BracketContext.md, seq-pair.md#2
 **Code:** sdom/context_test.go
 **Alarm:** 2

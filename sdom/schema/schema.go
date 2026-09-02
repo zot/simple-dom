@@ -9,7 +9,6 @@ package schema
 
 import (
 	"regexp"
-	"slices"
 	"strings"
 
 	"github.com/zot/simple-dom/sdom"
@@ -34,9 +33,13 @@ import (
 // here and is not decidable here. That is a reader's policy, and mini-spec's
 // approaches it from unanchored requirements rather than by filtering these.
 type Lang struct {
-	Bracket  *sdom.BracketLang
-	Comments []string // this language's comment openers — see below
+	Bracket *sdom.BracketLang
 }
+
+// commentKind is the label this package's tables mark their comment groups with.
+// sdom stores it and never reads it — naming the value HERE, in the language layer,
+// is what keeps that true.
+const commentKind = "comment"
 
 // CRC: crc-DeclSchema.md | R146
 //
@@ -53,18 +56,26 @@ func (l Lang) isComment(n sdom.Node) bool {
 	if err != nil {
 		return false
 	}
-	return slices.Contains(l.Comments, s)
+	g := l.Bracket.GroupFor(s)
+	return g != nil && g.Kind == commentKind
 }
 
 // isSpace reports whether n is a text node holding only whitespace. Such a node is
 // stepped over — note it may CONTAIN a statement separator, which the forward walk
 // crosses (R149).
 func isSpace(n sdom.Node) bool {
-	t, ok := n.(*sdom.Text)
-	if !ok {
+	// Deliberately NOT a *sdom.Text assertion. Indent embeds Text but is its own
+	// type, so an assertion missed it entirely — and the moment indent parsing
+	// arrived, every declaration at a line start was rejected, because the node
+	// before it was an Indent the backward walk did not recognise as whitespace.
+	//
+	// Bracket markers keep the explicit path below: a comment's closer renders a
+	// newline and means more than whitespace.
+	switch n.(type) {
+	case *sdom.Opener, *sdom.Closer, *sdom.Separator:
 		return false
 	}
-	s, err := t.Render()
+	s, err := n.Render()
 	return err == nil && strings.TrimSpace(s) == ""
 }
 

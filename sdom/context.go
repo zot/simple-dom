@@ -28,6 +28,8 @@ type BracketContext struct {
 	// them a free change.
 	info map[Node]BracketInfo
 
+	built bool // has rebuild ever run? see refresh
+
 	declStamp uint64
 	declSet   bool
 
@@ -215,19 +217,27 @@ func (bc *BracketContext) refresh() {
 	if bc.doc == nil {
 		return
 	}
-	if g := bc.doc.Generation(); g != bc.stamp {
+	// R87: built, not just the stamp. The parse records no links, so a freshly
+	// attached context is EMPTY — and its stamp would match the document's on the
+	// first read, reporting a current index that knows nothing. The flag is what
+	// makes "never built" different from "built and still fresh".
+	if g := bc.doc.Generation(); !bc.built || g != bc.stamp {
 		bc.rebuild()
 		bc.stamp = g
+		bc.built = true
 	}
 }
 
 // CRC: crc-BracketContext.md | R81, R82, R83, R84, R152, R153
 //
-// rebuild derives every link a second way: by walking the finished flat array
-// with a stack, rather than from the recursion that produced it. The parse records
-// links from its own control flow; this recovers them from the resulting data.
-// The two are independent derivations and must agree — which is what makes the
-// index checkable rather than merely believed (R87).
+// rebuild derives every link by walking the finished flat array with a stack. It
+// is the ONLY derivation the library performs: the parse records nothing, because
+// every link is already implied by the array and a second copy is a thing that can
+// disagree.
+//
+// R87 is what makes that safe rather than merely cheap — a consumer can walk the
+// same array and reach the same answers, so the index is checkable from outside
+// rather than an assertion only this package can make.
 func (bc *BracketContext) rebuild() {
 	bc.info = make(map[Node]BracketInfo, len(bc.info))
 	var stack []Node
@@ -287,7 +297,4 @@ func (bc *BracketContext) closes(opener, closer Node) bool {
 // attach binds the context to the document it was parsed from and stamps it
 // with the generation the parse's own links describe, so the first read of a
 // freshly parsed document rebuilds nothing.
-func (bc *BracketContext) attach(d *Doc) {
-	bc.doc = d
-	bc.stamp = d.Generation()
-}
+func (bc *BracketContext) attach(d *Doc) { bc.doc = d }

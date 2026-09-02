@@ -24,7 +24,7 @@ var goListRe = regexp.MustCompile(`(?:^|[\n;])[ \t]*(?P<names>[\pL_][\pL\pN_]*(?
 // GoLang is the Go schema. TypeScript and JavaScript follow the same shape; every
 // Go declaration keyword is ordinary text, which is what makes it the easy case
 // and what makes a schema written only against it fail to generalize.
-var GoLang = Lang{Bracket: &sdom.LangGo, Comments: []string{"//", "/*"}}
+var GoLang = Lang{Bracket: &sdom.LangGo}
 
 const goSeps = "\n;"
 

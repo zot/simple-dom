@@ -1,5 +1,5 @@
 # BracketGroup
-**Requirements:** R61, R63, R64, R65, R66, R67, R71
+**Requirements:** R61, R63, R64, R65, R66, R67, R71, R168
 
 One entry in a language's table: a set of matching markers, and the two fields
 that decide what may be recognized inside it and where it may be recognized at
@@ -26,6 +26,12 @@ all. Code brackets, strings and comments are all this one type.
 - Nesting is not a field. A block comment nests only if its own opener appears in
   its `AllowedInner`
 - Carries no name and no identity a node could point at — see crc-Marker.md
+
+- **`Kind` is a label this layer never reads.** An uninterpreted string carried for
+  a layer above — indent scope needs to know which groups are transparent to the
+  level, and no property of a group's *shape* answers that, a comment and a string
+  being the same shape with different markers. Storing and ignoring it is not a
+  mode: the parsing rules are identical whatever it says
 
 ## Collaborators
 - BracketLang: holds it, and resolves an opener back to the group that owns it

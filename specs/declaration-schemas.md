@@ -77,15 +77,21 @@ arbitrarily further.
 **Skipping a comment group backward is one hop**: a `Closer` names its `Opener`,
 which is a link the parse already owns.
 
-**How a schema recognizes a comment group is the schema's business**, as recognition
-always is. A comment and a string are both *parse-restricted* groups and the table
-does not distinguish them — deliberately, since there is no comment configuration.
-A schema knows its own comment markers (`//` and `/*`, or `--`, or `#`) and matches
-the opener's text against them.
+**Which groups are comments is the language layer's business**, as recognition always
+is — and it is now said **once, in the table**. A `BracketGroup` carries an
+uninterpreted `Kind`, and a language marks its comment groups with it. A schema reads
+the group back from an opener and asks for its `Kind`.
+
+That is not comment configuration in the parser's sense: nothing in the bracket layer
+reads `Kind`, and a group's shape is unchanged by carrying one. What moved is only
+*where the fact is written down* — from each schema matching an opener's text against
+markers it repeats, to one label on the group both this layer and indent scope can
+read. **A comment and a string are still the same shape**, which is exactly why no
+property of the group could have answered it.
 
 ## The patterns the bundled schemas use
 
-**By keyword in text** — Go, TypeScript, JavaScript, and Lua's `local`:
+**By keyword in text** — Go, TypeScript, JavaScript, Python, and Lua's `local`:
 
 ```go
 `(?:^|[\n;])[ \t]*(?P<kw>func|var|type|const)\b`
@@ -179,6 +185,33 @@ its name is ordinary there too.
 A shared rule that stopped the walk at a separator would therefore be **wrong for
 both**: it would break Lua outright and break legal Go besides.
 
+### Python: a keyword at a statement start, at any indent depth
+
+Python announces a declaration with `def` or `class`, so it is the keyword-in-text
+shape Go already uses — with one difference that matters and one that does not.
+
+```go
+`(?:^|[\n;])[ \t]*(?P<kw>def|class)\b`
+```
+
+**What does not change: the name follows the keyword in the same text.** No receiver
+group intervenes, so the walk is Go's without the opener-skip step. Decorators sit on
+their own lines above and are ordinary text, so they neither hide the keyword nor get
+swallowed by it.
+
+**What changes: a Python declaration is not at depth 0.** A method sits inside its
+class body, which in an indent-parsed document is inside an indent frame — and that
+is exactly why the scan is *still* over top-level nodes. **Indent frames are not
+bracket groups**, so a `def` nested three levels deep still has no bracket enclosing
+it. The predicate Go's schema uses transfers unchanged, and this is the first
+evidence for it: what "top level" means is *bracket* depth 0, at any indent depth.
+
+**A statement start is also a line start here.** Python separates statements with a
+newline or `;`, so the pattern is Go's separator set. The structural half of the rule
+still applies — a match at the head of a text node begins a statement when the
+preceding top-level content ends with a separator — and it is reached often, because
+a comment's closing newline is a `Closer` rather than a byte of text.
+
 ## How strict a walk is, is the schema's choice
 
 `sdom` models text and does not validate it — and it does not require a schema to
@@ -240,10 +273,28 @@ The same shape covers `A = 1`, `B, C = 2, 3` and `D, E int`.
 
 ## Scope
 
-**Top-level text nodes.** Go's declarations are at bracket depth 0. A language
-whose declarations nest — a Java method inside its class body — wants the same
-scan at another depth: the same code against a different node set, with no `if` or
-`for` following it in, those not being keywords in any table.
+**Top-level text nodes**, where *top level* means **bracket** depth 0. Scanning
+another depth is mechanically the same code against a different node set, with no
+`if` or `for` following it in, those being keywords in no table. What is not the
+same is **which** depths, and that is a fact about the language rather than a
+parameter a shared driver could take:
+
+- **Go** — all of them at depth 0.
+- **Python** — bracket depth 0 as well, at *any* indent depth. Indent frames are not
+  bracket groups, so a method three levels into a class body still has no bracket
+  enclosing it, and Go's predicate transfers untouched.
+- **Java** — types at depth 0, members inside them, nested types deeper again.
+- **TypeScript** — both at once: functions, types and enums at the top, members
+  inside class bodies.
+- **JavaScript** — no depth rule at all. Methods nest in class bodies and again in
+  object literals, a module pattern wraps a whole file one level deeper, and
+  `Foo.prototype.bar = function …` puts the **name before the keyword**, which is
+  Lua's and Shell's keyword-less problem in a third form.
+
+**This is the reason recognition is a per-schema pass rather than a shared driver
+with a depth setting.** What differs between languages is the shape of the question,
+not a value inside it — and a driver fitted to the two that agree would be a driver
+fitted to nothing.
 
 **Indent is not part of a declaration.** Bracket groups already pinpoint them, so
 indentation is irrelevant to recognition in any bracket-parsed document. A tool

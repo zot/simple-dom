@@ -27,7 +27,7 @@ identifier.
 - [x] ~~**Item 10 — one bracket index.**~~ **LANDED (`efef190`, 2026-08-31 — `#11`.)**
 - [x] ~~**Item 11 — separator links, completing the bracket contract.**~~ **LANDED (`efef190`, 2026-08-31 — `#11`.)**
 - [x] ~~**Item 12 — the vocabulary, second pass: it is a parse, not a scan.**~~ **LANDED (`f9008c6`, 2026-09-01 — `#12`.)**
-- [ ] **Item 5 — indent scope.** **OPEN (not queued.)**
+- [ ] **Item 5 — indent scope.** **OPEN (#13.)**
 - [ ] **Item 6 — the traceability reader.** **OPEN (not queued.)**
 - [ ] **Item 9 — generalize the schema work into `sdom` tools.** **OPEN (not queued.)**
 - [x] ~~**Item 8 — the vocabulary: it is a parser, not a lexer.**~~ **LANDED (`145ee96`, 2026-08-31 — `#10`.)**
@@ -55,9 +55,9 @@ maps forever:
 
 - an opener knows its **closer** and its **enclosing opener**
 - a closer knows its **opener**
-- any other node knows its enclosing opener — and a forward scan that skips whole
-  bracket pairs finds the same answer independently, which is what makes the index
-  checkable rather than merely believed
+- any other node knows its enclosing opener — and every one of these links is
+  derivable from the flat array alone, so a consumer walking it reaches the same
+  answers, which is what makes the index checkable rather than merely believed
 
 The context therefore **outlives the parse**: it carries the language, the
 parser's stack during the parse, and these links afterwards.
@@ -1044,6 +1044,37 @@ an identity instead of a nil special case. Consecutive same-level lines share th
 opened by the last change-node. Blank and comment-only lines do not change the level,
 measured against CPython — which *does* indent on a docstring line, so the parser must
 tell a comment from a string. See the `Kind` decision below, which is what supplies that.
+
+**DECIDED (Bill, 2026-09-01): `IndentLang` carries a continuation marker**, and it earns
+its place beyond Python. A line following one is never indented — settled 2026-09-01 — and
+the *configuration* is now settled with it.
+
+**It needs no new predicate: a continuation marker counts only at bracket depth 0**, the
+same law indentation itself composes under. *Measured against CPython:* `a = 1 + \` before
+a newline continues and emits no INDENT; **`# comment \` does not continue** — INDENT fires
+and Python calls it an unexpected indent — because that backslash is inside the comment
+group, at depth 1; and `a = "x \` needs no rule at all, since the string group is still open
+at the next line start and depth-0 suppression already covers it. Three cases, one predicate.
+
+**DECIDED (Bill, 2026-09-01): `ParserState` exposes `Emit(n)` and `NodeCount() int`; `Out`
+stays private.** The call site is unchanged — `IndentParser.Parse` emits the root `Indent("")`
+when `st.NodeCount() == 0` — and no live slice is handed out, which `O2` and `O21` are both
+open gaps about. Nothing else needs to read the emitted array: the bracket parser needs its
+`stack`, `NodeType` needs neither, and declarations do not join the protocol.
+
+*And the rename is not a straight publicize.* Three of `parser`'s seven fields **move** rather
+than going public: `lang` and `ctx` to `BracketParser`, since each parser owns its context, and
+`stack`, which is bracket nesting rather than the walk's. `ParserState` keeps `src`, `pos`,
+`textStart`, `out`, the `Origin` and the root parser. `emit` splits on the same line — the
+append is `ParserState`'s, `ctx.enclose(n, stack-top)` is the bracket parser's — and `at()`
+becomes `ParserState`'s outright once the origin lives there.
+
+**DECIDED (Bill, 2026-09-01): the root `Indent("")` is emitted by `IndentParser.Parse`**,
+guarded on `NodeCount() == 0` — not by the loop, which stays ignorant of indent, and not at
+all for a non-indent parse. It is what lets top-level frames link somewhere and keeps their
+list in `childIndent` rather than in a `roots` field beside the map, which would undo the
+one-map decision below. *Consequence:* an **empty document gets zero nodes**, since the loop
+never calls `Parse` — consistent with today.
 
 **DECIDED (Bill, 2026-09-01): one map, in `IndentContext`** — brackets cannot contain
 indents, so the indent context is the outer one and owns the whole index. The parse
