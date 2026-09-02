@@ -324,3 +324,49 @@ func TestTheFrameIndexAgreesWithAnIndependentWalk(t *testing.T) {
 		mustRoundTrip(t, d, src)
 	}
 }
+
+// CRC: crc-IndentParser.md | Seq: seq-collaborate.md#3 | R160
+//
+// IndentParser.NodeType, which nothing in the library calls: an IndentParser is
+// always the root parser, and the walk only ever calls Parse on that. It is here
+// because the interface requires it, and a library prices its API by contract
+// rather than by demand — so it is tested for the case that makes it real, an
+// IndentParser nested inside another parser that looks ahead before delegating.
+//
+// Found by injecting past the alarm list: a panic as its first statement left the
+// whole suite green.
+func TestIndentParserReportsWhatItWouldEmit(t *testing.T) {
+	ip := NewIndentParser(&LangPython)
+	src := "a\n  b\n  # c\n"
+	st := &ParserState{src: src, origin: &Origin{}, parser: ip}
+
+	// Nothing emitted yet: the root is what Parse would produce.
+	if kind, ok := ip.NodeType(st); !ok || kind != "" {
+		t.Fatalf("at the start: (%q, %v), want (\"\", true) — the root carries no kind", kind, ok)
+	}
+	// Drive the walk, then ask at a line start where the level changes.
+	d := Parse(src, 0, ip)
+	if len(d.Nodes()) == 0 {
+		t.Fatalf("precondition: the parse produced nothing")
+	}
+
+	// A fresh state mid-source: at "  b" the level changes, so an Indent would come.
+	ip2 := NewIndentParser(&LangPython)
+	st2 := &ParserState{src: src, origin: &Origin{}, parser: ip2}
+	ip2.Parse(st2) // emits the root and seeds the stack
+	st2.SetPos(2)  // the start of "  b"
+	if kind, ok := ip2.NodeType(st2); !ok || kind != "" {
+		t.Errorf("at a level change: (%q, %v), want (\"\", true)", kind, ok)
+	}
+	// Where it would not match, the answer is the delegate's: a comment opener
+	// reports its Kind, so a nesting parser can tell a comment from a string.
+	st2.SetPos(strings.Index(src, "#"))
+	if kind, ok := ip2.NodeType(st2); !ok || kind != "comment" {
+		t.Errorf("at a comment: (%q, %v), want (\"comment\", true)", kind, ok)
+	}
+	// And plain text is no node at all.
+	st2.SetPos(strings.Index(src, "b"))
+	if kind, ok := ip2.NodeType(st2); ok {
+		t.Errorf("at plain text: (%q, %v), want no node", kind, ok)
+	}
+}

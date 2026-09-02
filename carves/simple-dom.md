@@ -594,9 +594,12 @@ The name is three nodes past the keyword, and `func /* a */ /* b */ Index` puts 
 arbitrarily further. Skipping a comment backward is one hop, since a closer names
 its opener.
 
-*Which groups are comments is the schema's to know*, as recognition always is: a
-comment and a string are both parse-restricted and the table does not distinguish
-them, by design, so a schema matches an opener against the markers it knows.
+*Which groups are comments is the language layer's to know*, as recognition always
+is. A comment and a string are the same shape with different markers, so no property
+of a group could answer it — which is why Item 5 made it a **label**: the table marks
+its comment groups with a `Kind` and a schema reads that back. ~~so a schema matches an
+opener against the markers it knows~~ — superseded 2026-09-01, when a second consumer
+appeared and both were re-deriving by string-match what the table can state once.
 
 **And the skip runs before every decision in the walk, not once at its start**
 (Bill, 2026-08-31). `func /* a */ foo /* b */ (…) /* c */ {` puts a comment at each

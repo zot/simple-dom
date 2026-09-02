@@ -283,12 +283,6 @@ func TestContextCarriesItsLanguage(t *testing.T) {
 	}
 }
 
-// sameInfo compares two index entries, slices included.
-func sameInfo(a, b BracketInfo) bool {
-	return a.opener == b.opener && a.closer == b.closer && a.enclosing == b.enclosing &&
-		slices.Equal(a.separators, b.separators) && slices.Equal(a.declaration, b.declaration)
-}
-
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.4 | R152, R153
 //
 // An opener knows its separators, in document order, and each names it back. This

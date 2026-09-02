@@ -200,8 +200,8 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   LangTypeScript and LangLua, and its selection rule gains a second job — serving the
   languages mini-spec reads, not only covering every BracketGroup field.)
 - [ ] O17: `R129` says the package bundles declaration schemas for Go, TypeScript, JavaScript,
-  Lua and Shell. **Three exist** — `Go`, `Lua`, `Shell` — and there is no `TypeScript` or
-  `JavaScript` entry point. `validate` is green throughout, because `R129` has a design ref and
+  Python, Lua and Shell. **Four exist** — `Go`, `Lua`, `Shell` and, since carve Item 5,
+  `Python` — and there is still no `TypeScript` or `JavaScript` entry point. `validate` is green throughout, because `R129` has a design ref and
   an inline ref in `schema.go`: coverage is formally satisfied while the behaviour is absent,
   which is the failure mode requirement coverage cannot see. TypeScript and JavaScript are
   **not** a table swap over the Go schema: their keyword sets differ (`function`, `class`,
@@ -222,7 +222,9 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   through hits that may span four nodes and two languages' walks, which is exactly the
   shared-driver machinery carve Item 9 defers until three schemas exist to generalize from.
   Measure before optimising; no consumer exists yet, and `O5` records the same judgement about
-  `Doc.find`.
+  `Doc.find`. **Second instance, 2026-09-01:** carve Item 5's Python schema has the identical
+  shape for the identical reason, so this is a property of every declaration pass rather than of
+  Go's — which is what carve Item 9's shared driver would fix once, if it fixes it at all.
 - [ ] O19: `R149` — skipped whitespace may contain statement separators, so the walk crosses
   them — has **two halves living in two places**, and the test named for it covers only one.
   Go's `func` ⏎ `foo(x int)` resolves inside a single text node, so its newline is crossed by
@@ -290,3 +292,22 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   rather than in this repository, so this records the hole and the evidence. It is also the
   argument for re-pulling after a pure rename, which is otherwise hard to justify: the pull is
   what re-reads the prediction.
+- [ ] O24: `BracketContext.refresh` and `IndentContext.refresh` are the same eight lines —
+  read the document's generation, rebuild if the stamp is stale or nothing has been built, then
+  re-stamp. Unifying them means an embedded `doc`/`built`/`stamp` struct with a rebuild hook,
+  which is machinery to save eight lines and would restructure two types whose fields carry
+  their own commentary. The two copies also hold *different* load-bearing prose: the bracket one
+  is where the `R87` reasoning lives for why `built` is checked and not just the stamp. The
+  simplification pass flagged this deliberately and left it, which is recorded here rather than
+  in a commit message so the next reader meets the judgement rather than re-making it. Revisit
+  if a third stamped context appears — two copies is a coincidence, three is a pattern.
+- [ ] O25: `IndentParser.NodeType` has no caller inside the library, and the delegation path it
+  exists for is exercised only by its own test. An `IndentParser` is always the root parser and
+  the walk calls only `Parse` on that, so nothing nests one inside another parser that looks
+  ahead before delegating. **This is not the `O13` mistake of pricing a library export by
+  demand** — the method is required by the `Parser` interface and must exist. What is worth
+  recording is narrower: *found by injecting past the alarm list on 2026-09-01, a `panic` as its
+  first statement left all 124 tests green.* It now has a test and an alarm, but the shape it
+  serves — one parser delegating to an `IndentParser` — has no worked instance, so the
+  *composition* remains unproven even though the method does not. The first consumer that nests
+  one will be the real test.

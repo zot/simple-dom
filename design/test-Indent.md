@@ -20,8 +20,11 @@ exactly one root; the second has **no nodes at all**
 **Refs:** crc-IndentParser.md, seq-indent.md#1.1
 **Code:** sdom/indent_test.go
 **Alarm:** 4
-**Fire alarm:** In `IndentParser.Parse`, remove the `NodeCount() == 0` branch so no root is emitted. Red: top-level frames have no parent to link to, so `Children(root)` has nowhere to live and the first column-2 frame reports a nil parent. The document still round-trips exactly, because the root is zero-length and contributes no bytes at all — which is precisely why nothing else could catch it.
-**Inject:** sdom/indent.go:IndentParser.Parse
+**Fire alarm:** In `NewIndentParser`, initialize `levels` to `[]int{0}`, **and** remove the `NodeCount() == 0` branch from `Parse`. Both edits, because that branch does two jobs: it emits the root *and* seeds the level stack. Removing it alone panics in `change` on an empty `levels` — a nil dereference rather than the property, which is not a proof. Red: no root node exists, so the first frame is the column-2 one and reports a nil parent, and `Children(root)` has nothing to ask. The document still round-trips exactly, the root being zero-length, which is precisely why nothing else could catch it.
+**Inject:** sdom/indent.go:NewIndentParser, sdom/indent.go:IndentParser.Parse
+**Pulled:** 2026-09-01 — rang, and **wider than predicted**: seven test functions, because `shape()` renders the root like any other frame, so every shape assertion loses its leading `0` as well as the parenting and root tests failing on their own terms. The round trip stayed exactly green throughout, as predicted — the root contributes no bytes, which is the whole reason nothing else could catch its absence.
+
+*First attempt did not reach the property:* removing the branch alone panicked in `change` with `index out of range [-1]`, because that branch also seeds the level stack. A nil dereference reads like a red test and proves nothing. The prescription now names both edits, and separates the root's existence from the stack's initialization.
 
 ## Test: a return to column 0 is zero-length, and closes several levels at once
 **Purpose:** R180, R181 — the column is the level
@@ -58,6 +61,7 @@ the distinction coming from the group's `Kind` and nothing else
 **Alarm:** 1
 **Fire alarm:** In `IndentParser.change`, drop the `transparentAt` test. Red: a comment-only line at a deeper column opens a frame, so every commented block nests one level further and the shape of that case becomes `0 4 8 0` instead of `0 4 0`. No byte moves and the array still tiles — the whitespace is a node instead of text, which only a test counting frames can see.
 **Inject:** sdom/indent.go:IndentParser.change
+**Pulled:** 2026-09-01 — rang, and the prediction held **to the character**: the comment-only case came back `shape "0 4 8 0", want "0 4 0"`. Only this test failed, in only that one of its three cases — the blank line and the docstring both stayed correct, so the injection reached the `Transparent` test and nothing adjacent to it.
 
 ## Test: a continuation marker counts only at bracket depth 0
 **Purpose:** R184 — three cases, one predicate
@@ -71,6 +75,7 @@ offered, the group still being open
 **Alarm:** 2
 **Fire alarm:** In `IndentParser.continued`, test the whole source behind the position — `st.Src()[:st.Pos()]` — rather than the pending text. Red: a backslash that a comment group consumed now suppresses the following line's indent, so `# c \` before an indented line yields shape `0` instead of `0 4`. CPython treats that indent as significant and rejects it, which is only reachable because it IS significant.
 **Inject:** sdom/indent.go:IndentParser.continued
+**Pulled:** 2026-09-01 — rang exactly as predicted: `shape "0", want "0 4"` on the backslash-ending-a-comment case, and on nothing else. The real continuation and the string cases both stayed correct, so the pending-text test is doing precisely the depth-0 work claimed for it and not more.
 
 ## Test: a frame parents to the nearest smaller column
 **Purpose:** R185 — and that two frames at one column are siblings
@@ -83,6 +88,7 @@ being exactly the two column-2 frames
 **Alarm:** 3
 **Fire alarm:** In `IndentContext.rebuild`, pop while the top column is strictly greater than this one rather than greater-or-equal. Red: two frames at one column stop being siblings and nest instead, so the root's children shrink to one and the second column-2 frame parents to the first. Nothing about the nodes changes — only the links — so bytes, tiling and the frame *shape* all stay correct.
 **Inject:** sdom/indent.go:IndentContext.rebuild
+**Pulled:** 2026-09-01 — rang, on all three of this test's assertions, and **the cross-derivation caught it too** — `TestTheFrameIndexAgreesWithAnIndependentWalk` failed on a corpus file. That is the widening working: only the *links* moved, so bytes, tiling and the frame shape all stayed correct exactly as predicted, and the independent walk was the only other thing in the suite that could see it.
 
 ## Test: an unmatched dedent parents rather than refusing
 **Purpose:** R188 — `sdom` is no syntax checker
@@ -106,3 +112,24 @@ from the columns alone are equal, entry for entry
 node still renders exactly its own whitespace
 **Refs:** crc-IndentParser.md
 **Code:** sdom/indent_test.go
+
+## Test: IndentParser reports what it would emit
+**Purpose:** R160 — the contract method nothing in the library calls
+**Input:** an `IndentParser` asked for `NodeType` at the start, at a level change, at
+a comment opener, and at plain text
+**Expected:** a node with no kind for the first two, the delegate's `"comment"` for
+the third, and no node for the fourth
+**Refs:** crc-IndentParser.md, seq-collaborate.md#3
+**Code:** sdom/indent_test.go
+**Alarm:** 5
+**Fire alarm:** Make `IndentParser.NodeType` panic on entry. **This test is the only
+thing that calls it** — an `IndentParser` is always the root parser and the walk only
+ever calls `Parse` on that, so before this test existed a panic there left the entire
+suite green. A library prices its API by contract rather than by demand, and an
+untested implementation of a contract method is a liability the moment someone nests
+one parser inside another.
+**Inject:** sdom/indent.go:IndentParser.NodeType
+**Pulled:** 2026-09-01 — **found by injecting past the alarm list**, which is what that
+step is for: the panic was silent across 124 tests. With this test it panics inside
+it, and nothing else. Neither the recorded alarms nor any other test reached this
+method.

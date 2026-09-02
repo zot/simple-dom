@@ -38,9 +38,9 @@ corpus round-trips stayed green.
 **Refs:** crc-BracketParser.md, seq-parse.md#3.1
 **Code:** sdom/parser_test.go
 **Alarm:** 2
-**Fire alarm:** Make `matchAnyClose` always return no match. Red: the unmatched `}` becomes text instead of a `Closer`. Nothing else objects — no byte moves and the array still tiles — which is why a fallback that quietly stops firing needs its own assertion.
+**Fire alarm:** Make `matchAnyClose` always return no match. Red: the unmatched `}` becomes text instead of a `Closer`, **and** `TestWordMarkersRespectBoundaries` fails too — its fixture ends with an `end` that only the fallback recognizes. No byte moves and the array still tiles, which is why a fallback that quietly stops firing needs its own assertion.
 **Inject:** sdom/bracket_parser.go:BracketParser.matchAnyClose
-**Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestWordMarkersRespectBoundaries`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang. This test failed, and so did
+**Pulled:** 2026-09-01 — re-pulled after the file split and rang again, on the same two tests. The anchor resolved under its new home, `sdom/bracket_parser.go:BracketParser.matchAnyClose`, which is what this pull was taken for. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestWordMarkersRespectBoundaries`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang. This test failed, and so did
 `TestWordMarkersRespectBoundaries`, whose fixture ends with an `end` that only
 the fallback can recognize. **The recognition count did not catch it**, and
 neither corpus round-trip did.

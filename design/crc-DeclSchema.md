@@ -8,9 +8,10 @@ JavaScript, Lua and Shell, with Python following the indent parser.
 ## Knows
 - its language's bracket table, and the context a parse of it produced
 - what announces a declaration in that language
-- **which of its groups are comments** — the table cannot say, since a comment and
-  a string are both parse-restricted, and there is deliberately no comment
-  configuration
+- **which of its groups are comments** — read from the group's `Kind`, which the
+  language marks. No property of a group's *shape* could say it: a comment and a
+  string are the same shape with different markers, which is why the fact is a label
+  rather than something derivable
 
 ## Does
 - finds what announces each declaration, over the top-level nodes

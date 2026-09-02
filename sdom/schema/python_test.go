@@ -166,3 +166,18 @@ func markerShape(d *sdom.Doc) string {
 	}
 	return b.String()
 }
+
+// CRC: crc-PythonSchema.md | R189
+//
+// Only spaces and tabs may separate a keyword from its name. Python has no block
+// comment and a newline there does not compile, so anything else between them means
+// this is not the declaration it looks like.
+//
+// Found by injecting past the alarm list: deleting the guard entirely left the whole
+// suite green, so nothing was asking this question.
+func TestOnlySpacesMaySeparateTheKeywordFromTheName(t *testing.T) {
+	checkPy(t, "a tab is fine", "def\tfoo():\n    pass\n", "def[foo] ")
+	checkPy(t, "several spaces are fine", "def    foo():\n    pass\n", "def[foo] ")
+	checkPy(t, "anything else is not a declaration", "def -foo():\n    pass\n", "")
+	checkPy(t, "nor is punctuation", "class *A:\n    pass\n", "")
+}

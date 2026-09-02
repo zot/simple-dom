@@ -157,12 +157,13 @@ nodes from the two are distinguishable despite identical bytes and offsets
 **Refs:** crc-BracketContext.md
 **Code:** sdom/loc_test.go
 **Alarm:** 6
-**Fire alarm:** Make `parser.at` return `Source(pos, length)` without `.In(...)`.
-Red: only this test. Everything else works exactly as well without origins — the
-bytes, the tiling, the pairing, the round-trips are all untouched — which is why
-attribution needs an assertion of its own.
+**Fire alarm:** Make `ParserState.At` return `Source(pos, length)` without `.In(...)`.
+Red: this test and `TestOneParseHasOneOrigin`, which asks the same question from the
+protocol side. Everything else works exactly as well without origins — the bytes, the
+tiling, the pairing, the round-trips are all untouched — which is why attribution
+needs an assertion of its own.
 **Inject:** sdom/parser.go:ParserState.At
-**Pulled:** 2026-08-31 — re-pulled after the parser rename and rang again, and again alone. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and **alone**: 63 of 64 tests passed with the
+**Pulled:** 2026-09-01 — re-pulled after `at` moved onto `ParserState` and rang again, now on **two** tests: this one and `TestOneParseHasOneOrigin`, which did not exist at the last pull. The alarm outgrew its own prediction of *alone*, in the safe direction — the protocol test asks the same question from the other side, so one parser dropping the origin is now caught twice. Everything else stayed green exactly as claimed. Previously 2026-08-31 — re-pulled after the parser rename and rang again, and again alone. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and **alone**: 63 of 64 tests passed with the
 parser attributing nothing at all. The bytes, the tiling, the bracket pairing, the
 cross-derivation check and every corpus round-trip are all indifferent to
 provenance, which is why attribution needs an assertion of its own.

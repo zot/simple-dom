@@ -13,6 +13,7 @@ a top-level text node despite sitting two indent levels in
 **Alarm:** 1
 **Fire alarm:** In `schema.isSpace`, restore the `n.(*sdom.Text)` assertion in place of the kind test. **This is the real defect, hit while writing this schema:** `Indent` embeds `Text` but is its own type, so the backward statement-start walk stops recognizing an indent as whitespace and **every declaration at a line start is rejected** — `class Widget:` at offset 0 finds nothing. Red: every Python test that expects a declaration. Go, Lua and Shell stay green throughout, their documents containing no `Indent` nodes, which is why this shipped invisibly until a second parser existed.
 **Inject:** sdom/schema/schema.go:isSpace
+**Pulled:** 2026-09-01 — rang, and the prediction held exactly. Three test functions failed, all of them Python's; the **entire `sdom` package stayed green**, and so did the Go, Lua and Shell schema tests sitting in the same package as the failure. **119 of 122 tests pass under the real defect** — which is the claim this alarm exists to make. A node kind added in one package silently broke a consumer in another, and nothing short of a parser that actually emits `Indent` could see it.
 
 ## Test: a def inside a docstring is not a declaration
 **Purpose:** R133 in Python's form — a comment or string interior is inside a group
@@ -43,3 +44,20 @@ closing newline `Closer` rather than in a byte of text
 not drop
 **Refs:** crc-PythonSchema.md
 **Code:** sdom/schema/python_test.go
+
+## Test: only spaces may separate the keyword from the name
+**Purpose:** R189 — the guard the happy path never exercises
+**Input:** `def\tfoo`, `def    foo`, `def -foo`, `class *A`
+**Expected:** the first two are declarations; the last two are not
+**Refs:** crc-PythonSchema.md
+**Code:** sdom/schema/python_test.go
+**Alarm:** 2
+**Fire alarm:** Delete the loop in `pyNameAfter` that requires everything between the
+keyword and the identifier to be a space or a tab. Red: `def -foo():` is recognized as
+declaring `foo`. Python has no block comment and a newline there does not compile, so
+anything else between them means this is not the declaration it looks like — but no
+valid Python reaches the guard, which is exactly why nothing was asking.
+**Inject:** sdom/schema/python.go:pyNameAfter
+**Pulled:** 2026-09-01 — **found by injecting past the alarm list.** Deleting the guard
+outright left the whole suite green beforehand. With this test it fails on both
+negative cases, `got "def[foo] " want ""`.
