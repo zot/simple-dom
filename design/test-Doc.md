@@ -163,3 +163,13 @@ past-the-end offsets and on the empty document, which returned line 1 for offset
 with a freshly computed index over the same array
 **Refs:** crc-Doc.md, crc-MutationWindow.md, seq-mutate.md#1.6
 **Code:** sdom/doc_test.go
+
+## Test: Insert places before a node or at the end, and bumps the generation
+**Purpose:** R257, R43
+**Input:** a parsed `ab|cd`; `Insert` a synthetic `X` before the marker, then a synthetic `Y` with `before` nil, each in a window; then `Insert` before a node not in the document
+**Expected:** render `abX|cdY`; the generation advanced twice; the third call errors and, having escaped the window, poisons the document
+**Refs:** crc-MutationWindow.md
+**Code:** sdom/doc_test.go
+**Alarm:** 8
+**Fire alarm:** make `Insert` place *after* the named node. Red: `ab|Xcd…`.
+**Inject:** sdom/mutate.go:Doc.Insert

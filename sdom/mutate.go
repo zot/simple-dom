@@ -207,6 +207,29 @@ func (d *Doc) Replace(old, new Node) error {
 	return nil
 }
 
+// CRC: crc-MutationWindow.md | R32, R43, R257
+//
+// Insert places n before an existing node, or at the end when before is nil. It is
+// the third membership verb beside Replace and Remove, and the one a schema that
+// mints whole entries needs: a new entry is a synthetic node with no origin, which
+// oneParse admits into any document. Membership changes, so it needs a window and
+// bumps the generation.
+func (d *Doc) Insert(before, n Node) error {
+	if err := d.editable(); err != nil {
+		return err
+	}
+	at := len(d.dom)
+	if before != nil {
+		at = d.find(before)
+		if at < 0 {
+			return errors.New("sdom: Insert: node is not in this document")
+		}
+	}
+	d.dom = slices.Insert(d.dom, at, n)
+	d.dirty = true
+	return nil
+}
+
 // CRC: crc-MutationWindow.md | R32, R43
 //
 // Remove drops a node from the document. Its bytes leave the render with it,

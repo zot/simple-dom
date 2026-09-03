@@ -37,6 +37,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] crc-TodoItem.md → `sdom/stencil_test.go`
 - [x] crc-List.md → `sdom/list.go`
 - [x] crc-RequirementList.md → `sdom/list.go`
+- [x] crc-Pending.md → `minispecsdom/pending.go`
 - [x] crc-Carve.md → `minispecsdom/carve.go`
 - [x] crc-PartLine.md → `minispecsdom/partline.go`
 - [x] crc-MarkerSpan.md → `minispecsdom/partline.go`
@@ -59,6 +60,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] seq-stencil.md → `sdom/stencil.go`
 - [x] seq-declare.md → `sdom/declaration.go`, `sdom/schema/schema.go`
 - [x] seq-markdown.md → `sdom/schema/markdown.go`
+- [x] seq-pending.md → `minispecsdom/pending.go`
 - [x] seq-carve.md → `minispecsdom/carve.go`
 - [x] seq-partline.md → `minispecsdom/partline.go`
 - [x] seq-anchor.md → `sdom/list.go`, `minispecsdom/comment.go`
@@ -79,6 +81,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] test-DeclSchema.md → `sdom/schema/declaration_test.go`
 - [x] test-List.md → `sdom/list_test.go`
 - [x] test-Markdown.md → `sdom/schema/markdown_test.go`
+- [x] test-Pending.md → `minispecsdom/pending_test.go`
 - [x] test-Carve.md → `minispecsdom/carve_test.go`
 - [x] test-PartLine.md → `minispecsdom/partline_test.go`
 - [x] test-TraceabilityComment.md → `minispecsdom/comment_test.go`

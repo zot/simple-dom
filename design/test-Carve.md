@@ -8,8 +8,9 @@
 **Refs:** crc-Carve.md, seq-carve.md#1
 **Code:** minispecsdom/carve_test.go
 **Alarm:** 1
-**Fire alarm:** drop the region bound so every list item in the file is tried. Red: nothing here, since the fixture's other bullets are fenced — so the test also parses a source with a bullet under a later `## Notes`, which becomes a part under the injection; a `### Sub` inside the block does not end it.
+**Fire alarm:** drop the region bound so every list item in the file is tried (consume `from` and `to` so it builds). Red: nothing here, since the fixture's other bullets are fenced — so the test also parses a source with a bullet under a later `## Notes`, which becomes a part under the injection; a `### Sub` inside the block does not end it.
 **Inject:** minispecsdom/carve.go:ParseCarve
+**Pulled:** 2026-09-03 — rang: `a bullet outside the region became a part: "Item 1,Item 2,Item 9"`, only that test. The delegate's first attempt left `from`/`to` unused and did not build; re-pulled by hand with them consumed.
 
 ## Test: no status block, and a fenced one
 **Purpose:** R249, R250
@@ -18,8 +19,9 @@
 **Refs:** crc-Carve.md, seq-carve.md#1.2
 **Code:** minispecsdom/carve_test.go
 **Alarm:** 2
-**Fire alarm:** match the status heading by text alone rather than a `Heading` node. Red: the fenced document reports a status block.
+**Fire alarm:** when no `Heading` node keys the block, fall back to searching the source text for `## Status` and treat a hit as the heading. Red: the fenced document reports a status block. (A first prescription — match each node's render by prefix — could not reach the property: a heading node renders only its `## `, the title being the sibling text, so that injection matched nothing anywhere and every status test failed for the wrong reason.)
 **Inject:** minispecsdom/carve.go:Carve.statusRegion
+**Pulled:** 2026-09-03 — rang, on the rewritten injection: `no status block found` inverted — the fenced document reported one. The first prescription was unreachable; see the alarm.
 
 ## Test: SetMarker follows the tool's rule
 **Purpose:** R253, R254
@@ -30,6 +32,7 @@
 **Alarm:** 3
 **Fire alarm:** replace the first marker regardless of verb. Red: `NOT VERIFIED` is overwritten. A second injection: stop dropping the other transients (`drop` never appended). Red: `**OPEN (#6.)** **OPEN (#5.)**` — this case was added 2026-09-03 after a past-the-list probe; that probe's green was a mis-applied injection (a `sed` that matched nothing), so whether the earlier suite guarded the rule was never established — no earlier test carried two transients, which is the inference the case rests on. Re-run with the injection verified applied, it rang here.
 **Inject:** minispecsdom/partline.go:PartLine.SetMarker
+**Pulled:** 2026-09-03 — rang: `NOT VERIFIED` overwritten by `LANDED (x)`, only that test.
 
 ## Test: Land is three markings in one act
 **Purpose:** R255
@@ -40,3 +43,4 @@
 **Alarm:** 4
 **Fire alarm:** skip the strike in `Land`. Red: the render keeps the head unstruck while the box and marker changed — the three no longer agree.
 **Inject:** minispecsdom/carve.go:Carve.Land
+**Pulled:** 2026-09-03 — rang: the line landed with `[x]` and the record but the head unstruck — the three no longer agree.

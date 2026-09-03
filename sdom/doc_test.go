@@ -291,3 +291,35 @@ func TestIndicesAreCorrectAfterTheWindowCloses(t *testing.T) {
 		}
 	}
 }
+
+// CRC: crc-MutationWindow.md | R43, R257
+func TestInsertPlacesBeforeOrAtTheEnd(t *testing.T) {
+	d, _ := parse("ab|cd", 0, &BracketLang{Brackets: []BracketGroup{{Open: []string{"|"}, Close: []string{"\n"}}}})
+	g0 := d.Generation()
+	var marker Node
+	for _, n := range d.Nodes() {
+		if _, ok := n.(*Opener); ok {
+			marker = n
+		}
+	}
+	if err := d.Mutate(func() error { return d.Insert(marker, NewText("X", Synthetic(1))) }); err != nil {
+		t.Fatal(err)
+	}
+	g1 := d.Generation()
+	if err := d.Mutate(func() error { return d.Insert(nil, NewText("Y", Synthetic(1))) }); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ := d.Render(); r != "abX|cdY" {
+		t.Fatalf("render %q", r)
+	}
+	if g2 := d.Generation(); g1 <= g0 || g2 <= g1 {
+		t.Errorf("generation did not advance twice: %d %d %d", g0, g1, g2)
+	}
+	// A refusal escaping the window poisons the document, as every escaping error does.
+	if err := d.Mutate(func() error { return d.Insert(NewText("z", Synthetic(1)), NewText("W", Synthetic(1))) }); err == nil {
+		t.Errorf("inserting before a foreign node was accepted")
+	}
+	if _, err := d.Render(); !errors.Is(err, ErrPoisoned) {
+		t.Errorf("after a refused insert escaped the window: %v, want ErrPoisoned", err)
+	}
+}

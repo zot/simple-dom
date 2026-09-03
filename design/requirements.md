@@ -62,6 +62,9 @@
 - **R41:** `Prev` and `Next` navigate by node rather than by position.
 - **R42:** A `Doc` exposes a monotonic structural generation.
 - **R43:** The structural generation is bumped whenever node membership changes.
+- **R257:** `Insert(before, n)` places a node before an existing one, or at the end when `before`
+  is nil, inside a mutation window; it is the membership verb by which a schema's synthetic
+  material enters a document.
 - **R44:** A content edit does not bump the structural generation.
 - **R45:** A layer holding state derived from document structure stamps itself with the generation it was built against and rebuilds when that stamp is stale.
 - **R46:** A `Doc` keeps no registry of derived indices and issues no invalidation callbacks.
@@ -469,3 +472,23 @@
 - **R255:** `Land` checks the box, strikes the head, and sets `LANDED (attribution)` through the
   marker rule, in one act.
 - **R256:** Every part carries its line's deviations.
+
+## Feature: pending schema
+**Source:** specs/pending-schema.md
+
+- **R258:** `Pending` embeds the markdown base and owns the pending file's DOM; `ParsePending`
+  makes one and `Render` re-emits it.
+- **R259:** An entry is a level-2 heading whose text opens `N.`, and its region runs to the next
+  heading of level 2 or higher or a `---` line outside a fence; a fenced heading cannot end it.
+- **R260:** An entry is a view over its run of flat nodes, its values derived from the rendered
+  bytes at the format's positions — number, title, skill, status, Source document and part key,
+  Next — and nothing in the run is re-cut.
+- **R261:** `Place(e, pos)` inserts the canonical entry text as one synthetic node before the entry
+  at `pos`, or at the end when `pos` is one past the last; a position outside that range is
+  refused, not clamped.
+- **R262:** `After(id)` resolves the position following a live entry and refuses an unknown id.
+- **R263:** `Remove(id)` drops the entry's run inside one mutation window, splitting a shared tail
+  text at the region's end.
+- **R264:** `Unread` lists level-2 headings that are not entries; `MaxID` is the largest entry id.
+- **R265:** After each write the document is re-read from its bytes and the entries re-derived, since
+  a placed entry is one synthetic text until it is parsed.

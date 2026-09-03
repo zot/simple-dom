@@ -1,5 +1,5 @@
 # MutationWindow
-**Requirements:** R31, R32, R33, R47, R48, R49, R50, R51, R52, R53, R54, R55, R56, R120, R125
+**Requirements:** R31, R32, R33, R47, R48, R49, R50, R51, R52, R53, R54, R55, R56, R120, R125, R257
 
 The bracket around a set of edits. **Edits are direct** — the window's whole
 mechanism is that nothing can observe the document while they land.
@@ -18,6 +18,8 @@ mechanism is that nothing can observe the document while they land.
 - rebuilds the derived indices **once**, at the exit
 - `Split(n, at)` and `Merge(a, b)`: membership changes, which is why they are
   `Doc` methods rather than node methods
+- `Insert(before, n)`: the third membership verb beside `Replace` and `Remove`, by
+  which a schema's synthetic material enters a document — before a node, or at the end
 - checks `Merge`'s adjacency **when both operands are faithful**, from their two
   locations at the call site, and not at all otherwise
 - `Replace(old, new)`: swaps one node for another, keeping its position. Membership

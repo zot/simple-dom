@@ -32,6 +32,12 @@ established, and nothing below the document checks it again.
 What it buys is that the whole array shares a coordinate system, which is what lets
 `Merge` trust a node's own claim about itself.
 
+**A node with no origin enters any document**, and that is how new material arrives: a
+schema that mints a whole entry builds it as a synthetic node and places it with
+`Insert(before, n)`, the third membership verb beside `Replace` and `Remove` — before an
+existing node, or at the end when `before` is nil. Like the other two it runs inside a
+mutation window and bumps the structural generation.
+
 **And what it does not catch, stated because nothing will.** A document built over
 *one* source from nodes uniformly attributed to a *different* one is undetectable:
 verifying it would mean comparing the very bytes the check exists to avoid copying.
