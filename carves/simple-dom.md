@@ -27,15 +27,17 @@ identifier.
 - [x] ~~**Item 10 — one bracket index.**~~ **LANDED (`efef190`, 2026-08-31 — `#11`.)**
 - [x] ~~**Item 11 — separator links, completing the bracket contract.**~~ **LANDED (`efef190`, 2026-08-31 — `#11`.)**
 - [x] ~~**Item 12 — the vocabulary, second pass: it is a parse, not a scan.**~~ **LANDED (`f9008c6`, 2026-09-01 — `#12`.)**
-- [ ] **Item 5 — indent scope.** **OPEN (#13.)**
+- [x] ~~**Item 5 — indent scope.**~~ **LANDED (`fe5e90e`, 2026-09-02 — `#13`.)**
 - [ ] **Item 6 — the traceability reader.** **OPEN (not queued.)**
+  - [ ] **6.1 — `BracketContext` accessors: typed names, opener/closer, inner/outer text.** **OPEN (#14.)**
+  - [ ] **6.2 — the traceability reader: list compound, `CommentStyle`, `minispecsdom`.** **OPEN (#15.)**
 - [ ] **Item 9 — generalize the schema work into `sdom` tools.** **OPEN (not queued.)**
 - [x] ~~**Item 8 — the vocabulary: it is a parser, not a lexer.**~~ **LANDED (`145ee96`, 2026-08-31 — `#10`.)**
 
 ## Decisions
 
 **DECIDED (Bill, 2026-08-27): two packages.** `sdom` carries the protocol and the
-bracket and indent parsers; `minispecParser` carries mini-spec's readers. The
+bracket and indent parsers; `minispecsdom` carries mini-spec's readers. The
 split is so microfts2 can consume the parsing half — which means **nothing below
 the reader layer may know what a CRC card is**, and the boundary is enforced by
 the compiler rather than by discipline. The export surface this forces
@@ -168,10 +170,16 @@ local-`Equals` escape hatch stays in the rule for a future kind that needs one, 
 nothing in this design does.
 
 **DECIDED (Bill, 2026-08-30): an edit reformats only what it touched, and fields
-segment lazily.** The rule is not *never normalise*; it is **never normalise what
+segment lazily.** *Narrowed 2026-09-02 by Item 6.2a: a field's only write is whole-list
+`SetItems`, so a field is one `Text` and there is no lazy segmentation to do. The
+granularity rule still holds between fields — editing the refs never reformats the
+CRC list.* The rule is not *never normalise*; it is **never normalise what
 you did not touch**. `R5-8` stays `R5-8` until something edits it — then
 reformatting the edited part is fine and the unedited parts stay byte-intact.
-Adding `R12` to `R5-R7, R10` must not flatten the range on its way past.
+~~Adding `R12` to `R5-R7, R10` must not flatten the range on its way past.~~
+**Reversed 2026-09-02 (Bill):** a list write re-emits the whole list canonically, so
+that becomes `R5-7, R10, R12`. Preserving unedited items inside an edited field is
+too fancy here; unedited *fields* still stay byte-exact.
 
 That is the granularity rule one level inside a field. A field edited as a whole
 can be one `Text`; a field whose parts are edited independently must be a compound
@@ -751,20 +759,20 @@ indexing anywhere, so the second consumer for a declaration layer is
 the sequencing below, and that argument was mine rather than Bill's.
 
 **DECIDED (Bill, 2026-08-31): the schemas live in `sdom/schema`, and only
-mini-spec's own readers are `minispecParser`'s.** A language schema is tightly
+mini-spec's own readers are `minispecsdom`'s.** A language schema is tightly
 coupled to the machinery and **bundles with `sdom`** — anyone parsing Go wants Go's
-schema, and none of it knows what a CRC card is. What stays at the module root is
+schema, and none of it knows what a CRC card is. What stays in its own package is
 the part that is genuinely mini-spec's and will only ever be used by mini-spec: the
 traceability comment and its readers.
 
 *This corrects an ambiguity carried through the morning*, in which "the schemas" and
-"`minispecParser`" were treated as the same place. Three packages, not two:
+"`minispecsdom`" were treated as the same place. Three packages, not two:
 
 | package | holds |
 |---|---|
 | `sdom` | the protocol, the bracket parser, the declaration machinery |
 | `sdom/schema` | the bundled Go, TypeScript, JavaScript, Lua and Shell schemas |
-| module root | `minispecParser` — the traceability comment, Item 6 |
+| `minispecsdom` | the traceability comment, Item 6 — a sibling of `sdom` |
 
 **The boundary argument survives the move.** `sdom/schema` is a separate package, so
 driving the machinery from it still exercises every accessor and constructor the
@@ -1188,21 +1196,136 @@ this carve does not schedule it.
 
 ## Item 6
 
-Mini-spec's reader: the traceability comment, its fields, and the anchored /
-unanchored query.
+Mini-spec's reader: the traceability comment. This item is the **comment parser plus
+the accessors a consumer needs to relate a comment to a declaration** — not the
+resolving query. Whether a ref points at a live, retired or absent requirement is the
+mini-spec tool's business, as a consumer of `sdom`; nothing here knows what a
+requirement *is* beyond its number.
 
-    // CRC: crc-Store.md | Seq: seq-crud.md#1.4 | R4, R5
+    // CRC: crc-Store.md | Seq: seq-crud.md#1.4 | Test: test-Store.md | R4, R5-7 -- note
 
-The comment is a compound whose children tile its bytes. Field keys and
-requirement lists are **derived from the literals, never stored** — nothing is
-normalized on the way in, so `//CRC:crc-Index.md|Seq:...` and
-`// CRC:   crc-Odd.md   |   R7` both parse and both render back byte-exact.
+The comment is a compound whose children tile its bytes. Field keys and values are
+**derived from the literals, never stored** — nothing is normalized on the way in,
+so `//CRC:crc-Index.md|R7` and `// CRC:   crc-Odd.md   |   R7` both parse and both
+render back byte-exact.
 
-An anchor is a **two-ended link** and can dangle at either end. The query wants
-all declarations with status, not only the failures: expected-but-missing,
-present-but-unanchored, present-and-anchored, and **anchored to a requirement or
-artifact that no longer exists**. A retired requirement is a forwarding address
-rather than a break, so the tool can tell a hop from a genuine dangle.
+### The design (Bill, 2026-09-02)
+
+The item lands in **two subparts**. **6.1** re-touches landed `context.go` and
+depends on nothing else here; **6.2** is the reader, in three pieces, and follows it.
+
+**6.1 — typed and text accessors on `BracketContext`.**
+
+- `BracketInfo.declaration` is `[]*DeclarationName`, not `[]Node`; `SetDeclarations`
+  takes `map[*DeclarationType][]*DeclarationName`; a typed accessor
+  `DeclarationNames(t *DeclarationType) ([]*DeclarationName, error)` returns pointers
+  (values would copy the structs and break node identity) and keeps the
+  `ErrDeclarationsStale` refusal, which must not silently become "declares nothing".
+  A **method, not an interface**: every schema stores its links in `*BracketContext`,
+  so an interface would have one implementer.
+- `Opener(closer Node) *Opener` and `Closer(opener Node) *Closer` — typed, same move.
+- `InnerText(n Node) string` and `OuterText(n Node) string`, mirroring `innerHTML` /
+  `outerHTML`. A group left open at end of input: inner runs to the end of the source.
+- **`O21` stays, by design.** Accessors hand back the context's own slices. Every
+  `sdom` consumer is fire-and-forget — mini-spec is a CLI that builds a DOM, uses it
+  and exits; microfts2 (and Ark through it) uses `sdom` for indexing and searching and
+  caches no DOM slices — so aliasing has no lifetime to be a hazard in. `sdom` is a
+  *simple* library that parses, renders and stencils; a sharp corner is documented in
+  a sentence, and the one guarded class is a write that would silently corrupt bytes.
+
+**6.2a — the list compound (`sdom`, generic).** One node kind holding one `Text` child;
+`Items() []string` derives the comma-separated values from the literal on every call
+(no laziness — small files), and `SetItems([]string)` rewrites the literal through the
+guarded write. Whitespace around commas is glue and is preserved when unedited.
+**Two parsers produce it:** a plain one (tokens only) and a ranged one, whose items
+may also be `Rn-Rm` or `Rn-m` ranges. The **requirements node** is the ranged one's
+product and is numeric: `Items() []int` flattens, expanding ranges (a reversed range
+contributes only its low ref); `SetItems([]int)` sorts and emits maximally condensed,
+runs of three or more as `R7-12`. Only requirements use the ranged parser, so a range
+inside a doc list cannot exist by construction. No insert or delete.
+
+**6.2b — `CommentStyle` on `BracketLang`.**
+
+```go
+type BracketLang struct {
+    Brackets []BracketGroup
+    Comment  CommentStyle       // how this language writes a comment
+}
+type CommentStyle struct{ Prefix, Suffix, Kind string }   // "// ", "\n", "comment" for Go
+```
+
+Prefix and suffix are the construction template — not redundant with the group's
+`Open`/`Close`: the opener is `//` but a written comment wants `// `, and the closer
+is a structural `\n`. `Kind` is what a constructed comment must parse back as, and
+should equal the `Kind` of the group recognizing the prefix. **Guarded by a test, not a
+runtime check:** for every shipped language, construct a comment, parse it, assert the
+group's `Kind == lang.Comment.Kind`. A language with several comment forms designates
+one for construction (Go's `//`, not `/*`); the others still parse. Three names touch
+"comment" at three layers and stay separate: `BracketGroup.Kind` (recognition),
+`IndentLang.Transparent` (indentation), `CommentStyle.Kind` (construction). `sdom`
+still never spells the word in a branch.
+
+**6.2c — `minispecsdom`, the first mini-spec-centric package.** A sibling of `sdom` in
+this repo (it may move into mini-spec later). `sdom` never learns what a CRC card is.
+
+*The grammar.* The interior is the bytes between the language's comment opener and
+closer.
+
+```
+interior ::= WS? field ( WS? "|" WS? field )* ( WS? descsep description )?
+field    ::= "CRC:"  WS? doclist  |  "Seq:" WS? doclist  |  "Test:" WS? doclist  |  rlist
+doclist  ::= token ( WS? "," WS? token )*        token = one non-space run (a doc path)
+rlist    ::= ref   ( WS? "," WS? ref   )*        ref   = Rn | Rn-Rm | Rn-m
+descsep  ::= "--" | "—" | ":"     accepted on read;  "--" emitted on write
+```
+
+Four field kinds, **one occurrence each, every one a list, in any order** — a reader
+classifies each `|`-segment by its lead. A `:` is a field-key colon only immediately
+after `CRC`/`Seq`/`Test`; anywhere else it is the descsep, so `R5: desc` reads `R5`
+then a description. A `Seq` value's `#step` splits from its path in the typed view.
+Whitespace is glue everywhere; keywords, `|` and the descsep are computed glue, so the
+pattern cannot silently eat bytes. The description is bound and writable; its
+separator is preserved byte-exact when unedited and emitted as `--` on a fresh write.
+Canonical write order is CRC, Seq, Test, refs, single spaces.
+
+*The node.* Stencilled nodes have the shape `type T struct { FIELDS aliasing child
+nodes; dom []Node }`, and this one is **one shared kind for every language** — only
+the `CommentStyle` wrapping is language-specific. It **tiles the whole comment, opener
+through closer**; a consumer that skims the flat DOM for the kind has the complete
+comment as one node.
+
+*The second pass.* `c.Parse(cmt *Opener, ctx *BracketContext) bool`. The pass visits
+each comment group; a cheap lead filter skips obvious non-candidates; the rest get an
+attempted parse of `ctx.InnerText(cmt)`, built off to the side. **Recognition is a
+parse that consumes the whole interior:** `// Test: a repaint frame round-trips
+(R3136).` leads with a keyword but leaves prose uncovered, so it is not a traceability
+comment; nor are `// see R5` or `// (R5)`. On false the pass discards `c` and
+advances; on true it rips the group's run of nodes out of the flat DOM and puts the
+one compound in its place, **moving the original `*Opener` and `*Closer` inside it** —
+reused, not recreated — so the context's identity-keyed maps stay valid. This is the
+same test as the guarded write below: a parse that consumes less than everything is
+the refusal. Locs derive from the opener's offset and `ctx.Origin()`.
+
+*Inside `Parse`.* `StencilBuilder` is single-regex and cannot express arbitrary order
+(a repeated capture reports only its last iteration), so the interior is a **segment
+walk**: split on `|`, peel a trailing description off the first descsep that is not a
+field-key colon, then a `StencilBuilder` per segment with an alternation regex so each
+segment classifies itself by which group participated. List texts become 6.2a's list
+nodes; results splice **flat** into the comment — no nested per-segment compounds.
+
+*Construction.* There is no hand-built child list. A constructor assembles the
+canonical string from card, seq, test, refs and description, wraps it in
+`lang.Comment.Prefix … Suffix`, parses it, and calls `Parse` — one path, so nothing
+can build a comment that disagrees with how one is read.
+
+*Tests.* (1) A fuzzed source string over the whole grammar — any field order,
+whitespace, all three descseps, ranged refs — asserting `render(dom) == src` and
+`parse(render(dom)).Equals(dom)`; the DOM compare fails on under-modelling, which a
+byte round-trip cannot see. Go native fuzzing gives reproducibility for free. Lua is
+the case the generator must hit: its opener is `--`, the same token as the write
+descsep. (2) The constructor's output parses back to an `Equals` DOM. (3) 6.2b's kind
+test per language. (4) Fire alarm: make the parser return the interior as opaque text,
+drop a field, or normalize a range — the DOM compare goes red.
 
 ### Item 6's decisions
 
@@ -1218,6 +1341,20 @@ this does.
 **DECIDED (Bill, 2026-08-27): a refused write is handled where it happens** and
 not propagated out of the mutation function, since anything escaping it poisons
 the document. The guarded write is its own transaction.
+
+**DECIDED (Bill, 2026-09-02): scope is the parser and the accessors, not the
+resolving query.** Anchored / unanchored / retired / dangling is how a consumer uses
+`sdom`, not what `sdom` does.
+
+**DECIDED (Bill, 2026-09-02): order-independent reading, canonical writing.** Fields
+appear in any order on read, at the price of a segment walk instead of one regex; a
+human hand-editing these does not keep an order, and the walk is cheap.
+
+**DECIDED (Bill, 2026-09-02): two list parsers, one list kind.** Ranges are legal only
+where requirements are parsed. An invariant true by construction needs no check.
+
+**DECIDED (Bill, 2026-09-02): `DeclarationNames` is a method on `*BracketContext`**,
+not an interface, until a second provider exists.
 
 ## Item 8
 
