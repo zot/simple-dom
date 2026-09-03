@@ -17,8 +17,8 @@ what is still open.
 ## Status
 
 - [x] ~~**Item 9 — the live text node.**~~ **LANDED (`3fd278e`, 2026-09-03 — `#16`.)**
-- [ ] **Item 1 — the markdown schema.** **OPEN (#17.)**
-- [ ] **Item 2 — the part line.** **OPEN (not queued.)**
+- [x] ~~**Item 1 — the markdown schema.**~~ **LANDED (`f5de2b5`, 2026-09-03 — `#17`.)**
+- [ ] **Item 2 — the part line.** **OPEN (#18.)**
 - [ ] **Item 3 — the carve status block.** **OPEN (not queued.)**
 - [ ] **Item 4 — the pending file.** **OPEN (not queued.)**
 - [ ] **Item 5 — the done file.** **OPEN (not queued.)**

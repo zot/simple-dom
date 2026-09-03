@@ -74,7 +74,9 @@ parser takes the loop for a restricted group, so `- [ ]` inside a fence is text 
 rule needed — the same structure that makes indentation significant only at depth 0.
 
 Each marker holds only the bytes it matched. A heading's **level** is derived from
-those bytes. Its **extent** — the rest of the line, the item's body, the region under a
+those bytes, and a checkbox's **`Checked`** likewise, with `SetChecked` writing the
+interior through — the checkbox owns its own semantics, since it holds the brackets
+and a bare `Bool` would not read it. Its **extent** — the rest of the line, the item's body, the region under a
 heading — is a consumer's derivation from the array, as the indent frames are; the base
 records nothing.
 

@@ -1,0 +1,503 @@
+package minispecsdom
+
+import (
+	"errors"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/zot/simple-dom/sdom"
+	"github.com/zot/simple-dom/sdom/schema"
+)
+
+// CRC: crc-PartLine.md | R238
+//
+// headRe cuts a keyed head's first text: the key, the em-dash separator, the title.
+// `Item` is required without a dot and forbidden with one; the separator is the em dash
+// and nothing else. Anything else leaves the line unkeyed, reported rather than refused.
+var headRe = regexp.MustCompile(`(?s)^(?P<key>Item \d+|\d+(?:\.\d+)+)(?P<sep>\s*—\s*)(?P<title>.*)$`)
+
+// looseHeadRe recognizes a head that keys in some OTHER scheme or separator, so the
+// deviation can name the target rather than merely say "unkeyed".
+var looseHeadRe = regexp.MustCompile(`^(?:Item\s+)?\d+(?:\.\d+)*\s*[—–-]`)
+
+// CRC: crc-MarkerSpan.md | R239
+//
+// markerRe cuts a marker's first text: the verb — words joined by spaces or hyphens,
+// matched without regard to case so a mis-cased one is read and reported — then either
+// the opening parenthesis of an attribution or the end.
+var markerRe = regexp.MustCompile(`(?is)^(?P<verb>[a-z][a-z -]*[a-z]|[a-z])\b(?P<rest>\s*\(.*|\.?)$`)
+
+// canonicalRe is what a written marker interior must read back as.
+var canonicalRe = regexp.MustCompile(`(?s)^([A-Z][A-Z -]*[A-Z]|[A-Z]) \((.*)\)$`)
+
+var queueIDRe = regexp.MustCompile(`#(\d+)`)
+
+// checkboxTextRe recognizes a bracketed interior the base did not take as a Checkbox,
+// so an off-form one is reported rather than passed over.
+var checkboxTextRe = regexp.MustCompile(`^\[.\]`)
+
+// queuedRe is the queued form of an `OPEN` attribution; `not queued.` is the other.
+var queuedRe = regexp.MustCompile(`^#\d+\.$`)
+
+// ErrMarkerRefused reports a MarkerSpan.Set whose render would not read back as the
+// verb and attribution that were set. The literal is unchanged.
+var ErrMarkerRefused = errors.New("minispecsdom: the marker would not read back; unchanged")
+
+// CRC: crc-PartLine.md | R242
+//
+// Deviation names a rule a line breaks and the shape it must take, per
+// trajectory-format.md: a read path lists it and a write path refuses on it.
+type Deviation struct{ Rule, Target string }
+
+const (
+	keyTarget      = "a part is keyed `Item N` and a subpart `N.M`, separated from its title by an em dash"
+	checkboxTarget = "`[ ]` for open, `[x]` for landed"
+	verbTarget     = "a marker verb is written in capitals"
+	markerTarget   = "an `OPEN` attribution is exactly `#N.` or `not queued.`"
+)
+
+// CRC: crc-PartLine.md | R236, R240, R246
+//
+// PartLine is a carve status line as one node: bound checkbox and key, a list of
+// marker spans, the strike behind an accessor. It tiles from the `- ` to the byte
+// before the newline, reusing every node the base emitted.
+type PartLine struct {
+	sdom.Compound
+
+	item     *schema.ListItem
+	checkbox *schema.Checkbox
+	key      *sdom.Text
+	title    *sdom.Text
+	headOpen *sdom.Opener // the head's `**`, so Strike can find it
+	markers  []*MarkerSpan
+	devs     []Deviation
+
+	run  []sdom.Node // the flat nodes this replaces, item first
+	tail *sdom.Text  // the run's last text, which holds the newline
+	cut  int         // where the line ends inside tail; 0 when tail is all next line
+}
+
+// CRC: crc-PartLine.md | R240
+func (p *PartLine) Checkbox() *schema.Checkbox { return p.checkbox }
+
+// CRC: crc-PartLine.md | R238
+func (p *PartLine) Key() string {
+	if p.key == nil {
+		return ""
+	}
+	s, _ := p.key.Render()
+	return s
+}
+
+// CRC: crc-PartLine.md | R238
+func (p *PartLine) Title() *sdom.Text { return p.title }
+
+// CRC: crc-PartLine.md | R239
+func (p *PartLine) Markers() []*MarkerSpan { return p.markers }
+
+// CRC: crc-PartLine.md | R242
+func (p *PartLine) Deviations() []Deviation { return p.devs }
+
+// CRC: crc-Node.md | R10, R13, R246
+func (p *PartLine) Equals(o sdom.Node) bool {
+	x, ok := o.(*PartLine)
+	return ok && p.Compound.Equals(&x.Compound)
+}
+
+// CRC: crc-PartLine.md | Seq: seq-partline.md#1 | R236, R237, R238, R239, R242, R247
+//
+// Parse walks the line from item to the newline, classifies each bold run by content
+// — the first is the head, a later `VERB (…)` run a marker — re-cuts the head's first
+// text into key, separator and title, and keeps everything else as it was. Every list
+// item parses; false only when item is not in the document.
+func (p *PartLine) Parse(item *schema.ListItem, ctx *sdom.BracketContext) bool {
+	d := ctx.Doc()
+	if d == nil {
+		return false
+	}
+	i := d.IndexOf(item)
+	if i < 0 {
+		return false
+	}
+	nodes := d.Nodes()
+	p.item = item
+	p.run = []sdom.Node{item}
+	kids := []sdom.Node{item}
+
+	j := i + 1
+	if j < len(nodes) {
+		if cb, ok := nodes[j].(*schema.Checkbox); ok {
+			p.checkbox = cb
+			kids = append(kids, cb)
+			p.run = append(p.run, cb)
+			j++
+		} else if t, ok := nodes[j].(*sdom.Text); ok {
+			if s, _ := t.Render(); checkboxTextRe.MatchString(s) {
+				p.devs = append(p.devs, Deviation{"checkbox interior", checkboxTarget})
+			}
+		}
+	}
+
+	for ; j < len(nodes); j++ {
+		n := nodes[j]
+		if t, ok := n.(*sdom.Text); ok {
+			s, _ := t.Render()
+			if at := strings.IndexByte(s, '\n'); at >= 0 {
+				p.tail, p.cut = t, at
+				if at > 0 {
+					kids = append(kids, cutText(t, 0, at))
+				}
+				break
+			}
+			kids = append(kids, t)
+			p.run = append(p.run, t)
+			continue
+		}
+		p.run = append(p.run, n)
+		o, cl := boldRun(n, ctx)
+		if o == nil {
+			kids = append(kids, n)
+			continue
+		}
+		// A bold run: opener, interior nodes, closer — all reused.
+		end := d.IndexOf(cl)
+		interior := nodes[j+1 : end]
+		p.run = append(p.run, interior...)
+		p.run = append(p.run, cl)
+		if p.headOpen == nil {
+			// The first bold run is the head.
+			p.headOpen = o
+			kids = append(kids, o)
+			kids = append(kids, p.cutHead(interior)...)
+			kids = append(kids, cl)
+		} else if m := newMarkerSpan(o, interior, cl); m != nil {
+			p.markers = append(p.markers, m)
+			p.devs = append(p.devs, m.deviations()...)
+			kids = append(kids, m)
+		} else {
+			kids = append(kids, o)
+			kids = append(kids, interior...)
+			kids = append(kids, cl)
+		}
+		j = end
+	}
+	if p.key == nil {
+		p.devs = append(p.devs, Deviation{"key form", keyTarget})
+	}
+	p.Compound = *sdom.NewCompound(item.Location(), kids...)
+	return true
+}
+
+// boldRun reports the bold run a node begins: the `**` opener and the closer that
+// pairs with it. Anything else — another marker, an unpaired `**`, a node that is not
+// an opener at all — is not a run, and both are nil.
+func boldRun(n sdom.Node, ctx *sdom.BracketContext) (*sdom.Opener, *sdom.Closer) {
+	o, ok := n.(*sdom.Opener)
+	if !ok {
+		return nil, nil
+	}
+	if s, _ := o.Render(); s != "**" {
+		return nil, nil
+	}
+	cl := ctx.Closer(o)
+	if cl == nil {
+		return nil, nil
+	}
+	return o, cl
+}
+
+// cutHead re-cuts the head's first text into key, separator glue and title, or leaves
+// the interior as glue when it does not key.
+func (p *PartLine) cutHead(interior []sdom.Node) []sdom.Node {
+	if len(interior) == 0 {
+		return nil
+	}
+	t, ok := interior[0].(*sdom.Text)
+	if !ok {
+		return interior
+	}
+	s, _ := t.Render()
+	b, ok := sdom.NewStencilBuilder(headRe, s, t.Location())
+	if !ok {
+		if looseHeadRe.MatchString(s) {
+			p.devs = append(p.devs, Deviation{"separator", keyTarget})
+		}
+		return interior
+	}
+	p.key = sdom.NewText(b.Group("key"))
+	b.Put("key", p.key)
+	b.Omit("sep")
+	p.title = sdom.NewText(b.Group("title"))
+	b.Put("title", p.title)
+	kids, _ := b.Done()
+	return append(kids, interior[1:]...)
+}
+
+// headIndex is where the head's bold opener sits among kids, or -1.
+func (p *PartLine) headIndex(kids []sdom.Node) int {
+	for i, k := range kids {
+		if k == sdom.Node(p.headOpen) {
+			return i
+		}
+	}
+	return -1
+}
+
+// CRC: crc-PartLine.md | Seq: seq-partline.md#2 | R241
+// IsStruck derives from the children: the head's bold opener sits right after a `~~`.
+func (p *PartLine) IsStruck() bool {
+	kids := p.Kids()
+	i := p.headIndex(kids)
+	if i <= 0 {
+		return false
+	}
+	o, ok := kids[i-1].(*sdom.Opener)
+	if !ok {
+		return false
+	}
+	s, _ := o.Render()
+	return s == "~~"
+}
+
+// CRC: crc-PartLine.md | Seq: seq-partline.md#2 | R241
+//
+// Strike wraps or unwraps the head's bold run in `~~`, among this node's own children.
+// The flat array never sees inside a compound, so no mutation window is involved. A
+// line with no head has nothing to strike and is left alone.
+func (p *PartLine) Strike(on bool) {
+	if p.headOpen == nil || p.IsStruck() == on {
+		return
+	}
+	kids := p.Kids()
+	open := p.headIndex(kids)
+	shut := open + 1
+	for ; shut < len(kids); shut++ {
+		if c, ok := kids[shut].(*sdom.Closer); ok {
+			if s, _ := c.Render(); s == "**" {
+				break
+			}
+		}
+	}
+	head := kids[open : shut+1] // the head's bold run, opener through closer
+	var out []sdom.Node
+	if on {
+		out = append(out, kids[:open]...)
+		out = append(out, sdom.NewOpener("~~", sdom.Synthetic(2)))
+		out = append(out, head...)
+		out = append(out, sdom.NewCloser("~~", sdom.Synthetic(2)))
+		out = append(out, kids[shut+1:]...)
+	} else {
+		out = append(out, kids[:open-1]...)
+		out = append(out, head...)
+		out = append(out, kids[shut+2:]...)
+	}
+	p.Compound = *sdom.NewCompound(p.item.Location(), out...)
+}
+
+// CRC: crc-PartLine.md | Seq: seq-partline.md#1.5 | R245
+//
+// Splice replaces the line's run with this node, inside a mutation window. The run's
+// last text holds the newline, so it is split first and its left half moves inside.
+func (p *PartLine) Splice(d *sdom.Doc) error {
+	if p.tail != nil && p.cut > 0 {
+		left, _, err := d.Split(p.tail, p.cut)
+		if err != nil {
+			return err
+		}
+		kids := p.Kids()
+		kids[len(kids)-1] = left
+		p.Compound = *sdom.NewCompound(p.item.Location(), kids...)
+		p.run = append(p.run, left)
+	}
+	if err := d.Replace(p.item, p); err != nil {
+		return err
+	}
+	for _, n := range p.run[1:] {
+		if err := d.Remove(n); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CRC: crc-PartLine.md | R245
+//
+// PartLines parses and splices every list item in document order, each in its own
+// mutation window.
+func PartLines(d *sdom.Doc, ctx *sdom.BracketContext) ([]*PartLine, error) {
+	var items []*schema.ListItem
+	for _, n := range d.Nodes() {
+		if it, ok := n.(*schema.ListItem); ok {
+			items = append(items, it)
+		}
+	}
+	var out []*PartLine
+	for _, it := range items {
+		p := &PartLine{}
+		if !p.Parse(it, ctx) {
+			continue
+		}
+		if err := d.Mutate(func() error { return p.Splice(d) }); err != nil {
+			return out, err
+		}
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+// CRC: crc-MarkerSpan.md | R243, R246
+//
+// MarkerSpan is `**VERB (attribution)**` as a stencil over the bold run the base
+// emitted: the verb bound, the attribution derived across whatever nodes it spans.
+type MarkerSpan struct {
+	sdom.Compound
+
+	verb     *sdom.Text
+	attrFrom int // index in kids of the first attribution node
+	attrTo   int // index in kids just past the last attribution node
+}
+
+// newMarkerSpan classifies a bold run by content and builds the span, or nil.
+//
+// Only the first text and the last are re-cut — into the verb, the glue that carries
+// the parentheses, and the attribution's ends. Everything between them, code spans
+// included, is the run's own nodes, reused.
+func newMarkerSpan(o *sdom.Opener, interior []sdom.Node, cl *sdom.Closer) *MarkerSpan {
+	if len(interior) == 0 {
+		return nil
+	}
+	first, ok := interior[0].(*sdom.Text)
+	if !ok {
+		return nil
+	}
+	firstText, _ := first.Render()
+	m := markerRe.FindStringSubmatch(firstText)
+	if m == nil {
+		return nil
+	}
+	verb := m[1]
+
+	ms := &MarkerSpan{verb: cutText(first, 0, len(verb))}
+	kids := []sdom.Node{o, ms.verb}
+	at := strings.IndexByte(firstText[len(verb):], '(')
+	if at < 0 {
+		// No attribution: the rest of the run is glue and the span is empty.
+		if len(verb) < len(firstText) {
+			kids = append(kids, cutText(first, len(verb), len(firstText)))
+		}
+		kids = append(kids, interior[1:]...)
+		ms.attrFrom, ms.attrTo = len(kids), len(kids)
+	} else {
+		last, ok := interior[len(interior)-1].(*sdom.Text)
+		if !ok {
+			return nil // the run ends inside something else: not a marker
+		}
+		open := len(verb) + at
+		kids = append(kids, cutText(first, len(verb), open+1)) // glue through "("
+		ms.attrFrom = len(kids)
+		// The attribution starts just past "(" and ends at the last ")" in the run's
+		// last text — the same text when the run is one, otherwise past the middle.
+		from := open + 1
+		if len(interior) > 1 {
+			if from < len(firstText) {
+				kids = append(kids, cutText(first, from, len(firstText)))
+			}
+			kids = append(kids, interior[1:len(interior)-1]...)
+			from = 0
+		}
+		lastText, _ := last.Render()
+		shut := strings.LastIndexByte(lastText[from:], ')')
+		if shut < 0 {
+			return nil
+		}
+		shut += from
+		if shut > from {
+			kids = append(kids, cutText(last, from, shut))
+		}
+		ms.attrTo = len(kids)
+		kids = append(kids, cutText(last, shut, len(lastText))) // ")" and any glue after
+	}
+	kids = append(kids, cl)
+	ms.Compound = *sdom.NewCompound(o.Location(), kids...)
+	return ms
+}
+
+// CRC: crc-MarkerSpan.md | R243
+func (m *MarkerSpan) Verb() *sdom.Text { return m.verb }
+
+// CRC: crc-MarkerSpan.md | R243
+// Attribution renders the nodes between the parentheses; "" when there are none.
+func (m *MarkerSpan) Attribution() string {
+	var b strings.Builder
+	for _, k := range m.Kids()[m.attrFrom:m.attrTo] {
+		s, _ := k.Render()
+		b.WriteString(s)
+	}
+	return b.String()
+}
+
+// CRC: crc-MarkerSpan.md | R243
+func (m *MarkerSpan) QueueID() (int, bool) {
+	sm := queueIDRe.FindStringSubmatch(m.Attribution())
+	if sm == nil {
+		return 0, false
+	}
+	n, _ := strconv.Atoi(sm[1])
+	return n, true
+}
+
+// deviations reports the marker's own rules: verb case, and the OPEN attribution.
+func (m *MarkerSpan) deviations() []Deviation {
+	var out []Deviation
+	v, _ := m.verb.Render()
+	if v != strings.ToUpper(v) {
+		out = append(out, Deviation{"verb case", verbTarget})
+	}
+	if strings.EqualFold(v, "OPEN") {
+		if a := m.Attribution(); a != "not queued." && !queuedRe.MatchString(a) {
+			out = append(out, Deviation{"OPEN attribution", markerTarget})
+		}
+	}
+	return out
+}
+
+// CRC: crc-MarkerSpan.md | Seq: seq-partline.md#3 | R244
+//
+// Set rewrites the interior canonically — VERB (attribution), verb in capitals — under
+// the guarded write: the render must read back as the same verb and attribution, or
+// the write is refused and the literal unchanged. The result is four texts where a
+// fresh parse might give code spans; bytes identical, structure not — the corner a
+// canonical write accepts.
+func (m *MarkerSpan) Set(verb, attribution string) error {
+	verb = strings.ToUpper(verb)
+	canon := verb + " (" + attribution + ")"
+	sm := canonicalRe.FindStringSubmatch(canon)
+	if sm == nil || sm[1] != verb || sm[2] != attribution {
+		return ErrMarkerRefused
+	}
+	kids := m.Kids()
+	open, cl := kids[0], kids[len(kids)-1]
+	m.verb = sdom.NewText(verb, sdom.Synthetic(len(verb)))
+	attr := sdom.NewText(attribution, sdom.Synthetic(len(attribution)))
+	out := []sdom.Node{open, m.verb, sdom.NewText(" (", sdom.Synthetic(2)), attr, sdom.NewText(")", sdom.Synthetic(1)), cl}
+	m.attrFrom, m.attrTo = 3, 4 // attr's place in out
+	m.Compound = *sdom.NewCompound(open.Location(), out...)
+	return nil
+}
+
+// CRC: crc-Node.md | R10, R13, R246
+func (m *MarkerSpan) Equals(o sdom.Node) bool {
+	x, ok := o.(*MarkerSpan)
+	return ok && m.Compound.Equals(&x.Compound)
+}
+
+// cutText returns a new Text over t's bytes [s, e), with the matching location.
+func cutText(t *sdom.Text, s, e int) *sdom.Text {
+	str, _ := t.Render()
+	loc := t.Location()
+	if loc.Offset() < 0 {
+		return sdom.NewText(str[s:e], sdom.Synthetic(e-s).In(loc.Origin()))
+	}
+	return sdom.NewText(str[s:e], sdom.Source(loc.Offset()+s, e-s).In(loc.Origin()))
+}

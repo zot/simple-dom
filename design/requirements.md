@@ -407,7 +407,8 @@
 - **R229:** A line head is read from the array: `Last()` is an `Indent`, or a `Text` ending in a
   newline followed only by spaces or tabs; no state is kept for it.
 - **R230:** `Heading` holds one to six `#` and the space and derives its level from them; `ListItem`
-  holds `- `; `Checkbox` holds `[ ]` or `[x]` and is recognized only immediately after a `ListItem`.
+  holds `- `; `Checkbox` holds `[ ]` or `[x]`, is recognized only immediately after a `ListItem`,
+  and derives `Checked` from its bytes with `SetChecked` writing the interior through.
 - **R231:** No line-head marker shares a first byte with any bracket opener in the table, which is
   what lets the wrapper check after delegating; guarded by a test over the table.
 - **R232:** Inside a fence or a code span the wrapper is never offered a position, so a line-head
@@ -417,3 +418,34 @@
 - **R234:** A marker holds only the bytes it matched; extents — a heading's line and region, a list
   item's body — are a consumer's derivation from the array, and the base records nothing.
 - **R235:** Each marker kind is its own type embedding `Text`, with its own `Equals`.
+
+## Feature: part line
+**Source:** specs/part-line.md
+
+- **R236:** `PartLine` is one node over a list item line, from the `- ` marker to the byte before
+  the newline, reusing the `ListItem`, `Checkbox` and every bracket marker the base emitted.
+- **R237:** Every list item line parses; `Parse` returns false only when the item is not in the
+  document, and belonging to a status block is the carve schema's business.
+- **R238:** The head is the first bold run after the checkbox; the line is keyed when its interior
+  begins `Item N — ` or `N.M — ` — the word required without a dot and forbidden with one, the em
+  dash and nothing else — and the key is a bound `Text`, the separator glue, the title the rest of
+  that text.
+- **R239:** A later bold run whose interior reads `VERB (attribution)`, the verb in capitals as one
+  or more words joined by spaces or hyphens, is a `MarkerSpan`; anything else is interspersed text.
+- **R240:** `Checkbox()` is the base's own `Checkbox` node, nil when the line has none.
+- **R241:** `IsStruck()` derives from whether the head sits inside a `~~` group; `Strike(bool)`
+  inserts or removes the `~~` pair around the head's bold run among the node's own children — the
+  flat array is untouched, so no mutation window is involved; no consumer touches a `~~` node.
+- **R242:** Deviations are reported, each naming its rule and target shape — unkeyed head,
+  non-em-dash separator, non-conforming checkbox interior, verb not in capitals, an `OPEN`
+  attribution not exactly `#N.` or `not queued.` — and the line still parses.
+- **R243:** `MarkerSpan` tiles `**` through `**` reusing both; its verb is a bound `Text`; its
+  attribution and queue ID are derived by rendering the nodes between the parentheses.
+- **R244:** `MarkerSpan.Set` rewrites the interior canonically as one text under the guarded write:
+  the render re-parsed as a marker must yield the same verb and attribution, or the write is
+  refused and the literal unchanged.
+- **R245:** `Splice` replaces the line's run with the node inside a mutation window; `PartLines`
+  parses and splices every list item in document order.
+- **R246:** `PartLine` and `MarkerSpan` each declare their own `Equals`, comparing children.
+- **R247:** Bound texts and glue are re-cut from the interior texts; no bytes are lost or
+  normalised on read, and an unedited line renders back byte-exact.

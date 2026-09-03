@@ -161,3 +161,27 @@ func (r *nodeTypeRecorder) Parse(st *sdom.ParserState) {
 func (r *nodeTypeRecorder) NodeType(st *sdom.ParserState) (string, bool) { return r.inner.NodeType(st) }
 
 func (r *nodeTypeRecorder) Done(d *sdom.Doc) { r.inner.Done(d) }
+
+// CRC: crc-MarkdownParser.md | R227
+//
+// Found by injecting past the alarm list: with bold admitting no code span, every
+// count in the fixture test stayed the same. The hatches are the part line's shape —
+// strike around bold, code spans inside a marker span — so each must pair.
+func TestTheEscapeHatchesPair(t *testing.T) {
+	src := "- [x] ~~**Item 1 — r.**~~ **LANDED (`4c6e974`, 2026-08-04 — `#3`.)**\n"
+	d, p := parseMarkdown(src)
+	ctx := p.Indent().Brackets().Context()
+	paired := map[string]int{}
+	for _, n := range d.Nodes() {
+		if o, ok := n.(*sdom.Opener); ok && ctx.Closer(o) != nil {
+			s, _ := o.Render()
+			paired[s]++
+		}
+	}
+	want := map[string]int{"~~": 1, "**": 2, "`": 2}
+	for k, w := range want {
+		if paired[k] != w {
+			t.Errorf("%q: %d paired groups, want %d", k, paired[k], w)
+		}
+	}
+}

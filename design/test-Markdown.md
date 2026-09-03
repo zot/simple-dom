@@ -10,6 +10,7 @@
 **Alarm:** 1
 **Fire alarm:** make `lineHead` return true for any node, so `- ` and `## ` are recognized anywhere. Red: `a - b` mid-line yields a `ListItem` and the counts overshoot.
 **Inject:** sdom/schema/markdown.go:lineHead
+**Pulled:** 2026-09-03 — rang: `items 6 boxes 4, want 5 and 4` — the mid-line `a - b` became an item, only that test.
 
 ## Test: a checkbox is recognized only after a list item
 **Purpose:** R230
@@ -20,6 +21,7 @@
 **Alarm:** 2
 **Fire alarm:** in `head`, try the checkbox match at any line head as well as after a `ListItem`. Red: the fixture's line beginning `[x] not an item` becomes a `Checkbox`, and this test's fourth line too.
 **Inject:** sdom/schema/markdown.go:MarkdownParser.head
+**Pulled:** 2026-09-03 — rang: `boxes 5` in the fixture and `boxes 3 items 2` here — the `[x] not an item` lines both became checkboxes.
 
 ## Test: code hides structure
 **Purpose:** R232 — structural, not a rule
@@ -30,6 +32,7 @@
 **Alarm:** 3
 **Fire alarm:** give the fence `AllowedInner: nil` (code mode) instead of the empty slice. Red: `**` inside the fence opens a group, and the fence interior is no longer one text node. The line-head markers stay hidden even then, since the wrapper is still not offered positions inside — which is why this test asserts the interior's node count, not only the markers.
 **Inject:** sdom/schema/markdown.go:LangMarkdown
+**Pulled:** 2026-09-03 — rang: `bolds:1` inside the fence and `a code interior is not a single text node`, and the fixture lost a heading to the fence's swallowed close — three tests.
 
 ## Test: no line-head marker shares a first byte with an opener
 **Purpose:** R231 — the rule that makes delegate-then-check sound
@@ -40,6 +43,7 @@
 **Alarm:** 4
 **Fire alarm:** add a link group `{Open: ["["], Close: ["]"]}` to the table. Red: this test, and the checkbox test — `[x]` opens a group before the wrapper sees it.
 **Inject:** sdom/schema/markdown.go:LangMarkdown
+**Pulled:** 2026-09-03 — rang in four tests: this one (`opener "[" shares a first byte`), both checkbox counts at zero, and NodeType seeing two markers where three were.
 
 ## Test: NodeType agrees with Parse
 **Purpose:** R233
@@ -50,3 +54,15 @@
 **Alarm:** 5
 **Fire alarm:** make `NodeType` delegate only. Red: `ok == false` at a heading position.
 **Inject:** sdom/schema/markdown.go:MarkdownParser.NodeType
+**Pulled:** 2026-09-03 — rang: `NodeType at 0 = "", want "heading"` and the two other markers, only that test.
+
+## Test: the escape hatches pair
+**Purpose:** R227 — found by injecting past the alarm list, not by design
+**Input:** a part line: strike around bold, then a marker span holding two code spans
+**Expected:** one paired `~~`, two paired `**`, two paired `` ` ``
+**Refs:** crc-MarkdownParser.md
+**Code:** sdom/schema/markdown_test.go
+**Alarm:** 6
+**Fire alarm:** remove `` ` `` from bold's `AllowedInner`. Red: the code spans inside the marker span are text, so `` ` `` pairs zero times. The fixture test stayed green under this injection on 2026-09-03 because it counts line-head markers, not what pairs inside a span.
+**Inject:** sdom/schema/markdown.go:LangMarkdown
+**Pulled:** 2026-09-03 — rang: `` "`": 0 paired groups, want 2 ``, only this test; pulled by hand on the uncommitted test with a targeted reverse edit.

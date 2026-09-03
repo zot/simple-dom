@@ -37,6 +37,8 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] crc-TodoItem.md → `sdom/stencil_test.go`
 - [x] crc-List.md → `sdom/list.go`
 - [x] crc-RequirementList.md → `sdom/list.go`
+- [x] crc-PartLine.md → `minispecsdom/partline.go`
+- [x] crc-MarkerSpan.md → `minispecsdom/partline.go`
 - [x] crc-TraceabilityComment.md → `minispecsdom/comment.go`
 - [x] crc-Declaration.md → `sdom/declaration.go`
 - [x] crc-DeclSchema.md → `sdom/schema/schema.go`
@@ -56,6 +58,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] seq-stencil.md → `sdom/stencil.go`
 - [x] seq-declare.md → `sdom/declaration.go`, `sdom/schema/schema.go`
 - [x] seq-markdown.md → `sdom/schema/markdown.go`
+- [x] seq-partline.md → `minispecsdom/partline.go`
 - [x] seq-anchor.md → `sdom/list.go`, `minispecsdom/comment.go`
 
 ### Test Designs
@@ -74,6 +77,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] test-DeclSchema.md → `sdom/schema/declaration_test.go`
 - [x] test-List.md → `sdom/list_test.go`
 - [x] test-Markdown.md → `sdom/schema/markdown_test.go`
+- [x] test-PartLine.md → `minispecsdom/partline_test.go`
 - [x] test-TraceabilityComment.md → `minispecsdom/comment_test.go`
 
 ## Gaps
@@ -352,3 +356,12 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - T4: R115 retired by R223 (2026-09-03 (Bill): binding serves access as well as editing — the
   point of a DOM is to make file access *and* editing easier — so 'only what a tool writes
   into' was the wrong test.)
+- [ ] O27: A canonical marker write leaves a structure a fresh parse would not produce.
+  `MarkerSpan.Set` rewrites the interior as verb, glue, attribution text, glue; when the
+  attribution carries backquoted spans — `` `abc`, 2026-09-03 — `#8`. `` — a fresh parse
+  of the same bytes yields code-span groups where the written node has one text. Bytes are
+  identical and every derived value agrees, so nothing reads wrong; `Equals` against a reparse
+  does not hold. The same corner exists for `List.SetItems` (R201). Left open deliberately (Item
+  2, 2026-09-03): re-parsing the written interior through the markdown base would close it at
+  the cost of a second parser inside a write; decide once a consumer compares written nodes
+  structurally.

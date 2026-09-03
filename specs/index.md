@@ -52,6 +52,8 @@ enforced by the compiler rather than by discipline.
 
 - [traceability-comment.md](traceability-comment.md) — the anchor comment as one
   node over the whole group: grammar, `Parse`, the second pass, and construction.
+- [part-line.md](part-line.md) — a carve status line as one node: bound checkbox
+  and key, marker spans, strike behind an accessor, deviations as the contract.
 
 ## Summary specs
 

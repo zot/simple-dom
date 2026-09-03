@@ -48,6 +48,26 @@ type ListItem struct{ sdom.Text }
 type Checkbox struct{ sdom.Text }
 
 // CRC: crc-MarkdownParser.md | R230
+// Checked derives from the bytes: the interior is `x`. Nothing is stored.
+func (c *Checkbox) Checked() bool {
+	s, _ := c.Render()
+	return s == "[x]"
+}
+
+// CRC: crc-MarkdownParser.md | R230
+// SetChecked writes the interior through; setting what is already there changes nothing.
+func (c *Checkbox) SetChecked(on bool) {
+	if c.Checked() == on {
+		return
+	}
+	if on {
+		c.SetText("[x]")
+	} else {
+		c.SetText("[ ]")
+	}
+}
+
+// CRC: crc-MarkdownParser.md | R230
 // Level is derived from the bytes: the count of `#`.
 func (h *Heading) Level() int {
 	s, _ := h.Render()

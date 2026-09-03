@@ -1,0 +1,42 @@
+# Test Design: PartLine and MarkerSpan
+**Source:** crc-PartLine.md
+
+## Test: the status block's lines read back
+**Purpose:** R236, R238, R239, R240, R243, R247 — the five things the tool reads, from the committed fixture
+**Input:** `sdom/schema/testdata/trajectory-sample.md` through `PartLines`
+**Expected:** five part lines; keys `Item 1`, `Item 2`, `2.1`, `2.2`, `Item 4`; checkboxes true, none, true, false, false; `Item 1`'s marker verb `LANDED`, queue ID 3, attribution containing the commit; `Item 2` struck false with verb `SPLIT`; `2.2` queue ID 8; the document renders back byte-exact
+**Refs:** crc-PartLine.md, seq-partline.md#1
+**Code:** minispecsdom/partline_test.go
+**Alarm:** 1
+**Fire alarm:** classify every bold run as a marker, never a head. Red: every key is empty and the titles are nil.
+**Inject:** minispecsdom/partline.go:PartLine.Parse
+
+## Test: strike is derived and the edit is hidden
+**Purpose:** R241
+**Input:** `Item 1` (struck) and `2.2` (not) from the fixture; `Strike(true)` on `2.2`, `Strike(false)` on `Item 1`
+**Expected:** `IsStruck` reads true then false before the edits and false then true after; the renders gain and lose exactly `~~` … `~~` around the head; no other byte moves
+**Refs:** crc-PartLine.md, seq-partline.md#2
+**Code:** minispecsdom/partline_test.go
+**Alarm:** 2
+**Fire alarm:** make `Strike(true)` wrap the whole line rather than the head's bold run. Red: the render puts `~~` before the marker span's closing bytes rather than after the head.
+**Inject:** minispecsdom/partline.go:PartLine.Strike
+
+## Test: deviations name the target
+**Purpose:** R237, R242 — an unkeyed line parses and reports
+**Input:** `- [ ] **Part A — old scheme.** **OPEN (#8.)**`, `- [X] **Item 3 - hyphen.**`, `- [ ] **Item 5 — ok.** **open (soon.)**`
+**Expected:** three part lines, all parsed; deviations: key form; checkbox interior and separator; verb case and `OPEN` attribution; each carrying its target text
+**Refs:** crc-PartLine.md
+**Code:** minispecsdom/partline_test.go
+**Alarm:** 3
+**Fire alarm:** return false from `Parse` when the head does not key. Red: the first line is missing from the result and its checkbox is not counted.
+**Inject:** minispecsdom/partline.go:PartLine.Parse
+
+## Test: a marker write is canonical and guarded
+**Purpose:** R244
+**Input:** `2.2`'s marker: `Set("landed", "` + "`abc`" + `, 2026-09-03 — ` + "`#8`" + `.")`; then `Set("BAD)", "x")`
+**Expected:** the first renders `**LANDED (`abc`, 2026-09-03 — `#8`.)**` and `QueueID` reads 8; the second is refused and the render unchanged
+**Refs:** crc-MarkerSpan.md, seq-partline.md#3
+**Code:** minispecsdom/partline_test.go
+**Alarm:** 4
+**Fire alarm:** drop the re-parse in `Set`. Red: the second write is accepted and the marker's verb reads `BAD)`.
+**Inject:** minispecsdom/partline.go:MarkerSpan.Set
