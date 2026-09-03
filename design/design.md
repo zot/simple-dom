@@ -44,6 +44,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] crc-LuaSchema.md → `sdom/schema/lua.go`
 - [x] crc-ShellSchema.md → `sdom/schema/shell.go`
 - [ ] crc-PythonSchema.md → `sdom/schema/python.go`
+- [x] crc-MarkdownParser.md → `sdom/schema/markdown.go`
 
 ### Sequences
 - [x] seq-mutate.md → `sdom/mutate.go`, `sdom/doc.go`
@@ -54,6 +55,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] seq-pair.md → `sdom/context.go`
 - [x] seq-stencil.md → `sdom/stencil.go`
 - [x] seq-declare.md → `sdom/declaration.go`, `sdom/schema/schema.go`
+- [x] seq-markdown.md → `sdom/schema/markdown.go`
 - [x] seq-anchor.md → `sdom/list.go`, `minispecsdom/comment.go`
 
 ### Test Designs
@@ -71,6 +73,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] test-Declaration.md → `sdom/declaration_test.go`, `sdom/schema/declaration_test.go`
 - [x] test-DeclSchema.md → `sdom/schema/declaration_test.go`
 - [x] test-List.md → `sdom/list_test.go`
+- [x] test-Markdown.md → `sdom/schema/markdown_test.go`
 - [x] test-TraceabilityComment.md → `minispecsdom/comment_test.go`
 
 ## Gaps

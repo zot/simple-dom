@@ -392,3 +392,28 @@
   so no child list is hand-built and the node has no origin.
 - **R221:** The node exposes typed accessors `CRC`, `Seq`, `Test`, `Refs` and `Description`, nil
   when the field is absent.
+
+## Feature: markdown base
+**Source:** specs/markdown.md
+
+- **R226:** `LangMarkdown` is an `IndentLang` in `sdom/schema`, embedded by the trajectory file
+  schemas and never used to parse a file alone; it models only what those schemas bind.
+- **R227:** Its bracket groups are the fence and the code span, both restricted with kind `code`,
+  and `**` and `~~` restricted with escape hatches — bold admits code spans, strike admits bold
+  and code spans — in that match order; links are not groups. A symmetric marker is never a
+  code-mode group, since there it reopens rather than closes.
+- **R228:** `MarkdownParser` implements `Parser`, holds an `IndentParser`, and delegates first; when
+  the delegate emitted nothing and moved nothing at a line head, it emits a line-head marker.
+- **R229:** A line head is read from the array: `Last()` is an `Indent`, or a `Text` ending in a
+  newline followed only by spaces or tabs; no state is kept for it.
+- **R230:** `Heading` holds one to six `#` and the space and derives its level from them; `ListItem`
+  holds `- `; `Checkbox` holds `[ ]` or `[x]` and is recognized only immediately after a `ListItem`.
+- **R231:** No line-head marker shares a first byte with any bracket opener in the table, which is
+  what lets the wrapper check after delegating; guarded by a test over the table.
+- **R232:** Inside a fence or a code span the wrapper is never offered a position, so a line-head
+  shape there is text with no rule needed.
+- **R233:** `NodeType` answers for the three line-head kinds and otherwise delegates; `Done`
+  delegates.
+- **R234:** A marker holds only the bytes it matched; extents — a heading's line and region, a list
+  item's body — are a consumer's derivation from the array, and the base records nothing.
+- **R235:** Each marker kind is its own type embedding `Text`, with its own `Equals`.

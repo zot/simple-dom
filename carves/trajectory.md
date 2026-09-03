@@ -17,7 +17,7 @@ what is still open.
 ## Status
 
 - [x] ~~**Item 9 — the live text node.**~~ **LANDED (`3fd278e`, 2026-09-03 — `#16`.)**
-- [ ] **Item 1 — the markdown schema.** **OPEN (not queued.)**
+- [ ] **Item 1 — the markdown schema.** **OPEN (#17.)**
 - [ ] **Item 2 — the part line.** **OPEN (not queued.)**
 - [ ] **Item 3 — the carve status block.** **OPEN (not queued.)**
 - [ ] **Item 4 — the pending file.** **OPEN (not queued.)**
@@ -147,18 +147,14 @@ emits a marker node for it. A heading or list item is therefore a line-head mark
 by a context from the array, as the indent frames are. **No post-pass and no `Replace`.**
 `NodeType` delegates the same way, so lookahead and transparency keep working.
 
-@undecided: **how much markdown.** The narrowest schema that serves Items 2–6 (headings,
-list items, checkbox, fence, code span, `**`, `~~`, one link shape), or a markdown schema
-meant to serve the later carves too (requirements, cards, test designs also need tables,
-emphasis, nested lists). Settles it: whether the later carves' needs are known well enough
-to build for now. Lean: narrowest, and widen when a later carve asks — the seam is a
-`BracketLang` entry, not machinery.
+**DECIDED (Bill, 2026-09-03): narrow.** The base models what Items 2–6 bind — headings,
+list items, the checkbox, the fence, the code span, `**`, `~~`, one link shape — and no
+more. As the parsers accumulate, commonality among them is what earns generalization;
+nothing is generalized ahead of it. The seam is a `BracketLang` entry, not machinery.
 
-@undecided: **where the base lives.** `sdom/schema` beside Go and Lua, since markdown is
-a language and nothing in the base knows what a queue is, with the four file schemas in
-`minispecsdom` embedding it; or all five in `minispecsdom`, since the base is never used
-alone. Settles it: whether any other consumer of `sdom` will ever want markdown without
-mini-spec. Lean: `sdom/schema` — microfts2 indexes markdown.
+**DECIDED (Bill, 2026-09-03): the base lives in `sdom/schema`**, beside Go and Lua —
+markdown is a language, nothing in the base knows what a queue is, and microfts2
+indexes markdown. The four file schemas in `minispecsdom` embed it.
 
 ## Item 2
 
@@ -176,9 +172,20 @@ checkbox interior, a mis-cased verb are each *reported with the shape they must 
 and the checkbox still counts. A stencil whose regex fails to match must still yield the
 list item and say which rule it broke.
 
-@undecided: **one stencil or three.** The line as one regex with alternation, or a
-list-item stencil that holds a key stencil and a marker stencil as children. Settles it:
-whether a write ever touches the key and the marker independently in one operation.
+**DECIDED (Bill, 2026-09-03): an item node with bound values and a list of marker
+stencils.** The part line is one node over the list item. Its **checkbox** and its
+**key** (`Item 1`, `2.2`) are bound values; its **markers** are a list of marker stencil
+nodes, each tiling `**VERB (attribution)**` and owning its contents *including* the `**`
+opener and closer the base already emitted — the shape `TraceabilityComment` takes over
+a comment group; everything between is interspersed text. Which bold run is which is
+decided by content: the head's first bold run carries the key and title, and a later bold
+run whose interior reads as `VERB (…)` is a marker, which is how a `SPLIT` line carries a
+marker and prose after it. **Striking the title on landing is a structural edit**, not a
+field write — wrapping the head in `~~` inserts nodes around the bold run inside a
+mutation window, the way the comment splice does — **and the item node hides it behind
+high-level accessors**: `IsStruck() bool` derives from the children, `Strike(bool)`
+performs the edit. A consumer never touches `~~` nodes; the API is the same shape as
+`Bool.Value` / `Bool.Set`, one level up (Bill, 2026-09-03).
 
 ## Item 3
 

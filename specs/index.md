@@ -40,6 +40,9 @@ honest.
 - [declaration-schemas.md](declaration-schemas.md) — how each language announces a
   declaration: keyword and keyword-less forms, groups, and the bundled Go,
   TypeScript, JavaScript, Lua and Shell schemas.
+- [markdown.md](markdown.md) — the markdown base the trajectory file schemas embed:
+  a narrow `IndentLang` and a one-pass parser wrapping `IndentParser` that emits
+  line-head markers.
 
 ## minispecsdom — mini-spec's readers
 
