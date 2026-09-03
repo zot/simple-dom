@@ -11,7 +11,7 @@ It carries the node protocol, locations, and the document — `Node`, `Text`,
 Nothing in it knows what a CRC card is, so another tool can consume it; that
 boundary is enforced by the compiler rather than by discipline.
 
-Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
+Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 
 ## Artifacts
 
@@ -77,7 +77,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 
 - [x] I1: R12 (each schema's parse context is a concrete type, not an interface) has design
   coverage but no inline ref in any code file, because no parse context exists yet. Nothing in
-  `sdom` parses from text — the parser is Item 2 of carves/simple-dom.md, and `Parse` is
+  `sdom` parses from text — the parser is Item 2 of carves/done/simple-dom.md, and `Parse` is
   deliberately off the `Node` interface. Closes when Item 2 lands a schema with a parse context.
 - [ ] O1: R28 understates the rule the code implements. It says a compound is altered if any of
   its children is; `Compound.Location` also requires the children's spans to run **contiguously

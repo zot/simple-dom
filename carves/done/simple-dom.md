@@ -14,6 +14,8 @@ working notes live under a gitignored `.scratch/` — the case mini-spec's own
 reference-discipline carve exists to prevent. Those notes are private and are
 **not** the authority. This document is.
 
+> **CLOSED 2026-09-03.** Every part landed or was withdrawn; moved to `carves/done/`.
+
 ## Status
 
 Ordered by intent; position is the priority and the number is only the
@@ -31,7 +33,7 @@ identifier.
 - [x] ~~**Item 6 — the traceability reader.**~~ **LANDED (`f1e9d0a`, 2026-09-03 — `#14`, `#15`.)**
   - [x] ~~**6.1 — `BracketContext` accessors: typed names, opener/closer, inner/outer text.**~~ **LANDED (`4500d0e`, 2026-09-02 — `#14`.)**
   - [x] ~~**6.2 — the traceability reader: list compound, `CommentStyle`, `minispecsdom`.**~~ **LANDED (`f1e9d0a`, 2026-09-03 — `#15`.)**
-- [ ] **Item 9 — generalize the schema work into `sdom` tools.** **OPEN (not queued.)**
+- [x] ~~**Item 9 — generalize the schema work into `sdom` tools.**~~ **WITHDRAWN (Bill, 2026-09-03.)**
 - [x] ~~**Item 8 — the vocabulary: it is a parser, not a lexer.**~~ **LANDED (`145ee96`, 2026-08-31 — `#10`.)**
 
 ## Decisions
@@ -799,7 +801,7 @@ language, so a second consumer gets it without inheriting mini-spec's opinions.
 
 **And the generalization is deliberately deferred rather than attempted now.** The
 reusable half — whatever turns out to be a *tool* other schemas can build on —
-gets extracted into `sdom` as **Item 9**, after declarations, indent, and Python
+gets extracted into `sdom` as **Item 9** *(withdrawn 2026-09-03 — see Item 9)*, after declarations, indent, and Python
 declarations have all landed. Three worked schemas is when there is enough
 knowledge to know what generalizes; extracting from one is guessing, and the guess
 would be built into `sdom`'s export surface where it is expensive to withdraw.
@@ -858,7 +860,7 @@ taste:*
 
 *What is deliberately left concrete:* the **algorithm** — scan the top-level text,
 match, slice, link — is written in the schema for now, not lifted into a reusable
-driver. Item 9 is where that becomes a tool, once three schemas have shown what
+driver. Item 9 *(withdrawn 2026-09-03)* was where that would have become a tool, once three schemas had shown what
 the tool should be.
 
 **DECIDED (Bill, 2026-08-31): the bracket tables stay in `sdom`, and `LangLua` and
@@ -1574,8 +1576,19 @@ minted a fourth map for Item 10 to immediately fold in.
 
 ## Item 9
 
-Extract the reusable half of the schema work into **tools in `sdom`**, and retarget
-the schemas onto them. **Added 2026-08-31**, at the moment the first schema was
+**WITHDRAWN (Bill, 2026-09-03).** The point of this project is to support the
+mini-spec tool, and Item 9 was a small step in that direction on its own. It is
+eclipsed: the mini-spec schemas themselves — the readers over requirements, design,
+CRC cards, sequences, test designs and the trajectory files — are going to be built
+here, in this project, and whatever generalizes across schemas will show itself in
+the course of that work rather than be extracted ahead of it. What was already
+`sdom`'s — the two typed kinds, `Replace`, the links and their stamp, the generic
+`carve` — is `sdom`'s.
+
+*The original elaboration follows, for the reasoning.*
+
+~~Extract the reusable half of the schema work into **tools in `sdom`**, and retarget
+the schemas onto them.~~ **Added 2026-08-31**, at the moment the first schema was
 about to be written, so that the deferral is a decision on the record rather than
 an omission somebody notices later.
 
