@@ -27,6 +27,8 @@ consume the parsing half.
   node kinds, `Replace`, and the links a schema owns.
 - [stencils.md](stencils.md) — compounds that parse by regex: the builder a schema
   drives, computed glue, and bound values.
+- [lists.md](lists.md) — the comma-separated field as a one-child stencil, its
+  guarded whole-field write, and the numbered list that alone accepts ranges.
 
 ## sdom/schema — the bundled language schemas
 
@@ -45,7 +47,8 @@ A sibling package of `sdom` in this repo. The only system that may know what a C
 card is, and the only one that will ever be used by mini-spec alone. The boundary is
 enforced by the compiler rather than by discipline.
 
-- *(no specs yet — the traceability comment is carve Item 6.2.)*
+- [traceability-comment.md](traceability-comment.md) — the anchor comment as one
+  node over the whole group: grammar, `Parse`, the second pass, and construction.
 
 ## Summary specs
 

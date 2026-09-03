@@ -193,6 +193,34 @@ independently constructed languages would never be equal and the structural
 round-trip would fail on every bracketed document. The active group comes from the
 parse context.
 
+## How a language writes a comment
+
+```go
+type BracketLang struct {
+    Brackets []BracketGroup
+    Comment  CommentStyle      // how this language WRITES a comment
+}
+
+type CommentStyle struct {
+    Prefix, Suffix string      // "// " and "\n" for Go
+    Kind           string      // what a written comment must parse back as: "comment"
+}
+```
+
+A table says how a comment is *recognized*; `CommentStyle` says how one is
+**constructed**, and the two are not redundant. The group's opener is `//`, but a
+written comment wants `// ` with the customary space; the group's closer is a
+structural `\n`. `Kind` is what the constructed comment must parse back as, and
+equals the `Kind` of the group that recognizes `Prefix`. **That agreement is
+guarded by a test, not a runtime check**: for every shipped language, construct a
+comment, parse it, and assert the group's kind. A language with several comment
+forms designates one for construction — Go's `//`, not `/*` — and the others still
+parse. A language with no comment style has an empty `Prefix`, and nothing can be
+constructed for it.
+
+`sdom` still never spells "comment" in a branch: `Kind` is a configured string it
+compares, never reads.
+
 ## The context, and the links it owns
 
 Each schema has its own parse context, a concrete type rather than an interface.
@@ -235,6 +263,10 @@ func (bc *BracketContext) OuterText(n Node) string
 input runs to the end of the source. These exist because a reader that has found a
 comment group wants its interior as one string, and slicing it from the node
 locations by hand is the kind of thing a library owes rather than each consumer.
+
+**`Doc()` returns the document the context is bound to**, nil before the parse's `Done`. A
+reader that has an opener and wants the nodes it encloses needs the array, and the
+context is what it was handed.
 
 **Accessors that return a slice return the context's own.** `Separators` and
 `DeclarationNames` hand back the stored slice, and a consumer does not write through

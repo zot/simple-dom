@@ -132,8 +132,11 @@ func (c *Compound) Location() Loc {
 	for _, k := range c.kids {
 		kl := k.Location()
 		l.length += kl.Length()
-		if l.altered {
-			continue // the lengths are still wanted; nothing more can be learned
+		if l.altered || l.offset == 0 {
+			// The lengths are still wanted; nothing more can be learned. A compound
+			// with no provenance is never altered — the same rule mergeLocs applies,
+			// since "no longer renders the bytes at its offset" needs an offset.
+			continue
 		}
 		if kl.Faithful() && (next < 0 || kl.Offset() == next) {
 			next = kl.Offset() + kl.Length()

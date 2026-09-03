@@ -57,7 +57,8 @@ func New(source string, base int, nodes ...Node) *Doc {
 //
 // oneParse requires every node to come from the same parse, and panics otherwise.
 // Checked once here because nothing else can break it: Split inherits the origin,
-// Merge refuses a mismatch already, and Remove takes nothing in. What it buys is
+// Merge joins only nodes already in the document, and Remove takes nothing in —
+// so this is the ONLY check, and mergeLocs carries none. What it buys is
 // that the whole array shares a coordinate system, which is what lets Merge trust
 // a node's own claim about itself.
 //

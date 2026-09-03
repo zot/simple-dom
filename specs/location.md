@@ -111,15 +111,15 @@ so the arithmetic proves nothing about it, and carrying adjacency past that poin
 would mean tracking it across queued edits. The requirement still holds; only the
 check is absent.
 
-**Merging across two origins panics.** It is a programming error rather than a
-data condition: the offsets are in different coordinate systems and no result
-names anything true. The panic is not the mutation-window sentinel, so `Mutate`
-re-raises it with its stack rather than converting it to an error. A nil origin on
-either side is absent rather than different, and does not panic.
+**Two present, differing origins never meet.** A document refuses nodes of two
+parses when it is built (see [document.md](document.md)), and `Merge` joins only
+nodes already in one document, so the merge arithmetic is never asked about two
+coordinate systems and carries no check for it. A nil origin on either side is
+absent rather than different.
 
-This also settles adjacency across documents: `Merge` never reaches the arithmetic,
-so two faithful nodes from different parses whose offsets happen to satisfy
-`10+5 == 15` cannot be merged by accident.
+That also settles adjacency across documents: two faithful nodes from different
+parses whose offsets happen to satisfy `10+5 == 15` are never in one document to be
+merged by accident.
 
 The merged node's location follows two rules:
 

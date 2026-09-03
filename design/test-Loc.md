@@ -186,22 +186,3 @@ the merged node simply loses its attribution and nothing else looks.
 the left*. The other two rows are unaffected by the injection and correctly stayed
 quiet, which is the table earning its keep — a single combined assertion would have
 said less.
-
-## Test: merging across origins panics
-**Purpose:** R94, R95 — a programming error, not a data condition; and it must
-escape `Mutate` with its stack rather than arriving as an ordinary error
-**Input:** two locations with different origins merged directly; then two such
-nodes merged inside a mutation window
-**Expected:** a panic naming the two parses; and a panic that escapes `Mutate`
-rather than being converted
-**Refs:** crc-Loc.md, crc-MutationWindow.md
-**Code:** sdom/loc_test.go
-**Alarm:** 8
-**Fire alarm:** Remove the cross-origin check from `mergeLocs` entirely. Red: both
-of these. Silent everywhere else — the merge produces a perfectly plausible
-location that names a position in one parse for bytes drawn from two, and the
-round-trip is blind to it because no byte moves.
-**Inject:** sdom/loc.go:mergeLocs
-**Pulled:** 2026-08-30 — rang, on both of its tests and nothing else. 62 of 64
-passed while a cross-parse merge silently produced a location naming a position in
-one parse for bytes drawn from two. No byte moves, so the round-trip is blind to it.

@@ -25,8 +25,9 @@ needs a position in the outer document adds the base itself. See
 
 **Every node in a document comes from the same parse**, and building one from nodes
 of different parses **panics**. It is checked once, when the document is built:
-`Split` inherits the origin, `Merge` refuses a mismatch already, and `Remove` takes
-nothing in — so no structural edit can break what construction established.
+`Split` inherits the origin, `Merge` joins only nodes already in the document, and
+`Remove` takes nothing in — so no structural edit can break what construction
+established, and nothing below the document checks it again.
 
 What it buys is that the whole array shares a coordinate system, which is what lets
 `Merge` trust a node's own claim about itself.

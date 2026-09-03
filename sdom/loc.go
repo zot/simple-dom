@@ -3,8 +3,6 @@
 // but the intended change in it.
 package sdom
 
-import "fmt"
-
 // CRC: crc-Loc.md | R20, R21, R22, R23, R24
 //
 // Loc is a node's location. It separates provenance — where the node was read
@@ -95,15 +93,10 @@ func (l Loc) alter() Loc {
 // associative, so merging a run of nodes gives the same answer however the
 // merges are grouped.
 func mergeLocs(a, b Loc) Loc {
-	// R93, R94, R95: merging across two parses is a programming error, not a data
-	// condition — the offsets are in different coordinate systems and no result
-	// names anything true. A nil origin is UNKNOWN rather than different, and is
-	// compatible with anything, the way no provenance already is. This is not the
-	// mutation-window sentinel, so Mutate re-raises it with its stack.
-	if a.origin != nil && b.origin != nil && a.origin != b.origin {
-		panic(fmt.Sprintf("sdom: merging locations from different parses (%s and %s)",
-			a.origin, b.origin))
-	}
+	// R93: a nil origin is UNKNOWN rather than different, and is compatible with
+	// anything, the way no provenance already is. Two present, differing origins
+	// cannot reach here — New refuses a mixed document (R118) and no structural
+	// edit introduces one — so there is no check for it.
 	l := Loc{origin: a.origin, offset: a.offset, length: a.length + b.length}
 	if l.origin == nil {
 		l.origin = b.origin

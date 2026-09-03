@@ -35,6 +35,9 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-StencilBuilder.md → `sdom/stencil.go`
 - [x] crc-Bool.md → `sdom/bound.go`
 - [x] crc-TodoItem.md → `sdom/todo.go`
+- [x] crc-List.md → `sdom/list.go`
+- [x] crc-RequirementList.md → `sdom/list.go`
+- [x] crc-TraceabilityComment.md → `minispecsdom/comment.go`
 - [x] crc-Declaration.md → `sdom/declaration.go`
 - [x] crc-DeclSchema.md → `sdom/schema/schema.go`
 - [x] crc-GoSchema.md → `sdom/schema/golang.go`
@@ -51,6 +54,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] seq-pair.md → `sdom/context.go`
 - [x] seq-stencil.md → `sdom/stencil.go`
 - [x] seq-declare.md → `sdom/declaration.go`, `sdom/schema/schema.go`
+- [x] seq-anchor.md → `sdom/list.go`, `minispecsdom/comment.go`
 
 ### Test Designs
 - [x] test-Node.md → `sdom/node_test.go`
@@ -66,6 +70,8 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [ ] test-PythonSchema.md → `sdom/schema/python_test.go`
 - [x] test-Declaration.md → `sdom/declaration_test.go`, `sdom/schema/declaration_test.go`
 - [x] test-DeclSchema.md → `sdom/schema/declaration_test.go`
+- [x] test-List.md → `sdom/list_test.go`
+- [x] test-TraceabilityComment.md → `minispecsdom/comment_test.go`
 
 ## Gaps
 
@@ -175,7 +181,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   a reader learns from demonstrates a binding its own rule would reject. Repair when a real
   consumer exists: either something writes labels, and the binding is justified, or the fixture
   grows a second genuinely-written field and `label` becomes glue.
-- [ ] O15: Two guards now cover one property, and the inner one is unreachable. `mergeLocs`
+- [x] O15: Two guards now cover one property, and the inner one is unreachable. `mergeLocs`
   panics when two locations carry different origins; `New` panics when a document is built from
   nodes of two parses. Since `New` is the only way foreign nodes enter a document — `Split`
   inherits the origin, `Merge` refuses a mismatch, `Remove` takes nothing in — `Doc.Merge` can
@@ -185,6 +191,10 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   this is the fourth guard added in three days and the density is worth watching: a codebase is
   a prompt, and a reader will take it as the local idiom. Revisit if a fifth appears, or if
   `mergeLocs` still has one caller when the readers land.
+  **Resolved 2026-09-02 (Bill, Item 6.2):** the fifth guard appeared — `List.SetItems`, a
+  refusing write rather than a panic — and the revisit went the other way: the unreachable
+  inner guard in `mergeLocs` is gone, with R94 and R95 retired to R118. Unreachable code is
+  cognitive load for a human and noise in a context for a model.
 - [ ] O16: `minispec validate trajectory` fails on this repository, and has since before this
   session: *item numbers in no readable entry: #4 #5 #6*. Two halves of one tool defect, and
   only the first was recorded. The **minter** reads `#N` anywhere in the done ledger, so
@@ -315,3 +325,19 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   serves — one parser delegating to an `IndentParser` — has no worked instance, so the
   *composition* remains unproven even though the method does not. The first consumer that nests
   one will be the real test.
+- [ ] O26: A list item containing the comment's own | separator passes the list
+  guard.
+`List.SetItems` guards against an item that would not read back as a list item — a
+  comma or whitespace — but a `|` inside an item is legal to the list and is the **enclosing**
+  `TraceabilityComment`'s field separator, so `c.CRC().SetItems([]string{"a|b"})` renders fine,
+  round-trips its bytes, and reparses as two fields. The 2026-08-27 guarded-write decision says
+  the guard re-parses *that field from its own render*; the field here is the list, and the list
+  does not know `|`. The repair is at the comment: either the comment hands out lists whose
+  write path re-parses the whole comment, or the item grammar the comment asks `ParseList` for
+  excludes `|`. Left open deliberately (Item 6.2, 2026-09-02) rather than teaching the generic
+  list a separator that belongs to one consumer.
+- T2: R94 retired by R118 (2026-09-02 Item 6.2 (Bill): the inner of two guards was unreachable
+  through the public API, since New refuses mixed parses; unreachable code is removed rather
+  than kept.)
+- T3: R95 retired (2026-09-02 Item 6.2 (Bill): the panic it described no longer exists; Mutate's
+  re-raise of foreign panics is unchanged but nothing in sdom produces one on this path.)

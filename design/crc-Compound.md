@@ -25,6 +25,11 @@ else.
 - Embedded by the regex compound (Item 3), the declaration (Item 4) and the
   traceability comment (Item 6). Each declares its own `Equals`
 
+- **A compound with no provenance is never altered.** Altered means *no longer renders
+  the bytes at its offset*, which needs an offset; `mergeLocs` applies the same rule.
+  Found 2026-09-02 when a constructed `TraceabilityComment` — synthetic throughout —
+  reported altered and the stencil builder's span check refused its own field
+
 ## Collaborators
 - Node: its children are any kind
 - Loc: the summed extent and OR'd alteration are reported through one

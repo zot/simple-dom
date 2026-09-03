@@ -24,6 +24,21 @@ import "slices"
 // thing to most readers of most formats.
 type BracketLang struct {
 	Brackets []BracketGroup
+
+	// R207: how this language WRITES a comment. Distinct from recognition: the
+	// group's opener is "//" but a written comment wants "// ", and the closer is a
+	// structural "\n". Kind is what the written comment must parse back as, and
+	// equals the recognizing group's Kind — guarded by a test per shipped language,
+	// never by a runtime check. An empty Prefix means nothing can be constructed.
+	Comment CommentStyle
+}
+
+// CRC: crc-BracketLang.md | R207, R209
+//
+// CommentStyle is the construction template for a comment. sdom compares Kind and
+// never reads it: the value is the language's, the way IndentLang.Transparent is.
+type CommentStyle struct {
+	Prefix, Suffix, Kind string
 }
 
 // CRC: crc-BracketGroup.md | R61, R63, R64, R65, R66, R67

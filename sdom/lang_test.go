@@ -110,3 +110,37 @@ func TestLangJavaScript(t *testing.T) {
 		t.Errorf("${ must not be an interpolation opener at top level:\n  %s", stream(top))
 	}
 }
+
+// CRC: crc-BracketLang.md | R207, R208, R209
+//
+// The agreement between how a language WRITES a comment and how it recognizes
+// one, guarded here rather than at runtime.
+func TestEveryCommentStyleConstructsItsOwnKind(t *testing.T) {
+	langs := shippedLangs()
+	langs["lua"], langs["python"] = &LangLua, &LangPython.BracketLang
+	for name, lang := range langs {
+		cs := lang.Comment
+		if cs.Prefix == "" {
+			t.Logf("%s: no comment style", name)
+			continue
+		}
+		d, ctx := parse(cs.Prefix+"x"+cs.Suffix, 0, lang)
+		open, ok := d.Nodes()[0].(*Opener)
+		if !ok {
+			t.Errorf("%s: the constructed comment does not open with a marker", name)
+			continue
+		}
+		s, _ := open.Render()
+		if g := lang.GroupFor(s); g == nil || g.Kind != cs.Kind {
+			t.Errorf("%s: opener %q parses as kind %v, want %q", name, s, g, cs.Kind)
+		}
+		if got := ctx.InnerText(open); strings.TrimSpace(got) != "x" {
+			t.Errorf("%s: interior %q", name, got)
+		}
+		if cl := ctx.Closer(open); cl == nil {
+			t.Errorf("%s: the constructed comment never closes", name)
+		} else if c, _ := cl.Render(); !strings.HasSuffix(cs.Suffix, c) {
+			t.Errorf("%s: closer %q is not the tail of Suffix %q", name, c, cs.Suffix)
+		}
+	}
+}

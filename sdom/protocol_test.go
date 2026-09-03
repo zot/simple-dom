@@ -154,7 +154,7 @@ func TestEveryPositionIsOfferedExactlyOnce(t *testing.T) {
 //
 // One parse, one Origin — the property that makes merging a location from one
 // parser with a location from another legal. A per-context origin would mint two
-// for a single document, and mergeLocs panics on a mismatch.
+// for a single document, and New refuses a mixed one.
 func TestOneParseHasOneOrigin(t *testing.T) {
 	ip := NewIndentParser(&LangPython)
 	d := Parse("a\n  (b)\n", 0, ip)

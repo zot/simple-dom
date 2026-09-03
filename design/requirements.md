@@ -49,8 +49,8 @@
 - **R91:** An origin is minted once per parse and shared by every node that parse produces, so two parses of the same source yield two origins.
 - **R92:** Setting a location's origin is a chained operation; the constructor taking an offset and a length is unchanged.
 - **R93:** A nil origin is unknown rather than different, and is compatible with any other origin.
-- **R94:** Merging two locations whose origins are both present and different panics.
-- **R95:** That panic is not the mutation-window sentinel, so `Mutate` re-raises it rather than converting it to an error.
+- **~~R94:~~** (Retired T2 — see R118) Merging two locations whose origins are both present and different panics.
+- **~~R95:~~** (Retired T3 — no replacement) That panic is not the mutation-window sentinel, so `Mutate` re-raises it rather than converting it to an error.
 
 ## Feature: document
 **Source:** specs/document.md
@@ -180,6 +180,13 @@
 - **R196:** Accessors that return a slice return the context's own slice, and a consumer does not
   write through it; this is documented, not guarded, because every consumer discards its document
   within one operation.
+- **R222:** `Doc()` returns the document the context is bound to, nil before the parse's `Done`.
+- **R207:** `BracketLang` carries `Comment CommentStyle{Prefix, Suffix, Kind}`: how the language
+  writes a comment, distinct from how its table recognizes one.
+- **R208:** A comment constructed as `Prefix + body + Suffix` parses as a group whose kind equals
+  `Comment.Kind`; the agreement is guarded by a per-language test, not a runtime check.
+- **R209:** A language with no comment style has an empty `Prefix` and constructs nothing; `sdom`
+  compares `Comment.Kind` and never branches on its value.
 
 ## Feature: indent scope
 **Source:** specs/indent-parser.md
@@ -326,3 +333,53 @@
   being bracket groups, so the top-level predicate is unchanged.
 - **R191:** Which depths a language's declarations live at is a fact about that language rather
   than a parameter, which is why recognition is a per-schema pass and not a shared driver setting.
+
+## Feature: lists
+**Source:** specs/lists.md
+
+- **R199:** A `List` is a compound with exactly one child, the `Text` of the whole field.
+- **R200:** `Items` derives the values from the literal on every call — split on commas, whitespace
+  trimmed — and stores nothing.
+- **R201:** `SetItems` rewrites the whole literal canonically, items joined by `", "`; an unedited
+  field is never touched by an edit to another.
+- **R202:** A list parses `WS? item ( WS? "," WS? item )* WS?`, an item being a run with no
+  whitespace and no comma; `ParseList` returns what it did not consume.
+- **R203:** `SetItems` is guarded by re-parsing its own render: the re-parse must consume all of it
+  and yield the same items, or the write is refused with an error and the literal is unchanged.
+- **R204:** A `RequirementList` item is `Rn`, `Rn-Rm` or `Rn-m`; `Items() []int` expands ranges,
+  and a reversed range contributes only its low ref.
+- **R205:** `RequirementList.SetItems([]int)` sorts, de-duplicates and condenses runs of three or
+  more consecutive numbers to `Rn-m`; it cannot be refused.
+- **R206:** Only the requirement-list parser accepts ranges; the plain parser does not, so a range
+  in a plain list cannot exist by construction.
+
+## Feature: traceability comment
+**Source:** specs/traceability-comment.md
+
+- **R210:** `TraceabilityComment` is one node kind for every language, tiling the whole comment
+  from opener through closer.
+- **R211:** The interior is fields separated by `|` — `CRC:`, `Seq:`, `Test:` each with a plain
+  list, and a keyword-less requirement list — at most one of each, in any order, followed by an
+  optional description after a separator.
+- **R212:** A `:` is a field-key colon only immediately after `CRC`, `Seq` or `Test`; anywhere else
+  it is the description separator.
+- **R213:** A `Seq` item may carry `#step`, and the typed view splits path from step.
+- **R214:** Whitespace, keywords, `|` and the separator are computed glue; an unedited comment
+  renders back byte-exact; the separator is preserved when unedited and written as `--` on a fresh
+  write; the description is bound and writable.
+- **R215:** Recognition is a parse that consumes the whole interior; a comment that leads with a
+  field but leaves bytes uncovered is not a traceability comment.
+- **R216:** `Parse(cmt *Opener, ctx *BracketContext) bool` fills the node off to the side, touching
+  no document, and returns false when the interior is not a single text node or is not consumed.
+- **R217:** On success the children are the original `*Opener`, the interior's glue and fields, and
+  the original `*Closer` — reused, not recreated.
+- **R218:** The interior is parsed by a segment walk with one stencil per `|`-segment, and the
+  results splice flat into the node.
+- **R219:** `Comments(d, ctx)` is the second pass: every opener whose group kind equals the
+  language's `Comment.Kind` is a candidate, each success replaces its run from opener to closer
+  inside its own mutation window, and nothing else is touched.
+- **R220:** `New(lang, Fields)` assembles the canonical interior — CRC, Seq, Test, refs, `--`
+  description — and runs the same interior walk at a synthetic location inside synthetic markers,
+  so no child list is hand-built and the node has no origin.
+- **R221:** The node exposes typed accessors `CRC`, `Seq`, `Test`, `Refs` and `Description`, nil
+  when the field is absent.

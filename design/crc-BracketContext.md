@@ -1,5 +1,5 @@
 # BracketContext
-**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154, R193, R194, R195, R196, R197, R198
+**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154, R193, R194, R195, R196, R197, R198, R222
 
 The schema's parse context: a concrete type, not an interface. It carries the
 language through the parse and **outlives** it to own the pairing links.
@@ -24,7 +24,8 @@ language through the parse and **outlives** it to own the pairing links.
 - reports whether its links are fresh, and rebuilds them when its stamp is stale
 - **holds** the declaration links; it does not derive them — and answers them through
   `DeclarationNames`, a method returning the document's own name nodes, refusing when stale
-- answers `Opener` and `Closer` as the typed marker kinds
+- answers `Opener` and `Closer` as the typed marker kinds, and `Doc`, the document it is
+  bound to
 - answers a group's **`InnerText`** and **`OuterText`**, mirroring `innerHTML` / `outerHTML`,
   by rendering the nodes between (or including) the markers; a group open at end of input
   runs to the end of the document

@@ -16,7 +16,7 @@ package sdom
 // CRC: crc-BracketLang.md | R59, R62, R121
 // LangGo exercises code brackets, both comment forms, a string with an escape,
 // and a raw string without one.
-var LangGo = BracketLang{Brackets: []BracketGroup{
+var LangGo = BracketLang{Comment: CommentStyle{"// ", "\n", "comment"}, Brackets: []BracketGroup{
 	{Open: []string{"//"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"/*"}, Close: []string{"*/"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
@@ -29,7 +29,7 @@ var LangGo = BracketLang{Brackets: []BracketGroup{
 
 // CRC: crc-BracketLang.md | R121, R72
 // LangShell exercises word brackets with separators, which nothing else does.
-var LangShell = BracketLang{Brackets: []BracketGroup{
+var LangShell = BracketLang{Comment: CommentStyle{"# ", "\n", "comment"}, Brackets: []BracketGroup{
 	{Open: []string{"#"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
 	{Open: []string{"'"}, Close: []string{"'"}, AllowedInner: []string{}},
@@ -44,7 +44,7 @@ var LangShell = BracketLang{Brackets: []BracketGroup{
 // CRC: crc-BracketLang.md | R121
 // LangPascal exercises the other word-bracket shape, and a language whose "{" is
 // a comment rather than a code bracket.
-var LangPascal = BracketLang{Brackets: []BracketGroup{
+var LangPascal = BracketLang{Comment: CommentStyle{"(* ", " *)", "comment"}, Brackets: []BracketGroup{
 	{Open: []string{"(*"}, Close: []string{"*)"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"{"}, Close: []string{"}"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"'"}, Close: []string{"'"}, AllowedInner: []string{}},
@@ -57,7 +57,7 @@ var LangPascal = BracketLang{Brackets: []BracketGroup{
 // LangJavaScript is the only table exercising AllowedInner and AllowedParent
 // together: a template literal is parse-restricted with one escape hatch, and the
 // interpolation that hatch opens is recognized nowhere else.
-var LangJavaScript = BracketLang{Brackets: []BracketGroup{
+var LangJavaScript = BracketLang{Comment: CommentStyle{"// ", "\n", "comment"}, Brackets: []BracketGroup{
 	{Open: []string{"//"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"/*"}, Close: []string{"*/"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"${"}, Close: []string{"}"}, AllowedParent: []string{"`"}},
@@ -90,7 +90,7 @@ var LangTypeScript = LangJavaScript
 // Order matters twice here: `--[[` precedes `--` and `[[` precedes `[`, because
 // the first match wins; and `elseif` precedes `else` among the separators, since
 // `else` is a prefix of it.
-var LangLua = BracketLang{Brackets: []BracketGroup{
+var LangLua = BracketLang{Comment: CommentStyle{"-- ", "\n", "comment"}, Brackets: []BracketGroup{
 	{Open: []string{"--[["}, Close: []string{"]]"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"--"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"[["}, Close: []string{"]]"}, AllowedInner: []string{}},
@@ -125,7 +125,7 @@ var LangLua = BracketLang{Brackets: []BracketGroup{
 // Order: f groups first, longest quote form first, so f""" is matched before f".
 // A plain """ never competes — at the f it cannot match at all.
 var LangPython = IndentLang{
-	BracketLang: BracketLang{Brackets: []BracketGroup{
+	BracketLang: BracketLang{Comment: CommentStyle{"# ", "\n", "comment"}, Brackets: []BracketGroup{
 		{Open: []string{"#"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
 
 		{Open: []string{`f"""`, `F"""`, `fr"""`, `fR"""`, `Fr"""`, `FR"""`, `rf"""`, `rF"""`, `Rf"""`, `RF"""`},

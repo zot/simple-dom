@@ -107,6 +107,10 @@ func (bc *BracketContext) enclose(n Node, open *Opener) {
 // Language returns the table this context parsed with.
 func (bc *BracketContext) Language() *BracketLang { return bc.lang }
 
+// CRC: crc-BracketContext.md | R222
+// Doc returns the document this context is bound to, or nil before the parse's Done.
+func (bc *BracketContext) Doc() *Doc { return bc.doc }
+
 // CRC: crc-BracketContext.md | R91
 //
 // Origin returns the token identifying this parse, which every node the parse

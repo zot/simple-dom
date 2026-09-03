@@ -1,5 +1,5 @@
 # Loc
-**Requirements:** R20, R21, R22, R23, R24, R25, R26, R27, R29, R30, R34, R35, R36, R88, R89, R90, R92, R93, R94, R95
+**Requirements:** R20, R21, R22, R23, R24, R25, R26, R27, R29, R30, R34, R35, R36, R88, R89, R90, R92, R93
 
 A node's location, separating **provenance** — where it was read from — from
 **faithfulness** — whether it still renders those bytes. The two stop agreeing
@@ -60,11 +60,9 @@ source are two origins and "same file, different parser" is answerable.
   covering both altered and no-provenance — and takes **the first operand's
   offset when it has one, the second's otherwise**. Leftmost-provenance-wins makes
   the rule associative, so merging a run does not depend on how it is grouped
-- **Merging across two present, differing origins panics.** A programming error,
-  not a data condition: the offsets are in different coordinate systems and no
-  result names anything true. Not the mutation-window sentinel, so `Mutate`
-  re-raises it with its stack. It also settles cross-document adjacency by never
-  reaching the arithmetic
+- **Two present, differing origins never meet.** The document refuses them at
+  construction and `Merge` joins only its own nodes, so the merge arithmetic carries
+  no check — the unreachable inner guard was removed 2026-09-02
 - Split-then-merge of the same pair returns the original span, provenance intact
 
 ## Collaborators

@@ -1,11 +1,13 @@
 # BracketLang
-**Requirements:** R58, R59, R60, R62, R68, R70, R121, R169, R170, R171, R172, R173
+**Requirements:** R58, R59, R60, R62, R68, R70, R121, R169, R170, R171, R172, R173, R207, R208, R209
 
 A language's whole bracket table, and nothing else. Supporting a new language is
 adding an entry, not writing code.
 
 ## Knows
-- its `BracketGroup`s, and nothing besides
+- its `BracketGroup`s
+- its `Comment` style — `Prefix`, `Suffix`, `Kind` — which is how a comment is
+  **written**, not how one is recognized
 
 ## Does
 - resolves an opener string back to the group that owns it, which is how
@@ -13,10 +15,14 @@ adding an entry, not writing code.
 - offers its groups in order, which is the precedence the BracketParser parses by
 
 ## Constraints
-- **No comment configuration exists.** A line comment is a group closing on a
-  newline; a block comment is a group closing on its terminator. Both are
-  parse-restricted, which is what makes a comment non-nesting with a literal
-  interior. Strings are the same shape with different markers
+- **No comment configuration exists for *recognition*.** A line comment is a group
+  closing on a newline; a block comment is a group closing on its terminator. Both
+  are parse-restricted, which is what makes a comment non-nesting with a literal
+  interior. Strings are the same shape with different markers. *(Narrowed
+  2026-09-02, Item 6.2: `CommentStyle` is configuration for **construction** — the
+  `// ` a writer wants where the group's opener is `//`. Its `Kind` must equal the
+  recognizing group's, guarded by a test per shipped language, never a runtime check;
+  a language with several comment forms designates one.)*
 - **No indent parameters and no flag.** A language needing indent scope is a type
   that **embeds** `BracketLang` and adds what it needs, and *the type is the
   flag* — so a brace language carries no indent parameters rather than

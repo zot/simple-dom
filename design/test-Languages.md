@@ -55,3 +55,12 @@ template containing another interpolation
 is not an interpolation opener
 **Refs:** crc-BracketLang.md
 **Code:** sdom/lang_test.go
+
+## Test: every comment style constructs a comment of its own kind
+**Purpose:** R207, R208, R209 — the agreement between how a language writes a comment and how it recognizes one, guarded here rather than at runtime
+**Input:** for every shipped `BracketLang` (Python's through its `IndentLang`) with a non-empty `Comment.Prefix`: parse `Prefix + "x" + Suffix`
+**Expected:** the first node is an `*Opener` whose group, resolved through `GroupFor`, has `Kind == Comment.Kind`; the interior is the single text `x`; a table with an empty `Prefix` is skipped and counted
+**Refs:** crc-BracketLang.md
+**Code:** sdom/lang_test.go
+**Fire alarm:** set Lua's `Prefix` to `--[[ ` with `Suffix` `\n` — the opener is the block form, whose closer is `]]`, so the constructed comment does not close and the kind check still passes; make the test also require `ctx.Closer(opener)` to render `Suffix`, and then this injection is red.
+**Inject:** sdom/lang.go:LangLua
