@@ -1,0 +1,77 @@
+package minispecsdom
+
+import (
+	"os"
+	"slices"
+	"strings"
+	"testing"
+)
+
+func doneFixture(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile("testdata/done-sample.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+// CRC: crc-Done.md | Seq: seq-done.md#1 | R266, R267, R268, R269, R270, R272
+func TestTheDoneFixturesEntriesReadBack(t *testing.T) {
+	src := doneFixture(t)
+	d := ParseDone(src)
+	if r, _ := d.Render(); r != src {
+		t.Fatal("render differs from source")
+	}
+	es := d.Entries()
+	if len(es) != 3 {
+		t.Fatalf("%d entries, want 3", len(es))
+	}
+	if !slices.Equal(es[0].IDs, []int{8}) || len(es[1].IDs) != 0 || len(es[2].IDs) != 0 {
+		t.Errorf("ids %v %v %v", es[0].IDs, es[1].IDs, es[2].IDs)
+	}
+	if !es[0].HasSlot || !es[1].HasSlot || es[2].HasSlot {
+		t.Errorf("slots %v %v %v", es[0].HasSlot, es[1].HasSlot, es[2].HasSlot)
+	}
+	if es[0].Date != "2026-08-30" || es[0].Title != "the node protocol." || es[0].Commit != "77fa5f4" ||
+		es[0].PartDoc != "carves/x.md" || es[0].PartKey != "1" {
+		t.Errorf("entry 0: %+v", *es[0])
+	}
+	if es[1].PartDoc != "carves/x.md" || es[1].PartKey != "3" || es[1].Commit != "abc1234" {
+		t.Errorf("entry 1 (pointer from the body): %+v", *es[1])
+	}
+	if d.MaxID() != 8 || d.Unread() != 1 {
+		t.Errorf("MaxID %d Unread %d", d.MaxID(), d.Unread())
+	}
+	// An indented bullet inside a body is the entry's, not a boundary.
+	var b strings.Builder
+	for _, n := range es[0].run {
+		s, _ := n.Render()
+		b.WriteString(s)
+	}
+	if !strings.Contains(b.String(), "- O9, an indented bullet") {
+		t.Errorf("the body's indented bullet ended entry 0's region")
+	}
+}
+
+// CRC: crc-Done.md | Seq: seq-done.md#2 | R271
+func TestPrependLandsAfterTheRule(t *testing.T) {
+	d := ParseDone(doneFixture(t))
+	if err := d.Prepend("- **2026-09-03 — #21: the done schema.** (`deadbee`) Part `carves/t.md#5`.", "One line of body."); err != nil {
+		t.Fatal(err)
+	}
+	r, _ := d.Render()
+	if !strings.Contains(r, "---\n\n- **2026-09-03 — #21: the done schema.** (`deadbee`) Part `carves/t.md#5`.\nOne line of body.\n\n- **2026-08-30") {
+		t.Errorf("after Prepend:\n%s", r)
+	}
+	if es := d.Entries(); len(es) != 4 || !slices.Equal(es[0].IDs, []int{21}) || d.MaxID() != 21 {
+		t.Errorf("entries after Prepend: %d, max %d", len(es), d.MaxID())
+	}
+	empty := ParseDone("# Done\n\nLedger.\n\n---\n")
+	if err := empty.Prepend("- **2026-09-03 — #1: first.**", ""); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ := empty.Render(); r != "# Done\n\nLedger.\n\n---\n\n- **2026-09-03 — #1: first.**\n\n" {
+		t.Errorf("empty ledger after Prepend:\n%q", r)
+	}
+}

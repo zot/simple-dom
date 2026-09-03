@@ -1,0 +1,56 @@
+# The done schema
+
+The third file schema: it embeds the markdown base, **owns the done file's DOM**, and adds
+the completion entry. The done file is a ledger, most-recent first, and the tool reads it
+for the joins — which queue IDs a commit discharged, which part it closed — and writes it
+by prepending.
+
+```go
+type Done struct { /* the document, its contexts, the entries */ }
+
+func ParseDone(src string) *Done
+func (d *Done) Doc() *sdom.Doc
+func (d *Done) Render() (string, error)
+
+func (d *Done) Entries() []*DoneEntry   // in file order: most recent first
+func (d *Done) MaxID() int              // the largest queue ID in any identifier slot
+func (d *Done) Unread() int             // `- ` lines at column 0 that did not read as entries
+
+func (d *Done) Prepend(header, body string) error
+
+type DoneEntry struct {
+    Date    string
+    IDs     []int      // every #N in the identifier slot, and nothing outside it
+    HasSlot bool       // the header carried an identifier slot at all
+    Title   string
+    Commit  string     // the first backquoted run after the header's bold
+    PartDoc, PartKey string  // the backquoted doc#key, from the header or the body
+}
+```
+
+**An entry begins at `- **` at column 0.** A list item there whose text opens with bold is
+an entry; a list item at column 0 that does not is *entry-like* and counted by `Unread`,
+because a shape-based reader reports clean over what it never recognized unless it says
+so. Both are read from the base's `ListItem` node and the text after it.
+
+**A region runs to the next entry-like bullet at column 0, or to a heading of level 2 or
+higher.** A body may quote an entry inside a fence; the base emits no list item there, so
+it cannot begin or end an entry.
+
+**The identifier slot is the run between the header's em dash and the colon that opens
+the title.** Every `#N` in it is a queue ID this entry discharged; a `#N` anywhere else in
+the entry is prose — measured, five body lines in one live ledger would have contributed a
+queue ID if bodies were read. The slot is flexible on purpose: `#8`, `O201`, `R3392–R3397`,
+several joined by `/`, or nothing.
+
+**The part pointer is a backquoted `doc#key`**, taken from the header first and the body
+second — the reverse join from a landed change to the reasoning behind it.
+
+**`Prepend(header, body)`** writes a new entry as one synthetic text just after the rule
+that ends the preamble — before the first entry, or at the end of the file when there is
+none — separated by blank lines. The header is written as given; the schema does not compose
+it. The document is re-read after the write.
+
+**Values are derived, never stored**, from the entry's rendered bytes at those positions.
+An entry is a view over its run, as a queue entry is; nothing in it is a field a tool
+writes into.

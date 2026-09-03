@@ -59,6 +59,8 @@ enforced by the compiler rather than by discipline.
 - [pending-schema.md](pending-schema.md) — the queue file: entries as views over
   heading regions, placement by position never by splice, removal, and what could
   not be read.
+- [done-schema.md](done-schema.md) — the ledger: entries at `- **`, the identifier
+  slot between em dash and colon, the part pointer, prepend after the rule.
 
 ## Summary specs
 

@@ -10,6 +10,7 @@
 **Alarm:** 1
 **Fire alarm:** end a region at any heading regardless of level. Red: the entry with the nested `###` sub-item loses its Next line to the sub-item's region.
 **Inject:** minispecsdom/pending.go:Pending.regionEnd
+**Pulled:** 2026-09-03 — rang: `the sub-item is not inside entry 12's region`, and `Remove(12)` left the sub-item behind — two tests.
 
 ## Test: Place by position, refused not clamped
 **Purpose:** R261, R262, R265
@@ -20,6 +21,7 @@
 **Alarm:** 2
 **Fire alarm:** clamp an out-of-range position to the nearest valid one. Red: `Place` at 0 succeeds and the entry lands first.
 **Inject:** minispecsdom/pending.go:Pending.Place
+**Pulled:** 2026-09-03 — rang: `position 0 accepted`, `position len+2 accepted`, `a refused Place changed the document`, only that test.
 
 ## Test: Remove drops exactly the run
 **Purpose:** R263
@@ -30,6 +32,7 @@
 **Alarm:** 3
 **Fire alarm:** skip the tail split so the next entry's leading bytes go with the removed run. Red: the render loses the following entry's heading.
 **Inject:** minispecsdom/pending.go:Pending.Remove
+**Pulled:** 2026-09-03 — rang: the rule-ends-region test, `after Remove: "# Pending\n\n---\n\n"` — the rule and the prose went with the run.
 
 ## Test: a rule ends a region
 **Purpose:** R259, R263 — found by injecting past the alarm list, not by design

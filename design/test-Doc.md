@@ -173,3 +173,4 @@ with a freshly computed index over the same array
 **Alarm:** 8
 **Fire alarm:** make `Insert` place *after* the named node. Red: `ab|Xcd…`.
 **Inject:** sdom/mutate.go:Doc.Insert
+**Pulled:** 2026-09-03 — rang: `render "ab|XcdY"`, only that test.

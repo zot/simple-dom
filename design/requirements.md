@@ -492,3 +492,22 @@
 - **R264:** `Unread` lists level-2 headings that are not entries; `MaxID` is the largest entry id.
 - **R265:** After each write the document is re-read from its bytes and the entries re-derived, since
   a placed entry is one synthetic text until it is parsed.
+
+## Feature: done schema
+**Source:** specs/done-schema.md
+
+- **R266:** `Done` embeds the markdown base and owns the done file's DOM; `ParseDone` makes one and
+  `Render` re-emits it.
+- **R267:** An entry begins at a column-0 list item whose text opens with bold; a column-0 list item
+  that does not is entry-like and counted by `Unread`.
+- **R268:** A region runs to the next entry-like bullet at column 0 or a heading of level 2 or
+  higher; a fenced quotation can neither begin nor end one.
+- **R269:** The identifier slot is the run between the header's em dash and the colon opening the
+  title; every `#N` in it is a discharged queue ID, and a `#N` anywhere else is prose.
+- **R270:** The part pointer is a backquoted `doc#key`, taken from the header first and the body
+  second; the date, title and first backquoted commit are derived from the header.
+- **R271:** `Prepend(header, body)` inserts the entry as one synthetic text just after the
+  preamble's rule — before the first entry, or at the end when there is none — and the document is
+  re-read after the write.
+- **R272:** `MaxID` is the largest queue ID in any identifier slot; values are derived from the run's
+  rendered bytes and never stored.
