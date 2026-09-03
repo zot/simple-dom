@@ -10,6 +10,7 @@
 **Alarm:** 1
 **Fire alarm:** read every `#N` in the entry rather than only the slot. Red: the second entry gains ID 4 and `MaxID` still reads 8 — so the test asserts the IDs, not only the max. A second injection, in `regionEnd`: let any list item end a region, not only one at column 0. Red: entry 0 loses its indented bullet — added 2026-09-03 after a past-the-list probe found the column-0 condition unguarded.
 **Inject:** minispecsdom/done.go:DoneEntry.derive, minispecsdom/done.go:Done.regionEnd
+**Pulled:** 2026-09-03 — rang: `ids [8 1] [3 4] []` — the body's `#4` and even `#1` from a part pointer counted — and the prepend test's max moved too. The `regionEnd` injection was pulled by hand the same day: `the body's indented bullet ended entry 0's region`.
 
 ## Test: Prepend lands after the rule
 **Purpose:** R271
@@ -20,3 +21,4 @@
 **Alarm:** 2
 **Fire alarm:** insert at the end instead of before the first entry. Red: the new entry is last.
 **Inject:** minispecsdom/done.go:Done.Prepend
+**Pulled:** 2026-09-03 — rang: the new entry rendered last, after the entry-like bullet, only that test.

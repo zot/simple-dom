@@ -511,3 +511,18 @@
   re-read after the write.
 - **R272:** `MaxID` is the largest queue ID in any identifier slot; values are derived from the run's
   rendered bytes and never stored.
+
+## Feature: current schema
+**Source:** specs/current-schema.md
+
+- **R273:** `Current` embeds the markdown base and owns the current file's DOM; `ParseCurrent`
+  refuses a document with no `## Active` heading or more than one, matched on `Heading` nodes.
+- **R274:** The active region runs from the heading to the next heading of level 2 or higher, or
+  the end of the file.
+- **R275:** `Active` is the region's body trimmed, `""` when it holds only the placeholder
+  `_No active item._`; `Occupied` is the region holding anything else; `Standing` lists the other
+  level-2 headings.
+- **R276:** `SetActive` and `Reset` replace the region's body as one synthetic text and address no
+  node outside the region, so every byte outside it is unchanged by construction.
+- **R277:** `SetActive` refuses when the region is occupied.
+- **R278:** The document is re-read after each write.

@@ -61,6 +61,8 @@ enforced by the compiler rather than by discipline.
   not be read.
 - [done-schema.md](done-schema.md) — the ledger: entries at `- **`, the identifier
   slot between em dash and colon, the part pointer, prepend after the rule.
+- [current-schema.md](current-schema.md) — the resume buffer: exactly one `## Active`,
+  its region set or reset as a unit, standing sections never touched.
 
 ## Summary specs
 
