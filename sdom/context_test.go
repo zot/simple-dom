@@ -83,11 +83,11 @@ func TestEveryNodeKnowsItsEnclosingOpener(t *testing.T) {
 // its author, its file and its helpers is checked by something liable to share its
 // misconceptions too. What the library owes is that the answer is reproducible from
 // the array; proving it is a consumer's job, and a test is a consumer.
-func independentLinks(d *Doc, lang *BracketLang) (closerOf, openerOf, enclosing map[Node]Node, seps map[Node][]Node) {
-	closerOf, openerOf, enclosing = map[Node]Node{}, map[Node]Node{}, map[Node]Node{}
+func independentLinks(d *Doc, lang *BracketLang) (closerOf map[Node]*Closer, openerOf map[Node]*Opener, enclosing map[Node]Node, seps map[Node][]Node) {
+	closerOf, openerOf, enclosing = map[Node]*Closer{}, map[Node]*Opener{}, map[Node]Node{}
 	seps = map[Node][]Node{}
-	var stack []Node
-	top := func() Node {
+	var stack []*Opener
+	top := func() *Opener {
 		if len(stack) == 0 {
 			return nil
 		}
@@ -110,20 +110,20 @@ func independentLinks(d *Doc, lang *BracketLang) (closerOf, openerOf, enclosing 
 		return err == nil && slices.Contains(g.Close, ct)
 	}
 	for _, n := range d.Nodes() {
-		switch n.(type) {
+		switch m := n.(type) {
 		case *Closer:
 			// A closer records NO enclosing opener — it is paired with its own
 			// instead. A stray one, which the any-close fallback emits unpaired,
 			// records nothing at all and does not pop.
-			if o := top(); o != nil && closes(o, n) {
+			if o := top(); o != nil && closes(o, m) {
 				stack = stack[:len(stack)-1]
-				closerOf[o], openerOf[n] = n, o
+				closerOf[o], openerOf[m] = m, o
 			}
 		case *Opener:
 			if e := top(); e != nil {
 				enclosing[n] = e
 			}
-			stack = append(stack, n)
+			stack = append(stack, m)
 		case *Separator:
 			if e := top(); e != nil {
 				enclosing[n] = e
@@ -366,5 +366,74 @@ func TestSeparatorsRefreshesLikeEveryOtherAccessor(t *testing.T) {
 	if got := len(ctx.Separators(opener)); got != 1 {
 		t.Errorf("after removing one separator: %d, want 1 — the accessor answered "+
 			"from an index the document has moved past", got)
+	}
+}
+
+// CRC: crc-BracketContext.md | R193
+//
+// The accessors are TYPED: a consumer never asserts a kind the context already
+// knew. The stray `}` is the case the typed nil has to get right.
+func TestOpenerAndCloserAreTyped(t *testing.T) {
+	d, ctx := parse("a(b)c}", 0, &LangGo)
+	var open *Opener
+	var stray *Closer
+	for _, n := range d.Nodes() {
+		switch m := n.(type) {
+		case *Opener:
+			open = m
+		case *Closer:
+			stray = m // the last closer seen is the stray `}`
+		}
+	}
+	close := ctx.Closer(open)
+	if close == nil || ctx.Opener(close) != open {
+		t.Fatalf("the ( ) pair does not agree through the typed accessors")
+	}
+	if s, _ := close.Render(); s != ")" {
+		t.Errorf("closer renders %q, want %q", s, ")")
+	}
+	if ctx.Opener(stray) != nil {
+		t.Errorf("a stray closer has an opener")
+	}
+}
+
+// CRC: crc-BracketContext.md | R194, R195
+//
+// innerHTML / outerHTML for a group, named from either end, with the open-at-EOF
+// rule. The comment group's closer IS end of input under LangGo, so both texts run
+// to the end.
+func TestInnerAndOuterText(t *testing.T) {
+	d, ctx := parse("x = (a, [b]) // tail", 0, &LangGo)
+	var paren, comment *Opener
+	for _, n := range d.Nodes() {
+		if o, ok := n.(*Opener); ok {
+			switch s, _ := o.Render(); s {
+			case "(":
+				paren = o
+			case "//":
+				comment = o
+			}
+		}
+	}
+	cases := []struct{ name, got, want string }{
+		{"inner from opener", ctx.InnerText(paren), "a, [b]"},
+		{"inner from closer", ctx.InnerText(ctx.Closer(paren)), "a, [b]"},
+		{"outer", ctx.OuterText(paren), "(a, [b])"},
+		{"comment inner runs to EOF", ctx.InnerText(comment), " tail"},
+		{"comment outer runs to EOF", ctx.OuterText(comment), "// tail"},
+		{"not a marker", ctx.InnerText(d.Nodes()[0]), ""},
+	}
+	for _, c := range cases {
+		if c.got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, c.got, c.want)
+		}
+	}
+	d, ctx = parse("f(a", 0, &LangGo)
+	open := d.Nodes()[1].(*Opener)
+	if got := ctx.InnerText(open); got != "a" {
+		t.Errorf("open group inner: got %q, want %q", got, "a")
+	}
+	if got := ctx.OuterText(open); got != "(a" {
+		t.Errorf("open group outer: got %q, want %q", got, "(a")
 	}
 }

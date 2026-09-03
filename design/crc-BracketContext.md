@@ -1,5 +1,5 @@
 # BracketContext
-**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154
+**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154, R193, R194, R195, R196, R197, R198
 
 The schema's parse context: a concrete type, not an interface. It carries the
 language through the parse and **outlives** it to own the pairing links.
@@ -13,8 +13,8 @@ language through the parse and **outlives** it to own the pairing links.
   - an **opener** also knows the **separators** belonging to its group
   - a **separator** knows its opener
   - **any other node** knows its enclosing opener
-- the **declaration links**: a keyword node maps to every name it declares — one
-  entry for a plain declaration, several for a group
+- the **declaration links**: a `*DeclarationType` maps to every `*DeclarationName` it
+  declares — one entry for a plain declaration, several for a group; typed at both ends
 - the structural generation it was built against
 
 ## Does
@@ -22,7 +22,12 @@ language through the parse and **outlives** it to own the pairing links.
 - hands the parser the group currently open
 - records the pairing as the parse discovers it
 - reports whether its links are fresh, and rebuilds them when its stamp is stale
-- **holds** the declaration links; it does not derive them
+- **holds** the declaration links; it does not derive them — and answers them through
+  `DeclarationNames`, a method returning the document's own name nodes, refusing when stale
+- answers `Opener` and `Closer` as the typed marker kinds
+- answers a group's **`InnerText`** and **`OuterText`**, mirroring `innerHTML` / `outerHTML`,
+  by rendering the nodes between (or including) the markers; a group open at end of input
+  runs to the end of the document
 
 ## Constraints
 - **`Doc` does not own these links.** Not every document has brackets, and a
@@ -58,6 +63,12 @@ language through the parse and **outlives** it to own the pairing links.
   makes — and a stale accessor **refuses** rather than returning the old map or an
   empty one. An empty answer reads identically to *this keyword declares nothing*,
   which is the plausible wrong answer `IndexOf` already refuses on the same grounds
+
+- **Slices are handed back live, by design.** `Separators` and `DeclarationNames` return
+  the stored slice. Every consumer of `sdom` is fire-and-forget — mini-spec is a CLI that
+  builds, uses and exits; microfts2 indexes and searches and caches no slices — so there is
+  no lifetime in which aliasing is a hazard, and a copy per call buys nothing. Documented at
+  the accessor, not guarded
 
 ## Collaborators
 - Doc: supplies the nodes and the generation this stamps against

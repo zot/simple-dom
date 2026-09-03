@@ -36,7 +36,7 @@ const shellSeps = "\n;"
 // `while`, `for` and `case` open groups, so assignments inside them are not sought
 // by a top-level scan.
 func Shell(d *sdom.Doc, ctx *sdom.BracketContext) error {
-	links := map[sdom.Node][]sdom.Node{}
+	links := map[*sdom.DeclarationType][]*sdom.DeclarationName{}
 	done := map[int]bool{}
 	for {
 		hit := shellNext(d, ctx, done)
@@ -45,15 +45,15 @@ func Shell(d *sdom.Doc, ctx *sdom.BracketContext) error {
 		}
 		done[hit.abs] = true
 
-		var kw sdom.Node
-		var names []sdom.Node
+		var kw *sdom.DeclarationType
+		var names []*sdom.DeclarationName
 		err := d.Mutate(func() error {
-			kwNode, rest, err := carve(d, hit.node, hit.start, hit.start, newType)
+			kwNode, rest, err := carve(d, hit.node, hit.start, hit.start, sdom.NewDeclarationType)
 			if err != nil {
 				return err
 			}
 			kw = kwNode
-			nm, _, err := carve(d, rest, 0, hit.end-hit.start, newName)
+			nm, _, err := carve(d, rest, 0, hit.end-hit.start, sdom.NewDeclarationName)
 			if err != nil {
 				return err
 			}
@@ -126,5 +126,5 @@ func shellIsFunc(d *sdom.Doc, ctx *sdom.BracketContext, n sdom.Node) bool {
 		return false
 	}
 	c, ok := d.Next(o).(*sdom.Closer)
-	return ok && ctx.Opener(c) == sdom.Node(o)
+	return ok && ctx.Opener(c) == o
 }

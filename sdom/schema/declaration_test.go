@@ -2,6 +2,7 @@
 package schema
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -39,9 +40,9 @@ func decls(t *testing.T, src string, lang *sdom.BracketLang, p pass) string {
 			continue
 		}
 		kw, _ := ty.Render()
-		names, err := ctx.Declarations(ty)
+		names, err := ctx.DeclarationNames(ty)
 		if err != nil {
-			t.Fatalf("Declarations: %v", err)
+			t.Fatalf("DeclarationNames: %v", err)
 		}
 		b.WriteString(kw + "[")
 		for i, nm := range names {
@@ -245,4 +246,53 @@ func markers(d *sdom.Doc) [3]int {
 		}
 	}
 	return c
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-declare.md#2.5 | R197, R198
+//
+// DeclarationNames returns the document's OWN nodes — pointer-identical to what a
+// consumer skims from the array — and still refuses once the document changes.
+func TestDeclarationNamesAreTheDocumentsOwnNodes(t *testing.T) {
+	d, ctx := parse("func Foo() {}\nvar Bar = 1\n", 0, &sdom.LangGo)
+	if err := Go(d, ctx); err != nil {
+		t.Fatalf("pass: %v", err)
+	}
+	skimmed := map[*sdom.DeclarationName]bool{}
+	var types []*sdom.DeclarationType
+	for _, n := range d.Nodes() {
+		switch m := n.(type) {
+		case *sdom.DeclarationName:
+			skimmed[m] = true
+		case *sdom.DeclarationType:
+			types = append(types, m)
+		}
+	}
+	if len(types) != 2 || len(skimmed) != 2 {
+		t.Fatalf("got %d types and %d names, want 2 and 2", len(types), len(skimmed))
+	}
+	for _, ty := range types {
+		names, err := ctx.DeclarationNames(ty)
+		if err != nil {
+			t.Fatalf("DeclarationNames: %v", err)
+		}
+		for _, nm := range names {
+			if !skimmed[nm] {
+				s, _ := nm.Render()
+				t.Errorf("%q is not the node in the document", s)
+			}
+		}
+	}
+	var text *sdom.Text
+	for _, n := range d.Nodes() {
+		if tx, ok := n.(*sdom.Text); ok {
+			text = tx
+			break
+		}
+	}
+	if err := d.Mutate(func() error { _, _, e := d.Split(text, 1); return e }); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	if _, err := ctx.DeclarationNames(types[0]); !errors.Is(err, sdom.ErrDeclarationsStale) {
+		t.Errorf("after a structural change: err = %v, want ErrDeclarationsStale", err)
+	}
 }

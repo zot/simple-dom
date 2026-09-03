@@ -251,15 +251,19 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   census already prints: a pull record that named its commit could be compared against a commit
   rather than a date, and the census would not need to guess. Like `O10` and `O16`, this records
   the hole and the evidence rather than proposing a repair in this repository.
-- [ ] O21: `Separators` and `Declarations` return the context's **own slice**, so a caller that
+- A1: `Separators` and `DeclarationNames` return the context's **own slice**, so a caller that
   appends to or writes through the returned value corrupts the index in place, and the
   corruption survives until a rebuild happens to overwrite it. This is `O2`'s problem in a
   second location — there it is `Doc.Nodes()` returning the live backing array with "must not
   be modified" stated only in prose — and the options are the same: `slices.Clone` at an
   allocation per call, or an `iter.Seq[Node]` which enforces it for free and changes the API.
   The aliasing predates this item for the declaration links and is new for the separators, and
-  deciding it in one place for both is better than twice. Worth settling once real call sites
-  exist, since the right answer depends on whether consumers iterate once or hold the result.
+  deciding it in one place for both is better than twice. **Approved 2026-09-02 (Bill, carve
+  Item 6.1, R196):** the slices stay live. Every consumer of `sdom` is fire-and-forget — mini-spec
+  is a CLI that builds a DOM, uses it and exits; microfts2 (and Ark through it) indexes and
+  searches and caches no slices — so there is no lifetime in which aliasing is a hazard, and a
+  copy per call buys nothing. Documented at the accessor. `O2` is the same question for
+  `Doc.Nodes()` and the same reasoning applies.
 - [ ] O22: The consolidated index costs about **2.3× the heap** of the three maps it replaced,
   and that was accepted deliberately rather than overlooked. *Measured 2026-08-31 over `sdom`'s
   own 14 files, 15,747 nodes:* three maps 1,067 KB against one map of flat structs 2,463 KB, and

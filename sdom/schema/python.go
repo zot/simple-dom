@@ -116,7 +116,7 @@ func pyNameAfter(body string, after int) (start, end int, ok bool) {
 // The keyword and the name share a node here — always, unlike Go — so the carve of
 // the name runs against what the keyword's carve left to its right.
 func Python(d *sdom.Doc, ctx *sdom.BracketContext) error {
-	links := map[sdom.Node][]sdom.Node{}
+	links := map[*sdom.DeclarationType][]*sdom.DeclarationName{}
 	done := map[int]bool{}
 	for {
 		hit := pyNext(d, ctx, done)
@@ -125,20 +125,21 @@ func Python(d *sdom.Doc, ctx *sdom.BracketContext) error {
 		}
 		done[hit.abs] = true
 
-		var kw, name sdom.Node
+		var kw *sdom.DeclarationType
+		var name *sdom.DeclarationName
 		err := d.Mutate(func() error {
 			var rest sdom.Node
 			var err error
-			if kw, rest, err = carve(d, hit.kwNode, hit.kwStart, hit.kwEnd, newType); err != nil {
+			if kw, rest, err = carve(d, hit.kwNode, hit.kwStart, hit.kwEnd, sdom.NewDeclarationType); err != nil {
 				return err
 			}
-			name, _, err = carve(d, rest, hit.nameStart-hit.kwEnd, hit.nameEnd-hit.kwEnd, newName)
+			name, _, err = carve(d, rest, hit.nameStart-hit.kwEnd, hit.nameEnd-hit.kwEnd, sdom.NewDeclarationName)
 			return err
 		})
 		if err != nil {
 			return err
 		}
-		links[kw] = []sdom.Node{name}
+		links[kw] = []*sdom.DeclarationName{name}
 	}
 	ctx.SetDeclarations(links)
 	return nil

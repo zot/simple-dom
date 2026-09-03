@@ -71,7 +71,7 @@ var luaIdentRe = regexp.MustCompile(`[\pL_][\pL\pN_.:]*`)
 // Lua runs the Lua declaration pass. It recognizes three shapes: `local`, a bare
 // `function` opener at a statement start, and a keyword-less assignment.
 func Lua(d *sdom.Doc, ctx *sdom.BracketContext) error {
-	links := map[sdom.Node][]sdom.Node{}
+	links := map[*sdom.DeclarationType][]*sdom.DeclarationName{}
 	done := map[int]bool{}
 	for {
 		hit := luaNext(d, ctx, done)
@@ -80,8 +80,8 @@ func Lua(d *sdom.Doc, ctx *sdom.BracketContext) error {
 		}
 		done[hit.abs] = true
 
-		var kw sdom.Node
-		var names []sdom.Node
+		var kw *sdom.DeclarationType
+		var names []*sdom.DeclarationName
 		err := d.Mutate(func() error {
 			var rest sdom.Node
 			var err error
@@ -91,7 +91,7 @@ func Lua(d *sdom.Doc, ctx *sdom.BracketContext) error {
 				kw = sdom.NewDeclarationType(body, hit.kwNode.Location())
 				err = d.Replace(hit.kwNode, kw)
 			} else {
-				kw, rest, err = carve(d, hit.kwNode, hit.kwStart, hit.kwEnd, newType)
+				kw, rest, err = carve(d, hit.kwNode, hit.kwStart, hit.kwEnd, sdom.NewDeclarationType)
 			}
 			if err != nil {
 				return err
@@ -100,7 +100,7 @@ func Lua(d *sdom.Doc, ctx *sdom.BracketContext) error {
 			if target == hit.kwNode && !hit.kwIsNode {
 				target, ns, ne = rest, ns-hit.kwEnd, ne-hit.kwEnd
 			}
-			nm, _, err := carve(d, target, ns, ne, newName)
+			nm, _, err := carve(d, target, ns, ne, sdom.NewDeclarationName)
 			if err != nil {
 				return err
 			}

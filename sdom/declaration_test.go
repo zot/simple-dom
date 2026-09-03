@@ -58,8 +58,8 @@ func TestStaleDeclarationsRefuse(t *testing.T) {
 	one := NewDeclarationName("y", Synthetic(1))
 	two := NewDeclarationName("z", Synthetic(1))
 
-	ctx.SetDeclarations(map[Node][]Node{kw: {one, two}})
-	got, err := ctx.Declarations(kw)
+	ctx.SetDeclarations(map[*DeclarationType][]*DeclarationName{kw: {one, two}})
+	got, err := ctx.DeclarationNames(kw)
 	if err != nil {
 		t.Fatalf("fresh links refused: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestStaleDeclarationsRefuse(t *testing.T) {
 	if err := d.Mutate(func() error { _, _, e := d.Split(d.Nodes()[0], 2); return e }); err != nil {
 		t.Fatalf("Mutate: %v", err)
 	}
-	if _, err := ctx.Declarations(kw); !errors.Is(err, ErrDeclarationsStale) {
+	if _, err := ctx.DeclarationNames(kw); !errors.Is(err, ErrDeclarationsStale) {
 		t.Errorf("got %v, want ErrDeclarationsStale", err)
 	}
 }
@@ -116,11 +116,11 @@ func TestDeclarationsSurviveALaterRebuild(t *testing.T) {
 	if err := d.Mutate(func() error { _, _, e := d.Split(d.Nodes()[0], 2); return e }); err != nil {
 		t.Fatalf("Mutate: %v", err)
 	}
-	ctx.SetDeclarations(map[Node][]Node{kw: {nm}})
+	ctx.SetDeclarations(map[*DeclarationType][]*DeclarationName{kw: {nm}})
 
 	ctx.Enclosing(d.Nodes()[0]) // any accessor that refreshes
 
-	got, err := ctx.Declarations(kw)
+	got, err := ctx.DeclarationNames(kw)
 	if err != nil {
 		t.Fatalf("refused after a rebuild it should have survived: %v", err)
 	}
@@ -141,14 +141,14 @@ func TestSetDeclarationsReplaces(t *testing.T) {
 	second := NewDeclarationType("second", Synthetic(6))
 	nm := NewDeclarationName("n", Synthetic(1))
 
-	ctx.SetDeclarations(map[Node][]Node{first: {nm}})
-	ctx.SetDeclarations(map[Node][]Node{second: {nm}})
+	ctx.SetDeclarations(map[*DeclarationType][]*DeclarationName{first: {nm}})
+	ctx.SetDeclarations(map[*DeclarationType][]*DeclarationName{second: {nm}})
 
-	if got, _ := ctx.Declarations(first); len(got) != 0 {
+	if got, _ := ctx.DeclarationNames(first); len(got) != 0 {
 		t.Errorf("a keyword absent from the second call kept %d names; "+
 			"SetDeclarations replaces, it does not merge", len(got))
 	}
-	if got, _ := ctx.Declarations(second); len(got) != 1 {
+	if got, _ := ctx.DeclarationNames(second); len(got) != 1 {
 		t.Errorf("the second call's own keyword got %d names, want 1", len(got))
 	}
 }

@@ -66,21 +66,27 @@ for "which names does this keyword declare" is machinery. **Filling it in is a
 schema's job**, because only a schema knows what announces a declaration.
 
 ```go
-// in BracketContext, beside closerOf / openerOf / enclosing:
-declaration map[Node][]Node   // a keyword -> every name it declares
+// in BracketContext, beside the pairing links:
+declaration []*DeclarationName   // on a DeclarationType's entry: every name it declares
 ```
 
-It is a plain field beside the pairing links today, and consolidates into the
-single per-node index when that lands. Where it is stored is not part of the
-contract; that a keyword answers for its names is.
+The link is **typed at both ends**. A schema records it with
+`SetDeclarations(map[*DeclarationType][]*DeclarationName)` and a consumer reads it
+with `DeclarationNames(t *DeclarationType) ([]*DeclarationName, error)`. Pointers,
+not values: the names returned are the very nodes in the document, so a consumer can
+match one against a node it skimmed. It is a **method on the context**, not an
+interface — every schema stores its links here, so an interface would have one
+implementer. Where it is stored is not part of the contract; that a keyword answers
+for its names is.
 
 **The relation is one-to-many**, because a grouped declaration declares several
 names: one entry for a plain declaration, several for a group.
 
-**Freshness is an open question, and it is the one place this index differs from
-the others.** The bracket links are *stamped, not registered* — safe because
-`rebuild` can re-derive them by walking the finished array. Declaration links
-cannot be re-derived that way: `sdom` does not know what announces a declaration.
-So either the map survives a rebuild carrying entries for nodes that may have been
-removed, or the schema owns the stamp and re-runs its own pass. Storage here and
-freshness one layer up is a real seam, and it is named rather than settled.
+**Freshness is answered at the accessor, and it refuses.** The bracket links are
+*stamped, not registered* — safe because `rebuild` re-derives them from the finished
+array. Declaration links cannot be re-derived: `sdom` does not know what announces a
+declaration. So the schema's write stamps the links against the document's structural
+generation, and `DeclarationNames` on a document that has changed since returns
+`ErrDeclarationsStale` rather than the old links or an empty answer. An empty answer
+would read identically to *this keyword declares nothing*; the error says *re-run the
+schema's pass*, which is recoverable.

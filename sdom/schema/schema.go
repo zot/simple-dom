@@ -168,34 +168,32 @@ func usedCaret(body string, m0 int, seps string) bool {
 // out of the same node, which happens whenever a keyword and its name share one.
 //
 // It must run inside a mutation window.
-func carve(d *sdom.Doc, n sdom.Node, start, end int,
-	mk func(string, sdom.Loc) sdom.Node) (sdom.Node, sdom.Node, error) {
+func carve[N sdom.Node](d *sdom.Doc, n sdom.Node, start, end int,
+	mk func(string, sdom.Loc) N) (N, sdom.Node, error) {
+	var zero N
 
 	mid := n
 	var err error
 	if start > 0 {
 		if _, mid, err = d.Split(n, start); err != nil {
-			return nil, nil, err
+			return zero, nil, err
 		}
 	}
 	var right sdom.Node
 	if t, ok := mid.(*sdom.Text); ok {
 		if body, _ := t.Render(); end-start < len(body) {
 			if mid, right, err = d.Split(mid, end-start); err != nil {
-				return nil, nil, err
+				return zero, nil, err
 			}
 		}
 	}
 	body, _ := mid.Render()
 	out := mk(body, mid.Location())
 	if err = d.Replace(mid, out); err != nil {
-		return nil, nil, err
+		return zero, nil, err
 	}
 	return out, right, nil
 }
-
-func newType(s string, l sdom.Loc) sdom.Node { return sdom.NewDeclarationType(s, l) }
-func newName(s string, l sdom.Loc) sdom.Node { return sdom.NewDeclarationName(s, l) }
 
 // identRe finds an identifier. \pL rather than \w so a name is not ASCII-only.
 var identRe = regexp.MustCompile(`[\pL_][\pL\pN_]*`)

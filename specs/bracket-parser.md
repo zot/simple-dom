@@ -218,6 +218,30 @@ rebuilds when the stamp is stale.
 **How they are stored is not part of this contract.** Whether the context keeps one
 map or several is its own business; what it owes is the answers above.
 
+**The accessors are typed.** `Opener(closer) *Opener` and `Closer(opener) *Closer`
+return the marker kinds, not `Node`, so a consumer never asserts a type the context
+already knew. Both return nil for an unmatched marker.
+
+**And the context answers for a group's text**, mirroring `innerHTML` / `outerHTML`:
+
+```go
+// InnerText returns the bytes between a group's opener and closer.
+func (bc *BracketContext) InnerText(n Node) string
+// OuterText returns the bytes from a group's opener through its closer.
+func (bc *BracketContext) OuterText(n Node) string
+```
+
+`n` names the group by being its opener or its closer. A group left open at end of
+input runs to the end of the source. These exist because a reader that has found a
+comment group wants its interior as one string, and slicing it from the node
+locations by hand is the kind of thing a library owes rather than each consumer.
+
+**Accessors that return a slice return the context's own.** `Separators` and
+`DeclarationNames` hand back the stored slice, and a consumer does not write through
+it. This is documented rather than guarded: every consumer of `sdom` builds a
+document, reads or mutates it, and discards it within one operation, so there is no
+lifetime in which aliasing becomes a hazard, and a copy per call would buy nothing.
+
 **The index is checkable rather than merely believed.** Every link is derivable
 from the flat array alone, so a consumer walking it with its own stack reaches the
 same answers — the index is a convenience over structure the array already carries,

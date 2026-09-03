@@ -39,13 +39,13 @@ honest.
   declaration: keyword and keyword-less forms, groups, and the bundled Go,
   TypeScript, JavaScript, Lua and Shell schemas.
 
-## minispecParser — mini-spec's readers
+## minispecsdom — mini-spec's readers
 
-The module root. The only system that may know what a CRC card is, and the only one
-that will ever be used by mini-spec alone. The boundary is enforced by the compiler
-rather than by discipline.
+A sibling package of `sdom` in this repo. The only system that may know what a CRC
+card is, and the only one that will ever be used by mini-spec alone. The boundary is
+enforced by the compiler rather than by discipline.
 
-- *(no specs yet — the traceability comment is carve Item 6.)*
+- *(no specs yet — the traceability comment is carve Item 6.2.)*
 
 ## Summary specs
 

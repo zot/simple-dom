@@ -171,6 +171,15 @@
   matched before `f"`.
 - **R173:** Python's f-string interpolation names the language's own code brace in `AllowedInner`
   and needs no group of its own, so the inside of `{…}` is full code mode.
+- **R193:** `Opener` and `Closer` return the typed marker kinds, `*Opener` and `*Closer`, and nil
+  for an unmatched marker.
+- **R194:** `InnerText(n)` returns the bytes between a group's opener and its closer, where `n` is
+  either; a group left open at end of input runs to the end of the source.
+- **R195:** `OuterText(n)` returns the bytes from a group's opener through its closer, under the
+  same rules as `InnerText`.
+- **R196:** Accessors that return a slice return the context's own slice, and a consumer does not
+  write through it; this is documented, not guarded, because every consumer discards its document
+  within one operation.
 
 ## Feature: indent scope
 **Source:** specs/indent-parser.md
@@ -249,6 +258,11 @@
   for a plain declaration and several for a group.
 - **R128:** `sdom` provides the declaration link map and a schema fills it in, because filling
   it in requires knowing what announces a declaration.
+- **R197:** The declaration link is typed at both ends: a schema records
+  `map[*DeclarationType][]*DeclarationName`, and the context stores it so.
+- **R198:** `DeclarationNames(t *DeclarationType) ([]*DeclarationName, error)` is a method on the
+  context returning the document's own name nodes, and it refuses with `ErrDeclarationsStale`
+  when the document has changed since the links were recorded.
 
 ## Feature: declaration schemas
 **Source:** specs/declaration-schemas.md

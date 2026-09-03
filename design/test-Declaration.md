@@ -87,7 +87,7 @@ defect makes an alarm unbuildable rather than strict.
 from a document that has changed underneath it. An empty answer would be worse than
 a wrong one — it reads identically to *this keyword declares nothing* — which is
 exactly why `IndexOf` refuses rather than returning `-1`.
-**Inject:** sdom/context.go:BracketContext.Declarations
+**Inject:** sdom/context.go:BracketContext.DeclarationNames
 **Pulled:** 2026-08-31 — **re-pulled** after the index consolidation rewrote this
 accessor's body, and rang again: *got <nil>, want ErrDeclarationsStale*, with only
 this test failing.

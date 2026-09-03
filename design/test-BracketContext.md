@@ -148,3 +148,30 @@ leaves the parse's record still correct, so a missing refresh would return the r
 answer for the wrong reason and the test would prove nothing.
 **Inject:** sdom/context.go:BracketContext.Separators
 **Pulled:** 2026-08-31 — rang, *2, want 1*, with the tree restored clean.
+
+## Test: Opener and Closer are typed
+**Purpose:** R193 — the accessors return `*Opener` / `*Closer`, nil for an unmatched marker, with no assertion at the call site.
+**Input:** `a(b)c}` parsed with the Go schema.
+**Expected:** `Closer(open)` is the `*Closer` for `)`; `Opener` of that closer is the same `*Opener`; `Opener` of the stray `}` is a nil `*Opener`.
+**Refs:** crc-BracketContext.md
+**Code:** sdom/context_test.go
+**Fire alarm:** make `Opener` look up `bc.info[closer].closer` instead of `.opener` — the paired lookup returns nil for a real closer.
+**Inject:** sdom/context.go:BracketContext.Opener
+
+## Test: InnerText and OuterText, from either end and past end of input
+**Purpose:** R194, R195 — a group's interior and its whole extent, named by opener or closer, with the open-at-EOF rule.
+**Input:** `x = (a, [b]) // tail` parsed with the Go schema, and `f(a` parsed the same way.
+**Expected:** `InnerText` of the `(` opener is `a, [b]`; of its `)` closer the same; `OuterText` is `(a, [b])`; for the comment, `InnerText` is ` tail` and `OuterText` is `// tail` (the closer is end of input, so both run to the end); for `f(a`, `InnerText(open)` is `a` and `OuterText` is `(a`.
+**Refs:** crc-BracketContext.md
+**Code:** sdom/context_test.go
+**Fire alarm:** make `OuterText` stop before the closer — it equals `InnerText` plus the opener and the open-at-EOF case still passes, but `(a, [b])` loses its `)`.
+**Inject:** sdom/context.go:BracketContext.OuterText
+
+## Test: DeclarationNames returns the document's own nodes
+**Purpose:** R197, R198 — the typed accessor preserves identity, so a returned name `==` the node skimmed from the array, and it still refuses when stale.
+**Input:** `func Foo() {}\nvar Bar = 1` through the Go declaration pass; skim the array for `*DeclarationName`.
+**Expected:** for each `*DeclarationType`, `DeclarationNames` returns pointers identical to the skimmed nodes; after a structural mutation the call returns `ErrDeclarationsStale`.
+**Refs:** crc-BracketContext.md, seq-declare.md
+**Code:** sdom/schema/declaration_test.go
+**Fire alarm:** have `DeclarationNames` return `slices.Clone` of copies built as `&DeclarationName{Text: n.Text}` — the values are equal and the identities are not.
+**Inject:** sdom/context.go:BracketContext.DeclarationNames

@@ -3,6 +3,7 @@ package sdom
 import (
 	"errors"
 	"slices"
+	"strings"
 )
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md | R12, R80, R81, R85
@@ -51,14 +52,17 @@ type BracketContext struct {
 // allocations against 15,858, on an index that rebuild recreates at EVERY structural
 // change. The flat struct also allocates less than the three maps it replaced.
 type BracketInfo struct {
-	opener, closer, enclosing Node
-	separators                []Node
+	opener     *Opener
+	closer     *Closer
+	enclosing  Node
+	separators []Node
 
-	// R126, R127: the names a declaration keyword declares — one for a plain
+	// R126, R127, R197: the names a declaration keyword declares — one for a plain
 	// declaration, several for a group. FILLED IN by a schema, because filling it in
 	// means knowing what announces a declaration, and wiped by any rebuild, because
-	// this is the one part the context cannot re-derive.
-	declaration []Node
+	// this is the one part the context cannot re-derive. Typed, so no consumer
+	// asserts a kind the context already knew.
+	declaration []*DeclarationName
 }
 
 func newBracketContext(lang *BracketLang) *BracketContext {
@@ -74,7 +78,7 @@ func (bc *BracketContext) with(n Node, f func(*BracketInfo)) {
 }
 
 // pair records a closed group, from either derivation.
-func (bc *BracketContext) pair(opener, closer Node) {
+func (bc *BracketContext) pair(opener *Opener, closer *Closer) {
 	bc.with(opener, func(i *BracketInfo) { i.closer = closer })
 	bc.with(closer, func(i *BracketInfo) { i.opener = opener })
 }
@@ -87,7 +91,7 @@ func (bc *BracketContext) pair(opener, closer Node) {
 // separator without either growing a case for it. Collapsing the two fields looks
 // like an easy 16 bytes and would break Opener(separator) silently, since nothing
 // else asks that question yet.
-func (bc *BracketContext) enclose(n, open Node) {
+func (bc *BracketContext) enclose(n Node, open *Opener) {
 	if _, isSep := n.(*Separator); !isSep {
 		bc.with(n, func(i *BracketInfo) { i.enclosing = open })
 		return
@@ -111,24 +115,84 @@ func (bc *BracketContext) Language() *BracketLang { return bc.lang }
 // caller's to set.
 func (bc *BracketContext) Origin() *Origin { return bc.origin }
 
-// CRC: crc-BracketContext.md | Seq: seq-pair.md#1.2 | R82, R83
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#1.2 | R82, R83, R193
 // Closer returns the closer paired with an opener, or nil when the group was
 // left open at end of input.
-func (bc *BracketContext) Closer(opener Node) Node {
+func (bc *BracketContext) Closer(opener Node) *Closer {
 	bc.refresh()
 	return bc.info[opener].closer
 }
 
-// CRC: crc-BracketContext.md | Seq: seq-pair.md#1.2 | R83
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#1.2 | R83, R193
 // Opener returns the opener paired with a closer, or nil for an unmatched one.
-func (bc *BracketContext) Opener(closer Node) Node {
+func (bc *BracketContext) Opener(closer Node) *Opener {
 	bc.refresh()
 	return bc.info[closer].opener
 }
 
-// CRC: crc-BracketContext.md | Seq: seq-pair.md#1.4 | R152
+// CRC: crc-BracketContext.md | R194
+//
+// InnerText returns the bytes between a group's opener and its closer — innerHTML.
+// n names the group by being either marker; anything else yields "". A group left
+// open at end of input runs to the end of the document.
+func (bc *BracketContext) InnerText(n Node) string {
+	open, cl := bc.group(n)
+	if open == nil {
+		return ""
+	}
+	return bc.text(bc.doc.IndexOf(open)+1, bc.end(cl))
+}
+
+// CRC: crc-BracketContext.md | R195
+//
+// OuterText returns the bytes from a group's opener through its closer — outerHTML.
+// Same naming and end-of-input rules as InnerText.
+func (bc *BracketContext) OuterText(n Node) string {
+	open, cl := bc.group(n)
+	if open == nil {
+		return ""
+	}
+	to := bc.end(cl)
+	if cl != nil {
+		to++ // through the closer; an open group already runs to the end
+	}
+	return bc.text(bc.doc.IndexOf(open), to)
+}
+
+// group resolves n to its opener and closer; the closer is nil for an open group.
+func (bc *BracketContext) group(n Node) (*Opener, *Closer) {
+	switch m := n.(type) {
+	case *Opener:
+		return m, bc.Closer(m)
+	case *Closer:
+		return bc.Opener(m), m
+	}
+	return nil, nil
+}
+
+// end is the index of the closer, or the document's length for an open group.
+func (bc *BracketContext) end(cl *Closer) int {
+	if cl == nil {
+		return len(bc.doc.Nodes())
+	}
+	return bc.doc.IndexOf(cl)
+}
+
+// text renders the nodes in [from, to). A node that cannot render contributes
+// nothing; the only such node is one in a poisoned document, which is already lost.
+func (bc *BracketContext) text(from, to int) string {
+	var b strings.Builder
+	for _, n := range bc.doc.Nodes()[from:to] {
+		s, _ := n.Render()
+		b.WriteString(s)
+	}
+	return b.String()
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#1.4 | R152, R196
 //
 // Separators returns the separators belonging to opener's group, in document order.
+// It is the context's own slice (R196).
 //
 // This is the direction the contract was missing. A separator could always be traced
 // back through its enclosing opener; nothing could ask an opener which separators
@@ -153,12 +217,12 @@ func (bc *BracketContext) Enclosing(n Node) Node {
 var ErrDeclarationsStale = errors.New(
 	"sdom: declaration links are stale; re-run the schema's declaration pass")
 
-// CRC: crc-BracketContext.md | Seq: seq-declare.md#2.5 | R126, R127, R128
+// CRC: crc-BracketContext.md | Seq: seq-declare.md#2.5 | R126, R127, R128, R197
 //
 // SetDeclarations replaces the declaration links and stamps them against the
 // document's current generation. A schema calls it after its pass, OUTSIDE the
 // mutation window the pass ran in — reading the generation refuses inside one.
-func (bc *BracketContext) SetDeclarations(links map[Node][]Node) {
+func (bc *BracketContext) SetDeclarations(links map[*DeclarationType][]*DeclarationName) {
 	// Refresh FIRST, and this is not an optimisation. rebuild recreates the whole
 	// index, and the declaration links now live in it — so a rebuild pending at
 	// this moment would wipe what we are about to write, and then set stamp to the
@@ -182,9 +246,12 @@ func (bc *BracketContext) SetDeclarations(links map[Node][]Node) {
 	}
 }
 
-// CRC: crc-BracketContext.md | Seq: seq-declare.md#2.5 | R127, R128
+// CRC: crc-BracketContext.md | Seq: seq-declare.md#2.5 | R127, R128, R196, R198
 //
-// Declarations returns the names a keyword node declares.
+// DeclarationNames returns the names a keyword declares — the document's OWN nodes,
+// so a consumer can match one against a node it skimmed, and the context's own
+// slice, which the consumer does not write through (R196: documented, not guarded;
+// every consumer discards its document within one operation).
 //
 // This is the ONE index this context cannot rebuild. The pairing links are
 // recoverable from the finished array by walking it; declarations are not, because
@@ -196,7 +263,7 @@ func (bc *BracketContext) SetDeclarations(links map[Node][]Node) {
 // it, and returning an empty one is worse: it reads identically to "this keyword
 // declares nothing". That is the plausible wrong answer IndexOf already refuses on
 // the same grounds, where -1 would be indistinguishable from end-of-document.
-func (bc *BracketContext) Declarations(kw Node) ([]Node, error) {
+func (bc *BracketContext) DeclarationNames(kw *DeclarationType) ([]*DeclarationName, error) {
 	if !bc.declSet {
 		return nil, ErrDeclarationsStale
 	}
@@ -240,13 +307,13 @@ func (bc *BracketContext) refresh() {
 // rather than an assertion only this package can make.
 func (bc *BracketContext) rebuild() {
 	bc.info = make(map[Node]BracketInfo, len(bc.info))
-	var stack []Node
+	var stack []*Opener
 	for _, n := range bc.doc.Nodes() {
-		var open Node
+		var open *Opener
 		if len(stack) > 0 {
 			open = stack[len(stack)-1]
 		}
-		switch n.(type) {
+		switch m := n.(type) {
 		case *Closer:
 			// Pair only when this closer belongs to the open group. The group is
 			// resolved from the OPENER'S TEXT through the table, not from anything
@@ -255,15 +322,15 @@ func (bc *BracketContext) rebuild() {
 			// stray closer, which the any-close fallback emits unpaired, would be
 			// paired here and the two derivations would disagree on every
 			// unbalanced file.
-			if open != nil && bc.closes(open, n) {
+			if open != nil && bc.closes(open, m) {
 				stack = stack[:len(stack)-1]
-				bc.pair(open, n)
+				bc.pair(open, m)
 			}
 		case *Opener:
 			if open != nil {
-				bc.enclose(n, open)
+				bc.enclose(m, open)
 			}
-			stack = append(stack, n)
+			stack = append(stack, m)
 		default:
 			// A Separator lands here, and enclose gives it BOTH directions: it
 			// learns its opener, and its opener learns it. Recovering separators

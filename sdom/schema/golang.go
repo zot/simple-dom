@@ -163,7 +163,7 @@ func goGroupBody(d *sdom.Doc, ctx *sdom.BracketContext, kwNode sdom.Node, after 
 // The links are stamped AFTER the last window closes, since reading the generation
 // refuses inside one.
 func Go(d *sdom.Doc, ctx *sdom.BracketContext) error {
-	links := map[sdom.Node][]sdom.Node{}
+	links := map[*sdom.DeclarationType][]*sdom.DeclarationName{}
 	done := map[int]bool{}
 	for {
 		hit := goNext(d, ctx, done)
@@ -172,12 +172,12 @@ func Go(d *sdom.Doc, ctx *sdom.BracketContext) error {
 		}
 		done[hit.abs] = true
 
-		var kw sdom.Node
-		var names []sdom.Node
+		var kw *sdom.DeclarationType
+		var names []*sdom.DeclarationName
 		err := d.Mutate(func() error {
 			var rest sdom.Node
 			var err error
-			if kw, rest, err = carve(d, hit.kwNode, hit.kwStart, hit.kwEnd, newType); err != nil {
+			if kw, rest, err = carve(d, hit.kwNode, hit.kwStart, hit.kwEnd, sdom.NewDeclarationType); err != nil {
 				return err
 			}
 			if hit.group != nil {
@@ -190,7 +190,7 @@ func Go(d *sdom.Doc, ctx *sdom.BracketContext) error {
 				// remained to the right of it.
 				target, ns, ne = rest, ns-hit.kwEnd, ne-hit.kwEnd
 			}
-			nm, _, err := carve(d, target, ns, ne, newName)
+			nm, _, err := carve(d, target, ns, ne, sdom.NewDeclarationName)
 			if err != nil {
 				return err
 			}
@@ -212,11 +212,11 @@ func Go(d *sdom.Doc, ctx *sdom.BracketContext) error {
 // text node, threading the remainder so each carve starts from what the last one
 // left. A name list is captured WHOLE and split here, because a repeated capture
 // group reports only its last iteration.
-func goCarveGroup(d *sdom.Doc, group sdom.Node) ([]sdom.Node, error) {
+func goCarveGroup(d *sdom.Doc, group sdom.Node) ([]*sdom.DeclarationName, error) {
 	body, _ := group.Render()
 	li := goListRe.SubexpIndex("names")
 	node, base := group, 0
-	var names []sdom.Node
+	var names []*sdom.DeclarationName
 	for _, m := range goListRe.FindAllStringSubmatchIndex(body, -1) {
 		listStart, listEnd := m[2*li], m[2*li+1]
 		list := body[listStart:listEnd]
@@ -225,7 +225,7 @@ func goCarveGroup(d *sdom.Doc, group sdom.Node) ([]sdom.Node, error) {
 			if node == nil || s < base {
 				continue
 			}
-			nm, rest, err := carve(d, node, s-base, e-base, newName)
+			nm, rest, err := carve(d, node, s-base, e-base, sdom.NewDeclarationName)
 			if err != nil {
 				return nil, err
 			}

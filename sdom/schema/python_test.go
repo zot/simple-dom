@@ -29,7 +29,7 @@ func pyDecls(t *testing.T, src string) string {
 			continue
 		}
 		kw, _ := ty.Render()
-		names, err := ctx.Declarations(ty)
+		names, err := ctx.DeclarationNames(ty)
 		if err != nil {
 			t.Fatalf("Declarations: %v", err)
 		}
