@@ -84,12 +84,18 @@
 
 - **R155:** One source is walked once, and several parsers may contribute nodes to that single
   pass rather than a later layer splitting and re-carving the array.
-- **R156:** `ParserState` owns the walk — the position, the pending text and the nodes emitted so
-  far — and exposes `Src`, `Pos`, `SetPos`, `At`, `Emit` and `NodeCount`.
+- **R156:** `ParserState` owns the walk — the position and the nodes emitted so far, the last of
+  which is always current — and exposes `Src`, `Pos`, `SetPos`, `Advance`, `At`, `Emit`,
+  `NodeCount` and `Last`.
 - **R157:** `ParserState` mints and owns the parse's `Origin`, so a document produced by several
   collaborating parsers carries exactly one.
-- **R158:** `ParserState` exposes `Emit` and `NodeCount` rather than the emitted node slice, so no
-  live array is handed to a parser.
+- **R158:** `ParserState` exposes `Emit`, `NodeCount` and `Last` rather than the emitted node slice,
+  so no live array is handed to a parser.
+- **R224:** The array is the only parse state: the first byte nobody recognizes creates a `Text` and
+  every further byte consumed as text extends it, so the last node is always current; `Advance`
+  consumes and extends, `SetPos` only moves.
+- **R225:** `Emit` ends the live text run and does not shrink it; a parser never emits a node over
+  bytes already in the run — stated, not guarded.
 - **R159:** A `Parser` either recognizes something at the head of the input and emits it, or does
   nothing at all.
 - **R160:** `Parser.NodeType` reports the kind of the node `Parse` would emit at this position

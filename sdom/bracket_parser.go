@@ -109,9 +109,10 @@ func (bp *BracketParser) parseCode(st *ParserState, enclosing *BracketGroup) {
 		}
 		// Nothing matched here, so this byte is text. Advancing unconditionally is
 		// what guarantees the parse always consumes at least one byte.
-		st.SetPos(st.Pos() + 1)
+		st.Advance(1)
 	}
-	st.FlushText() // a group left open at end of input closes there; no bytes drop
+	// A group left open at end of input closes there; the live run already holds
+	// every byte, so nothing drops.
 }
 
 // CRC: crc-BracketParser.md | Seq: seq-parse.md#2 | R65
@@ -126,9 +127,9 @@ func (bp *BracketParser) parseRestricted(st *ParserState, g *BracketGroup) {
 			return
 		}
 		if g.Escape != "" && strings.HasPrefix(st.Src()[st.Pos():], g.Escape) {
-			st.SetPos(st.Pos() + len(g.Escape))
+			st.Advance(len(g.Escape))
 			if st.Pos() < len(st.Src()) {
-				st.SetPos(st.Pos() + 1) // the escaped byte is literal, whatever it is
+				st.Advance(1) // the escaped byte is literal, whatever it is
 			}
 			continue
 		}
@@ -136,9 +137,8 @@ func (bp *BracketParser) parseRestricted(st *ParserState, g *BracketGroup) {
 			bp.open(st, inner, m)
 			continue
 		}
-		st.SetPos(st.Pos() + 1)
+		st.Advance(1)
 	}
-	st.FlushText()
 }
 
 // CRC: crc-BracketParser.md | Seq: seq-pair.md#1.1 | R81

@@ -22,7 +22,7 @@ level report none
 **Pulled:** 2026-09-01 — re-pulled after the vocabulary pass and rang **far louder than at any previous pull** — not because the property moved, but because the coverage grew into the hazard this alarm had already named. **13 failures across both packages:** this test, the corpus cross-check, and **eleven declaration tests** in `sdom/schema`, ending with `TestADeclarationPassIsAdditive` reporting **0 declarations over 24 files** against an independent count of 251. The mechanism is exactly the one the prose predicted: the declaration pass reads *top level* as `Enclosing(n) == nil`, so an index where every opener encloses itself leaves **nothing** top-level and the whole layer sees an empty document. On 2026-08-30 that consumer did not exist. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on the same two tests — this one and the cross-check. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and wider than designed. This test failed and so
 did the cross-check, **in the opposite column** from the alarm above: pairs equal
 at 316, enclosings 974 vs 962. The blast radius is larger than predicted, because
-`take` flushes pending text *before* emitting: pushing first means the text
+~~`take` flushes pending text *before* emitting~~ (2026-09-03: the text run is already in the array when the opener is emitted): pushing first means the text
 **preceding** an opener is attributed to it as well. The failure output also
 showed this test's message was lossy — it printed nil-ness rather than which
 node, so a real failure could read `got true, want true`. Message rewritten

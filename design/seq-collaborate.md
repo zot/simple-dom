@@ -1,5 +1,5 @@
 # Sequence: one pass, several parsers
-**Requirements:** R155, R159, R162, R163, R164, R165, R166, R167
+**Requirements:** R155, R159, R162, R163, R164, R165, R166, R167, R224
 
 How a position is offered, what counts as nothing having happened, and how one
 parser hands off to another inside the same walk.
@@ -14,16 +14,17 @@ parser hands off to another inside the same walk.
    1.3. The parser recognizes something and emits it, advancing past it — or
         recognizes nothing and touches nothing
    1.4. **Nothing happened** means the position is unchanged **and** the node count
-        is unchanged; only then does the walk take one byte as pending text
+        is unchanged; only then does the walk **advance** one byte — creating the live
+        text run on the first declined byte, extending it on every later one
         1.4.1. Position alone would miss a **zero-length** node, and the next byte
                can be a bracket opener rather than the line's content
         1.4.2. Node count alone would miss a parser that **advances without
                emitting**, as an escape inside a restricted group does
    1.5. Each position is offered **exactly once**: whatever the parser did, the
         walk either advanced or the parser did
-   1.6. At the end the pending text is flushed and the document is built from the
-        emitted nodes — the walk returns the document alone, because each parser
-        already owns its context
+   1.6. At the end the document is built from the emitted nodes — nothing is flushed,
+        since every byte is already in the array — and the walk returns the document
+        alone, because each parser already owns its context
 
 ## 2. Handing off
 

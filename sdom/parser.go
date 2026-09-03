@@ -47,7 +47,7 @@ type Parser interface {
 
 // CRC: crc-ParserState.md | R156, R157, R162
 //
-// ParserState is one pass over one source: the position, the pending text, the
+// ParserState is one pass over one source: the position, the live text run, the
 // nodes emitted so far, and the Origin every node of this pass carries.
 //
 // R157: the Origin lives HERE rather than on a context. It identifies one PARSE,
@@ -59,12 +59,16 @@ type Parser interface {
 // parser's business; a walk arbitrating between parsers would be a second place to
 // encode precedence.
 type ParserState struct {
-	src       string
-	pos       int
-	textStart int
-	origin    *Origin
-	out       []Node
-	parser    Parser
+	src    string
+	pos    int
+	origin *Origin
+	out    []Node
+	parser Parser
+
+	// R224: the LIVE text run — the Text every declined byte is extending, or nil
+	// when the last node emitted was a marker. There is one representation of
+	// parse state, the array, and the last node in it is always current.
+	text *Text
 }
 
 // CRC: crc-ParserState.md | Seq: seq-collaborate.md#1.4 | R163, R164, R167
@@ -87,10 +91,9 @@ func (st *ParserState) run() {
 		pos, n := st.pos, len(st.out)
 		st.parser.Parse(st)
 		if st.pos == pos && len(st.out) == n {
-			st.pos++ // nothing recognized here, so this byte is text
+			st.Advance(1) // nothing recognized here, so this byte is text
 		}
 	}
-	st.FlushText()
 }
 
 // Src returns the whole source being parsed.
@@ -99,8 +102,40 @@ func (st *ParserState) Src() string { return st.src }
 // Pos returns the position the walk has reached.
 func (st *ParserState) Pos() int { return st.pos }
 
-// SetPos moves the walk. A parser that recognizes something advances past it.
+// SetPos moves the walk WITHOUT consuming: a lookahead moves forward and back with
+// it and no byte becomes text. A parser that takes bytes as text uses Advance.
 func (st *ParserState) SetPos(n int) { st.pos = n }
+
+// CRC: crc-ParserState.md | Seq: seq-collaborate.md#1.4 | R224
+//
+// Advance consumes n bytes as text, extending the live run — creating it on the
+// first declined byte after a marker — so the last node in the array is current
+// after every move. The extension is a substring of the source and a length bump:
+// nothing is allocated per byte, and the location stays faithful.
+func (st *ParserState) Advance(n int) {
+	from := st.pos
+	st.pos += n
+	if st.text == nil {
+		st.text = NewText(st.src[from:st.pos], st.At(from, n))
+		st.append(st.text)
+		return
+	}
+	start := st.text.loc.Offset()
+	st.text.text = st.src[start:st.pos]
+	st.text.loc.length = st.pos - start
+}
+
+// CRC: crc-ParserState.md | R158, R225
+//
+// Last returns the most recently emitted node, or nil before any — the live text
+// run when the walk is inside one, a marker just after one was emitted. One node,
+// not the slice: a parser that wants to know what precedes the position looks here.
+func (st *ParserState) Last() Node {
+	if len(st.out) == 0 {
+		return nil
+	}
+	return st.out[len(st.out)-1]
+}
 
 // Origin returns the token identifying this parse.
 func (st *ParserState) Origin() *Origin { return st.origin }
@@ -115,31 +150,25 @@ func (st *ParserState) At(pos, length int) Loc {
 //
 // NodeCount reports how many nodes have been emitted.
 //
-// R158: this and Emit are the whole surface, and the node slice is not exported. A
+// R158: this, Emit, Advance and Last are the whole surface; the node slice is not exported. A
 // parser appends and asks how many; it never needs the array, and handing out the
 // live one is the aliasing shape O2 and O21 already record.
 func (st *ParserState) NodeCount() int { return len(st.out) }
 
-// CRC: crc-ParserState.md | Seq: seq-collaborate.md#1.6 | R156, R158
+// CRC: crc-ParserState.md | Seq: seq-collaborate.md#1.6 | R76, R77, R156, R225
 //
-// Emit flushes the pending text, appends n, and advances past it. The width comes
-// from the node's own location, so the two cannot disagree.
+// Emit appends n, advances past it, and ends the live text run — the next declined
+// byte starts a new one, so a text run is everything between two markers (R76) and
+// the array is in document order without anyone ordering it. The width comes from
+// the node's own location, so the two cannot disagree.
+//
+// R225, stated rather than guarded: a parser never emits a node over bytes already
+// in the live run. None does — each is offered every position and never backs up —
+// but the walk relies on it, since the run is not shrunk here.
 func (st *ParserState) Emit(n Node) {
-	st.FlushText()
 	st.append(n)
 	st.pos += n.Location().Length()
-	st.textStart = st.pos
-}
-
-// CRC: crc-ParserState.md | Seq: seq-parse.md#1.5 | R76, R77
-//
-// FlushText emits the bytes accumulated since the last node. Whitespace is not a
-// node of its own, so a text run is everything between two recognized markers.
-func (st *ParserState) FlushText() {
-	if st.pos > st.textStart {
-		st.append(NewText(st.src[st.textStart:st.pos], st.At(st.textStart, st.pos-st.textStart)))
-	}
-	st.textStart = st.pos
+	st.text = nil
 }
 
 func (st *ParserState) append(n Node) { st.out = append(st.out, n) }

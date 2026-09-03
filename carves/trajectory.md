@@ -16,7 +16,7 @@ what is still open.
 
 ## Status
 
-- [ ] **Item 9 — the live text node.** **OPEN (not queued.)**
+- [ ] **Item 9 — the live text node.** **OPEN (#16.)**
 - [ ] **Item 1 — the markdown schema.** **OPEN (not queued.)**
 - [ ] **Item 2 — the part line.** **OPEN (not queued.)**
 - [ ] **Item 3 — the carve status block.** **OPEN (not queued.)**

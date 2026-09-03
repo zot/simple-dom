@@ -182,16 +182,17 @@ func (ip *IndentParser) atLineStart(st *ParserState) bool {
 // counts — which needs no depth check of its own, because a marker counts exactly
 // when it is still PENDING TEXT.
 //
-// A marker no group claimed is unflushed text, so it sits in src[textStart:pos]. One
-// inside a comment was consumed by that group, whose closer is the newline, leaving
-// nothing pending. One inside a string needs no rule at all: the group is still open
-// at the next line start, so this parser is never offered the position.
+// A marker no group claimed is in the LIVE text run — the last node, R224. One
+// inside a comment was consumed by that group, whose closer is the newline, so the
+// last node is that closer and not a text. One inside a string needs no rule at
+// all: the group is still open at the next line start, so this parser is never
+// offered the position.
 func (ip *IndentParser) continued(st *ParserState) bool {
 	if ip.lang.Continuation == "" || st.Pos() == 0 {
 		return false
 	}
-	pending := st.Src()[st.textStart:st.Pos()]
-	return strings.HasSuffix(pending, ip.lang.Continuation+"\n")
+	t, ok := st.Last().(*Text)
+	return ok && strings.HasSuffix(t.text, ip.lang.Continuation+"\n")
 }
 
 // transparentAt reports whether a group of the Transparent kind opens at e.

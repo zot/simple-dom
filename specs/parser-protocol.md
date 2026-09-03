@@ -12,22 +12,45 @@ afterwards.
 ## The walk
 
 ```go
-// ParserState is one pass over one source: the position, the pending text, the
-// nodes emitted so far, and the Origin every node produced by this pass carries.
+// ParserState is one pass over one source: the position, the nodes emitted so
+// far — the last of which is always current — and the Origin every node produced
+// by this pass carries.
 type ParserState struct { /* … */ }
 
 func (st *ParserState) Src() string          // the whole source
 func (st *ParserState) Pos() int             // where the walk is
-func (st *ParserState) SetPos(n int)         // move it
+func (st *ParserState) SetPos(n int)         // move it WITHOUT consuming — a lookahead
+func (st *ParserState) Advance(n int)        // consume n bytes as text, extending the live run
 func (st *ParserState) At(pos, length int) Loc  // a location in this pass
-func (st *ParserState) Emit(n Node)          // flush pending text, append n, advance past it
+func (st *ParserState) Emit(n Node)          // append n, advance past it, end the live run
 func (st *ParserState) NodeCount() int       // how many nodes have been emitted
+func (st *ParserState) Last() Node           // the most recent node, nil before any
 ```
 
-**`Emit` rather than an exported node slice.** A parser needs to append and to know
-how many nodes exist; it never needs the array. Handing out the live slice is the
-shape two open gaps already record, where a caller writing through a returned value
-corrupts state in place.
+**The array is the only parse state, and its last node is live.** There is no pending
+text held apart from the array: the first byte nobody recognizes **creates** a `Text`,
+and every further byte consumed as text **extends** it — a substring of the source and
+a length bump, allocating nothing and keeping the location faithful. `Emit` ends the
+run; the next declined byte starts a new one. So at any moment the last node in the
+array is a faithful picture of where the parse stands, and a parser that wants to know
+what precedes the position — an indent parser asking whether the previous line ended
+in a continuation marker, a markdown parser asking whether it is at a line head — reads
+`Last` rather than any private state.
+
+**Two ways to move, and they mean different things.** `Advance` consumes: the bytes
+become text. `SetPos` only moves: a lookahead goes forward and back with it and no byte
+changes kind. A parser that takes bytes as literal — an escape, the interior of a
+restricted group — advances; a parser peeking at what a later position would parse as
+sets the position and restores it.
+
+**One rule a parser honours, stated rather than guarded:** it never emits a node over
+bytes already in the live run. No parser does — each is offered every position and
+never backs up — and the walk relies on it, since `Emit` does not shrink the run.
+
+**`Emit`, `NodeCount` and `Last` rather than an exported node slice.** A parser needs
+to append, to know how many nodes exist, and to see the one before it; it never needs
+the array. Handing out the live slice is the shape two gaps already record, where a
+caller writing through a returned value corrupts state in place.
 
 **The `Origin` belongs to the walk, not to a context.** It identifies one *parse*,
 and with several parsers collaborating there is still only one. A per-context origin
@@ -88,11 +111,12 @@ for st.Pos() < len(src) {
     pos, n := st.Pos(), st.NodeCount()
     parser.Parse(st)
     if st.Pos() == pos && st.NodeCount() == n {
-        st.SetPos(pos + 1)      // nothing recognized here, so this byte is text
+        st.Advance(1)           // nothing recognized here, so this byte is text
     }
 }
-flush pending text
 ```
+
+There is nothing to flush at the end: every byte is already in the array.
 
 **Nothing recognized is tested on *both* the position and the node count**, and
 neither alone is sound.

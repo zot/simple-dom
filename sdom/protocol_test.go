@@ -48,27 +48,52 @@ func (a *advancer) Parse(st *ParserState) {
 	a.seen = append(a.seen, st.Pos())
 	if st.Pos() == a.at && !a.done {
 		a.done = true
-		st.SetPos(st.Pos() + a.by)
+		st.Advance(a.by)
 	}
 }
 func (a *advancer) NodeType(*ParserState) (string, bool) { return "", false }
 func (a *advancer) Done(*Doc)                            {}
 
-// markerAt emits a one-byte marker at a chosen position, so a test can watch the
-// pending text be flushed ahead of it.
-type markerAt struct {
+// lastRecorder notes Last() at every offer and emits a marker at one position.
+type lastRecorder struct {
 	at   int
-	done bool
+	seen []string
 }
 
-func (m *markerAt) Parse(st *ParserState) {
-	if st.Pos() == m.at && !m.done {
-		m.done = true
-		st.Emit(NewSeparator(st.Src()[st.Pos():st.Pos()+1], st.At(st.Pos(), 1)))
+func (r *lastRecorder) Parse(st *ParserState) {
+	switch last := st.Last().(type) {
+	case nil:
+		r.seen = append(r.seen, "<nil>")
+	case *Text:
+		text, _ := last.Render()
+		loc := last.Location()
+		if loc.Offset()+loc.Length() != st.Pos() {
+			text += "!lagging"
+		}
+		r.seen = append(r.seen, "T:"+text)
+	default:
+		text, _ := last.Render()
+		r.seen = append(r.seen, "M:"+text)
+	}
+	if st.Pos() == r.at {
+		st.Emit(NewSeparator("|", st.At(st.Pos(), 1)))
 	}
 }
-func (m *markerAt) NodeType(*ParserState) (string, bool) { return "", false }
-func (m *markerAt) Done(*Doc)                            {}
+func (r *lastRecorder) NodeType(*ParserState) (string, bool) { return "", false }
+func (r *lastRecorder) Done(*Doc)                            {}
+
+// peeker looks `by` bytes ahead with SetPos and moves back, emitting nothing.
+type peeker struct{ at, by int }
+
+func (p *peeker) Parse(st *ParserState) {
+	if st.Pos() != p.at {
+		return
+	}
+	st.SetPos(p.at + p.by)
+	st.SetPos(p.at)
+}
+func (p *peeker) NodeType(*ParserState) (string, bool) { return "", false }
+func (p *peeker) Done(*Doc)                            {}
 
 // delegating records the positions it is offered and hands every one to a bracket
 // parser, which takes the loop on an opener.
@@ -183,19 +208,29 @@ func TestOneParseHasOneOrigin(t *testing.T) {
 	}
 }
 
-// CRC: crc-ParserState.md | Seq: seq-collaborate.md#1.6 | R156
+// CRC: crc-ParserState.md | Seq: seq-collaborate.md#1.4 | R156, R224, R225
 //
-// Pending text is flushed before an emitted node, so the array is in document order
-// without any parser ordering it.
-func TestPendingTextIsFlushedBeforeAnEmittedNode(t *testing.T) {
-	d := Parse("ab|cd", 0, &markerAt{at: 2})
+// The array is the only parse state, and its last node is current at every offer:
+// the live text run while inside one, the marker just after one. A lookahead via
+// SetPos consumes nothing.
+func TestTheLastNodeIsTheLiveText(t *testing.T) {
+	rec := &lastRecorder{at: 2}
+	d := Parse("ab|cd", 0, rec)
 
+	if got, want := rec.seen, []string{"<nil>", "T:a", "T:ab", "M:|", "T:c"}; !slices.Equal(got, want) {
+		t.Fatalf("Last at each offer: %q, want %q", got, want)
+	}
 	if got, want := renders(d), []string{"ab", "|", "cd"}; !slices.Equal(got, want) {
 		t.Fatalf("nodes %q, want %q", got, want)
 	}
 	ns := d.Nodes()
-	if a, b := ns[0].Location(), ns[1].Location(); a.Offset()+a.Length() != b.Offset() {
-		t.Fatalf("the text run must end exactly where the marker begins")
+	if a, b := ns[0].Location(), ns[1].Location(); a.Offset()+a.Length() != b.Offset() || !a.Faithful() {
+		t.Fatalf("the text run must end exactly where the marker begins, and stay faithful")
+	}
+
+	d = Parse("abcd", 0, &peeker{at: 1, by: 2})
+	if got, want := renders(d), []string{"abcd"}; !slices.Equal(got, want) {
+		t.Fatalf("a lookahead consumed bytes: %q", got)
 	}
 }
 

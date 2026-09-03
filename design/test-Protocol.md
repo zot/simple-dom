@@ -22,7 +22,7 @@ of the following text — not consumed as text *in addition to* the emission
 **Purpose:** R164 — the half of the rule that the node count alone misses
 **Input:** a parser that advances two bytes and emits nothing
 **Expected:** the walk does not also take a byte, so exactly those two bytes land
-in the pending text run and the position is where the parser left it
+in the live text run and the position is where the parser left it
 **Refs:** crc-ParserState.md, seq-collaborate.md#1.4
 **Code:** sdom/protocol_test.go
 **Alarm:** 2
@@ -49,17 +49,16 @@ panic
 **Refs:** crc-ParserState.md, crc-Loc.md
 **Code:** sdom/protocol_test.go
 
-## Test: pending text is flushed before an emitted node
-**Purpose:** R156 — the array is in document order without anyone ordering it
-**Input:** text, then a marker, then text
-**Expected:** three nodes in that order, and the text node's span ends exactly
-where the marker's begins
-**Refs:** crc-ParserState.md, seq-collaborate.md#1.6
+## Test: the last node is the live text
+**Purpose:** R224, R225, R156 — the array is the only parse state, and its last node is current at every offer; a lookahead consumes nothing
+**Input:** `ab|cd` with a recording parser that notes `Last()` at every offer and emits a marker at 2; and a parser that peeks two bytes ahead with `SetPos` and restores
+**Expected:** at 0 `Last` is nil; at 1 and 2 it is the text `a` then `ab`, ending exactly at the position; at 3 it is the marker; at 4 the text `c`; the final array is `ab`, `|`, `cd`; the peeking parser leaves the text run unchanged
+**Refs:** crc-ParserState.md, seq-collaborate.md#1.4
 **Code:** sdom/protocol_test.go
 **Alarm:** 3
-**Fire alarm:** In `ParserState.Emit`, append the node before flushing the pending text rather than after. Red: **almost everything.** The array goes out of document order — the marker precedes the text that came before it — and because `Render` concatenates in array order, the *output bytes* are reordered with it. Every byte survives exactly once and lands in the wrong place, so the corpus round trip fails, and so does most of the suite.
-**Inject:** sdom/parser.go:ParserState.Emit
-**Pulled:** 2026-09-01 — rang, and **far wider than the prescription predicted**, which makes that reasoning wrong rather than merely conservative. About forty tests failed across both packages, `TestByteRoundTripPerLanguageOverTheCorpus` among them. The claim that the corpus round trip would be blind to node order was simply mistaken: order *is* the output. Corrected in the prose above. The property is real and this test pins it — but so does half the suite, which makes this the least valuable alarm of the batch rather than the most.
+**Fire alarm:** In `ParserState.Advance`, create the run on the first byte but never extend it — delete the extension branch after the `return`. Red: `Last` at 2 reads `T:a` rather than `T:ab`, the run's end lags the position, and because the run is the array, the round trips lose every byte after the first of each run. The property this test alone guards is the *during*-the-parse one: a run that lagged by a byte and was patched up at `Emit` would pass every round trip and fail only here. *(The alarm this replaces injected a flush order into `Emit`; there is no flush to reorder now, and the property it pinned — document order — is carried by every round trip.)*
+**Inject:** sdom/parser.go:ParserState.Advance
+**Pulled:** 2026-09-03 — rang as written: `Last at each offer: ["<nil>" "T:a" "T:a!lagging" "M:|" "T:c"]`, plus 32 more as the round trips lost bytes. Pulled by hand on the uncommitted tree with a targeted reverse edit; a first attempt restored with `git checkout` and reverted the item's whole file — recorded so nobody repeats it.
 
 ## Test: NodeType distinguishes no-node from an unlabelled node
 **Purpose:** R160 — two different claims, not one string

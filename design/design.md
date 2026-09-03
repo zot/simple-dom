@@ -25,7 +25,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] crc-BracketGroup.md → `sdom/bracket.go`
 - [x] crc-BracketLang.md → `sdom/bracket.go`, `sdom/lang.go`
 - [x] crc-Marker.md → `sdom/marker.go`
-- [ ] crc-ParserState.md → `sdom/parser.go`
+- [x] crc-ParserState.md → `sdom/parser.go`
 - [ ] crc-Parser.md → `sdom/parser.go`
 - [x] crc-BracketParser.md → `sdom/bracket_parser.go`
 - [ ] crc-IndentLang.md → `sdom/indent.go`, `sdom/lang.go`
