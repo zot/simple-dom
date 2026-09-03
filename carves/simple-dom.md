@@ -29,7 +29,7 @@ identifier.
 - [x] ~~**Item 12 — the vocabulary, second pass: it is a parse, not a scan.**~~ **LANDED (`f9008c6`, 2026-09-01 — `#12`.)**
 - [x] ~~**Item 5 — indent scope.**~~ **LANDED (`fe5e90e`, 2026-09-02 — `#13`.)**
 - [ ] **Item 6 — the traceability reader.** **OPEN (not queued.)**
-  - [ ] **6.1 — `BracketContext` accessors: typed names, opener/closer, inner/outer text.** **OPEN (#14.)**
+  - [x] ~~**6.1 — `BracketContext` accessors: typed names, opener/closer, inner/outer text.**~~ **LANDED (`4500d0e`, 2026-09-02 — `#14`.)**
   - [ ] **6.2 — the traceability reader: list compound, `CommentStyle`, `minispecsdom`.** **OPEN (#15.)**
 - [ ] **Item 9 — generalize the schema work into `sdom` tools.** **OPEN (not queued.)**
 - [x] ~~**Item 8 — the vocabulary: it is a parser, not a lexer.**~~ **LANDED (`145ee96`, 2026-08-31 — `#10`.)**

@@ -56,7 +56,7 @@ mistake common to both.
 **Alarm:** 2
 **Fire alarm:** Remove the `bc.closes(o, n)` condition from `rebuild`, so the stack walk pairs any closer with whatever opener is on top. **This is the real defect, hit while implementing:** on `( { )` the parse emits `)` unpaired via the any-close fallback while the walk pairs it with `{`. Red: the two derivations disagree, on most corpus files under most languages. Every other test stays green, because each derivation is individually self-consistent.
 **Inject:** sdom/context.go:BracketContext.rebuild
-**Pulled:** 2026-09-01 — re-pulled after the vocabulary pass and rang again, at `stencil_test.go under shell: the parse recorded 655 entries; the independent walk found 664`. **Only this test failed**, both packages otherwise green — the claim that each derivation stays individually self-consistent, confirmed a third time. (That message now says *the parse recorded*; the quotes further down keep the wording actually printed on their own dates.) Previously 2026-08-31 — re-pulled after the index consolidation and rang again,
+**Pulled:** 2026-09-02 — re-pulled after Item 6.1 typed the pair fields and rang: `indent.go under shell: the two derivations disagree on a closer`, only that test. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang again, at `stencil_test.go under shell: the parse recorded 655 entries; the independent walk found 664`. **Only this test failed**, both packages otherwise green — the claim that each derivation stays individually self-consistent, confirmed a third time. (That message now says *the parse recorded*; the quotes further down keep the wording actually printed on their own dates.) Previously 2026-08-31 — re-pulled after the index consolidation and rang again,
 disagreeing at the first corpus file it reached: *the scan recorded 192 entries; the
 independent walk found 194*. The message reads differently from the 2026-08-30 pull
 because the comparison is now over whole `BracketInfo` entries rather than two
@@ -83,7 +83,7 @@ independent walk. ~~Red: **not immediately** — the links are right until a str
 edit makes the stamp stale, and then the rebuilt index has none.~~ — **corrected
 2026-08-31 by pulling it:** red **immediately**, and in two places at once. See below.
 **Inject:** sdom/context.go:BracketContext.rebuild
-**Pulled:** 2026-09-01 — re-pulled after the vocabulary pass and rang in **three** places rather than two: this test (`separators [], want [in do]`), the corpus cross-check, and `TestSeparatorsRefreshesLikeEveryOtherAccessor`, which did not exist when the two-place record below was written — it came out of Item 11's own inject-past-the-list probe, so that probe is still earning its keep. Previously 2026-08-31 — rang, and **more loudly than predicted, which is the
+**Pulled:** 2026-09-02 — re-pulled after Item 6.1 typed the pair fields and rang: in the same three places as before — the cross-check, `separators [], want [in do]`, and `before the edit: 0 separators, want 2`. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang in **three** places rather than two: this test (`separators [], want [in do]`), the corpus cross-check, and `TestSeparatorsRefreshesLikeEveryOtherAccessor`, which did not exist when the two-place record below was written — it came out of Item 11's own inject-past-the-list probe, so that probe is still earning its keep. Previously 2026-08-31 — rang, and **more loudly than predicted, which is the
 widened cross-derivation paying off.**
 
 This test failed as designed — `separators [], want [in do]` — and so did
@@ -155,8 +155,10 @@ answer for the wrong reason and the test would prove nothing.
 **Expected:** `Closer(open)` is the `*Closer` for `)`; `Opener` of that closer is the same `*Opener`; `Opener` of the stray `}` is a nil `*Opener`.
 **Refs:** crc-BracketContext.md
 **Code:** sdom/context_test.go
-**Fire alarm:** make `Opener` look up `bc.info[closer].closer` instead of `.opener` — the paired lookup returns nil for a real closer.
+**Alarm:** 5
+**Fire alarm:** make `Opener` hop one entry too far — `return bc.info[bc.info[closer].enclosing].opener`, answering from the closer's enclosing entry rather than its own. A closer records no enclosing opener, so a real closer answers nil; the stray still answers nil. Red: `the ( ) pair does not agree through the typed accessors`. (A first attempt guarded on `bc.info[closer].closer == nil`, which a closer's entry always satisfies — a no-op that left the suite green and proved nothing; recorded so nobody writes it again.)
 **Inject:** sdom/context.go:BracketContext.Opener
+**Pulled:** 2026-09-02 — rang: `the ( ) pair does not agree through the typed accessors`, plus the pairing test, the cross-derivation, every separator's back-link, and `inner from closer: got ""` — the whole bracket contract reads through this one lookup.
 
 ## Test: InnerText and OuterText, from either end and past end of input
 **Purpose:** R194, R195 — a group's interior and its whole extent, named by opener or closer, with the open-at-EOF rule.
@@ -164,8 +166,10 @@ answer for the wrong reason and the test would prove nothing.
 **Expected:** `InnerText` of the `(` opener is `a, [b]`; of its `)` closer the same; `OuterText` is `(a, [b])`; for the comment, `InnerText` is ` tail` and `OuterText` is `// tail` (the closer is end of input, so both run to the end); for `f(a`, `InnerText(open)` is `a` and `OuterText` is `(a`.
 **Refs:** crc-BracketContext.md
 **Code:** sdom/context_test.go
+**Alarm:** 6
 **Fire alarm:** make `OuterText` stop before the closer — it equals `InnerText` plus the opener and the open-at-EOF case still passes, but `(a, [b])` loses its `)`.
 **Inject:** sdom/context.go:BracketContext.OuterText
+**Pulled:** 2026-09-02 — rang: `outer: got "(a, [b]", want "(a, [b])"`, only that case; the open-at-EOF cases stayed green exactly as the prose predicts.
 
 ## Test: DeclarationNames returns the document's own nodes
 **Purpose:** R197, R198 — the typed accessor preserves identity, so a returned name `==` the node skimmed from the array, and it still refuses when stale.
@@ -173,5 +177,18 @@ answer for the wrong reason and the test would prove nothing.
 **Expected:** for each `*DeclarationType`, `DeclarationNames` returns pointers identical to the skimmed nodes; after a structural mutation the call returns `ErrDeclarationsStale`.
 **Refs:** crc-BracketContext.md, seq-declare.md
 **Code:** sdom/schema/declaration_test.go
+**Alarm:** 7
 **Fire alarm:** have `DeclarationNames` return `slices.Clone` of copies built as `&DeclarationName{Text: n.Text}` — the values are equal and the identities are not.
 **Inject:** sdom/context.go:BracketContext.DeclarationNames
+**Pulled:** 2026-09-02 — rang: `"Foo" is not the node in the document`, `"Bar" is not the node in the document`; the `sdom` package stayed green, since only the identity test can see a faithful copy.
+
+## Test: Opener and Closer refresh like every other accessor
+**Purpose:** R86, R193 — found by injecting past the alarm list after Item 6.1, not by design
+**Input:** `a(b)(c)`; remove the second closer inside a mutation window and ask its opener again, then remove the first opener and ask its closer — both **without** forcing a rebuild
+**Expected:** nil both times: the group is open now, and the closer is stray
+**Refs:** crc-BracketContext.md, seq-pair.md#1.5
+**Code:** sdom/context_test.go
+**Alarm:** 8
+**Fire alarm:** Remove `bc.refresh()` from `Opener`. Red: `Opener(close)` still names the removed opener. This is the same hole `Separators` had on 2026-08-31: every other pairing test rebuilds through some other accessor first, so nothing depended on these two refreshing themselves. The edit must **remove** a marker, for the reason the Separators entry gives.
+**Inject:** sdom/context.go:BracketContext.Opener
+**Pulled:** 2026-09-02 — rang: `Opener(close) = &{{( …}}, want nil`, only this test, both packages otherwise green; the closer half stayed green under this injection since it removes the refresh from `Opener` alone.

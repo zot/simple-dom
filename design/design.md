@@ -58,7 +58,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] test-Doc.md → `sdom/doc_test.go`, `sdom/alloc_test.go`
 - [x] test-roundtrip.md → `sdom/roundtrip_test.go`
 - [x] test-BracketParser.md → `sdom/parser_test.go`
-- [x] test-BracketContext.md → `sdom/context_test.go`
+- [x] test-BracketContext.md → `sdom/context_test.go`, `sdom/schema/declaration_test.go`
 - [x] test-Languages.md → `sdom/lang_test.go`
 - [x] test-Stencil.md → `sdom/stencil_test.go`
 - [ ] test-Protocol.md → `sdom/protocol_test.go`

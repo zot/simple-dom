@@ -437,3 +437,44 @@ func TestInnerAndOuterText(t *testing.T) {
 		t.Errorf("open group outer: got %q, want %q", got, "(a")
 	}
 }
+
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#1.5 | R86, R193
+//
+// Found by injecting past the alarm list after Item 6.1: removing refresh from the
+// typed Opener left both packages green. The edit has to REMOVE a marker — an
+// unrelated change leaves the old pairing correct, and a missing refresh would answer
+// right for the wrong reason.
+func TestOpenerAndCloserRefreshLikeEveryOtherAccessor(t *testing.T) {
+	d, ctx := parse("a(b)(c)", 0, &LangGo)
+	var opens []*Opener
+	var closes []*Closer
+	for _, n := range d.Nodes() {
+		switch m := n.(type) {
+		case *Opener:
+			opens = append(opens, m)
+		case *Closer:
+			closes = append(closes, m)
+		}
+	}
+	if len(opens) != 2 || len(closes) != 2 {
+		t.Fatalf("expected two pairs, got %d openers and %d closers", len(opens), len(closes))
+	}
+	if ctx.Closer(opens[1]) != closes[1] || ctx.Opener(closes[0]) != opens[0] {
+		t.Fatal("before the edits: the pairs do not agree")
+	}
+	if err := d.Mutate(func() error { return d.Remove(closes[1]) }); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	// No explicit rebuild: the accessor's own refresh is what must notice.
+	if got := ctx.Closer(opens[1]); got != nil {
+		t.Errorf("after removing its closer, Closer(open) = %v, want nil — the accessor "+
+			"answered from an index the document has moved past", got)
+	}
+	if err := d.Mutate(func() error { return d.Remove(opens[0]) }); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	if got := ctx.Opener(closes[0]); got != nil {
+		t.Errorf("after removing its opener, Opener(close) = %v, want nil — the accessor "+
+			"answered from an index the document has moved past", got)
+	}
+}

@@ -160,7 +160,7 @@ keyword, linked one-to-many
 Red: `C` is missing — a repeated capture reports only its last iteration, so
 `B, C, D` yields `B` and `D`. A one-name-per-line fixture would pass.
 **Inject:** sdom/schema/golang.go:goCarveGroup
-**Pulled:** 2026-08-31 — rang: `const[A C]` where `const[A B C]` was wanted, and
+**Pulled:** 2026-09-02 — re-pulled after Item 6.1 typed the carve and rang: `const[A C]` where `const[A B C]` was wanted, `var[E]` where `var[D E]` was — the same two casualties as the first pull. The injection this time skipped every identifier but the last on a multi-name line, standing in for the repeated capture the code no longer uses; a first attempt that kept first and last could not reach a two-name fixture and stayed green. The delegate applied it in a sibling worktree by mistake; the diff and the red output were verified there and the restore made by hand. Previously 2026-08-31 — rang: `const[A C]` where `const[A B C]` was wanted, and
 `var[E]` where `var[D E]` was. ~~`B, C, D` yields `B` and `D`~~ — the prose predicted
 the wrong casualty; on this fixture the repeated group keeps its **last** iteration and
 `B` is what disappears. The mechanism is confirmed exactly; only which name it eats
