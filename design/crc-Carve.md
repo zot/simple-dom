@@ -1,0 +1,36 @@
+# Carve
+**Requirements:** R248, R249, R250, R251, R252, R253, R254, R255, R256
+
+The carve file schema: embeds the markdown base, owns the document, and adds the
+status block. The first of the four trajectory file schemas.
+
+## Knows
+- its `Doc`, the markdown parser and its contexts
+- the status heading, or that there is none
+- its parts, in order, each a `PartLine` with a depth and a parent
+- its stateless status lines
+
+## Does
+- `ParseCarve`: parses with the base, finds the status region, turns the list items
+  inside it — and only those — into part lines, splitting them into parts and
+  stateless lines, deriving depth and parent
+- `Part(key)`, `Parts`, `Stateless`, `HasStatus`, `Render`
+- `SetMarker(key, …)`: the tool's rule on the keyed line — replace the first transient,
+  remove other transients, append when none
+- `Land(key, …)`: box, strike, and a `LANDED` record, in one act
+
+## Constraints
+- **Bounded by the region.** Other checkbox lists in a carve track other things
+- **No checkbox means something**, and is recorded as stateless rather than dropped or
+  given a state
+- **Depth from whitespace, parent by derivation** — the flat array has no children
+- **Writes touch the node's own children**; a write to an unknown key is an error
+
+## Collaborators
+- schema.MarkdownParser, schema.Heading, schema.ListItem: the base
+- PartLine, MarkerSpan: the lines and their markers
+- BracketContext: for the part lines' pairing
+- Doc: source offsets for depth, the splice
+
+## Sequences
+- seq-carve.md

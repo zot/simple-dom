@@ -130,10 +130,10 @@ func TestStrikeIsDerivedAndHidden(t *testing.T) {
 
 // CRC: crc-PartLine.md | R237, R242
 func TestDeviationsNameTheTarget(t *testing.T) {
-	src := "- [ ] **Part A — old scheme.** **OPEN (#8.)**\n- [X] **Item 3 - hyphen.**\n- [ ] **Item 5 — ok.** **open (soon.)**\n"
-	_, ps := lines(t, src)
-	if len(ps) != 3 {
-		t.Fatalf("%d lines, want 3", len(ps))
+	src := "- [ ] **Part A — old scheme.** **OPEN (#8.)**\n- [X] **Item 3 - hyphen.**\n- [ ] **Item 5 — ok.** **open (soon.)**\n- a plain bullet\n"
+	d, ps := lines(t, src)
+	if len(ps) != 4 {
+		t.Fatalf("%d lines, want 4", len(ps))
 	}
 	rules := func(p *PartLine) string {
 		var r []string
@@ -156,6 +156,15 @@ func TestDeviationsNameTheTarget(t *testing.T) {
 	}
 	if ps[0].Checkbox() == nil || ps[0].Checkbox().Checked() {
 		t.Errorf("an unkeyed line's checkbox must still count")
+	}
+	// A headless line: nothing to strike, and asking must not fail.
+	plain := ps[3]
+	if got := rules(plain); got != "key form" || plain.IsStruck() {
+		t.Errorf("plain bullet: deviations %q struck %v", got, plain.IsStruck())
+	}
+	plain.Strike(true)
+	if r, _ := d.Render(); r != src || plain.IsStruck() {
+		t.Errorf("Strike on a headless line changed something")
 	}
 }
 

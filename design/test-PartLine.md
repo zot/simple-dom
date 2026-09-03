@@ -10,6 +10,7 @@
 **Alarm:** 1
 **Fire alarm:** classify every bold run as a marker, never a head. Red: every key is empty and the titles are nil.
 **Inject:** minispecsdom/partline.go:PartLine.Parse
+**Pulled:** 2026-09-03 — rang: `keys ",,,,"` — the assertion; the strike test then crashed on its own nil map entry, which is that test's shape under this injection and not a production path (a headless line is guarded, and now asserted).
 
 ## Test: strike is derived and the edit is hidden
 **Purpose:** R241
@@ -20,16 +21,18 @@
 **Alarm:** 2
 **Fire alarm:** make `Strike(true)` wrap the whole line rather than the head's bold run. Red: the render puts `~~` before the marker span's closing bytes rather than after the head.
 **Inject:** minispecsdom/partline.go:PartLine.Strike
+**Pulled:** 2026-09-03 — rang: `IsStruck did not follow Strike` — the whole-line wrap leaves the head's opener with `- ` before it, so the derivation reads false; caught one assertion earlier than the render check predicted.
 
 ## Test: deviations name the target
 **Purpose:** R237, R242 — an unkeyed line parses and reports
-**Input:** `- [ ] **Part A — old scheme.** **OPEN (#8.)**`, `- [X] **Item 3 - hyphen.**`, `- [ ] **Item 5 — ok.** **open (soon.)**`
-**Expected:** three part lines, all parsed; deviations: key form; checkbox interior and separator; verb case and `OPEN` attribution; each carrying its target text
+**Input:** `- [ ] **Part A — old scheme.** **OPEN (#8.)**`, `- [X] **Item 3 - hyphen.**`, `- [ ] **Item 5 — ok.** **open (soon.)**`, and `- a plain bullet`
+**Expected:** four part lines, all parsed; deviations: key form; checkbox interior and separator; verb case and `OPEN` attribution; key form — each carrying its target text; on the plain bullet `IsStruck` is false and `Strike(true)` changes nothing
 **Refs:** crc-PartLine.md
 **Code:** minispecsdom/partline_test.go
 **Alarm:** 3
 **Fire alarm:** return false from `Parse` when the head does not key. Red: the first line is missing from the result and its checkbox is not counted.
 **Inject:** minispecsdom/partline.go:PartLine.Parse
+**Pulled:** 2026-09-03 — rang: `1 lines, want 3` — only the keyed line survived.
 
 ## Test: a marker write is canonical and guarded
 **Purpose:** R244
@@ -40,3 +43,4 @@
 **Alarm:** 4
 **Fire alarm:** drop the re-parse in `Set`. Red: the second write is accepted and the marker's verb reads `BAD)`.
 **Inject:** minispecsdom/partline.go:MarkerSpan.Set
+**Pulled:** 2026-09-03 — rang: `a verb with a parenthesis was accepted` and `a refused write changed the document`, only that test.

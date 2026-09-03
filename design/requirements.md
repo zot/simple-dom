@@ -449,3 +449,23 @@
 - **R246:** `PartLine` and `MarkerSpan` each declare their own `Equals`, comparing children.
 - **R247:** Bound texts and glue are re-cut from the interior texts; no bytes are lost or
   normalised on read, and an unedited line renders back byte-exact.
+
+## Feature: carve schema
+**Source:** specs/carve-schema.md
+
+- **R248:** `Carve` embeds the markdown base and owns a carve file's DOM; `ParseCarve` is the
+  only way one is made and `Render` re-emits it.
+- **R249:** The status block is the region from the level-2 heading `Status` to the next heading
+  of level 2 or higher or the end of file; `HasStatus` is false when there is none.
+- **R250:** Only list items inside the status region become part lines; other lists in the body
+  are left as the base parsed them, and a fenced sample is invisible by construction.
+- **R251:** A status line with a checkbox is a `Part`; one without is `Stateless`, recorded and
+  never given a state.
+- **R252:** `Depth` is the bullet's leading whitespace, and `Parent` is the nearest preceding
+  part with a smaller depth, or nil.
+- **R253:** `Part(key)` finds a part by its key; a write to a key no part carries is an error.
+- **R254:** `SetMarker` replaces the first transient marker — verb `OPEN` — removes any other
+  transient, and appends a marker when the line carries none; it selects by what it replaces.
+- **R255:** `Land` checks the box, strikes the head, and sets `LANDED (attribution)` through the
+  marker rule, in one act.
+- **R256:** Every part carries its line's deviations.

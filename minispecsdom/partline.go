@@ -3,6 +3,7 @@ package minispecsdom
 import (
 	"errors"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -326,9 +327,15 @@ func (p *PartLine) Splice(d *sdom.Doc) error {
 // PartLines parses and splices every list item in document order, each in its own
 // mutation window.
 func PartLines(d *sdom.Doc, ctx *sdom.BracketContext) ([]*PartLine, error) {
+	return partLines(d, ctx, func(*schema.ListItem) bool { return true })
+}
+
+// partLines is PartLines over the list items keep admits — the carve schema keeps
+// only those inside its status region.
+func partLines(d *sdom.Doc, ctx *sdom.BracketContext, keep func(*schema.ListItem) bool) ([]*PartLine, error) {
 	var items []*schema.ListItem
 	for _, n := range d.Nodes() {
-		if it, ok := n.(*schema.ListItem); ok {
+		if it, ok := n.(*schema.ListItem); ok && keep(it) {
 			items = append(items, it)
 		}
 	}
@@ -344,6 +351,80 @@ func PartLines(d *sdom.Doc, ctx *sdom.BracketContext) ([]*PartLine, error) {
 		out = append(out, p)
 	}
 	return out, nil
+}
+
+// CRC: crc-PartLine.md | Seq: seq-carve.md#2.3 | R254
+//
+// SetMarker applies the tool's rule among this node's children: replace the first
+// TRANSIENT marker — verb OPEN — with the new one, remove any other transient, and
+// append a marker when the line carries none. It selects by the kind of what it
+// replaces, never by what it writes, so a record set over a line that also carries
+// NOT VERIFIED leaves that standing.
+func (p *PartLine) SetMarker(verb, attribution string) error {
+	var first *MarkerSpan
+	var drop []*MarkerSpan
+	for _, m := range p.markers {
+		if !m.isOpen() {
+			continue
+		}
+		if first == nil {
+			first = m
+			continue
+		}
+		drop = append(drop, m)
+	}
+	if first != nil {
+		if err := first.Set(verb, attribution); err != nil {
+			return err
+		}
+	}
+	var out []sdom.Node
+	for _, k := range p.Kids() {
+		if m, ok := k.(*MarkerSpan); ok && slices.Contains(drop, m) {
+			out = dropGlue(out) // so the markers either side do not run together
+			continue
+		}
+		out = append(out, k)
+	}
+	if first == nil {
+		m := newMarker(verb, attribution)
+		if m == nil {
+			return ErrMarkerRefused
+		}
+		out = append(out, sdom.NewText(" ", sdom.Synthetic(1)), m)
+		p.markers = append(p.markers, m)
+	}
+	p.markers = slices.DeleteFunc(p.markers, func(m *MarkerSpan) bool { return slices.Contains(drop, m) })
+	p.Compound = *sdom.NewCompound(p.item.Location(), out...)
+	return nil
+}
+
+// newMarker builds a synthetic marker span the way Set writes one, or nil when the
+// verb and attribution would not read back.
+func newMarker(verb, attribution string) *MarkerSpan {
+	open := sdom.NewOpener("**", sdom.Synthetic(2))
+	cl := sdom.NewCloser("**", sdom.Synthetic(2))
+	m := &MarkerSpan{Compound: *sdom.NewCompound(open.Location(), open, cl)}
+	if err := m.Set(verb, attribution); err != nil {
+		return nil
+	}
+	return m
+}
+
+// dropGlue drops a trailing whitespace text: the glue that separated a marker now gone.
+func dropGlue(nodes []sdom.Node) []sdom.Node {
+	n := len(nodes)
+	if n == 0 {
+		return nodes
+	}
+	t, ok := nodes[n-1].(*sdom.Text)
+	if !ok {
+		return nodes
+	}
+	if s, _ := t.Render(); strings.TrimSpace(s) != "" {
+		return nodes
+	}
+	return nodes[:n-1]
 }
 
 // CRC: crc-MarkerSpan.md | R243, R246
@@ -447,6 +528,12 @@ func (m *MarkerSpan) QueueID() (int, bool) {
 	return n, true
 }
 
+// isOpen reports the transient marker: verb OPEN, whatever its case.
+func (m *MarkerSpan) isOpen() bool {
+	v, _ := m.verb.Render()
+	return strings.EqualFold(v, "OPEN")
+}
+
 // deviations reports the marker's own rules: verb case, and the OPEN attribution.
 func (m *MarkerSpan) deviations() []Deviation {
 	var out []Deviation
@@ -454,7 +541,7 @@ func (m *MarkerSpan) deviations() []Deviation {
 	if v != strings.ToUpper(v) {
 		out = append(out, Deviation{"verb case", verbTarget})
 	}
-	if strings.EqualFold(v, "OPEN") {
+	if m.isOpen() {
 		if a := m.Attribution(); a != "not queued." && !queuedRe.MatchString(a) {
 			out = append(out, Deviation{"OPEN attribution", markerTarget})
 		}
