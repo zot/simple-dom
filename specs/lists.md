@@ -64,7 +64,7 @@ exist by construction. Which parser a field uses is the enclosing stencil's choi
 
 ## Why a compound with one child
 
-The field is a region a tool writes into, so it is a stencil, and a stencil is a
+The field is a region a tool reads and writes as a value, so it is a stencil, and a stencil is a
 compound. It has one child because its only write is whole-field replace: per-item
 boundaries would imply an edit nobody makes. A tool that wants to add one item reads
 `Items`, appends, and calls `SetItems`.

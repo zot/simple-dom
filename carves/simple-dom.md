@@ -28,9 +28,9 @@ identifier.
 - [x] ~~**Item 11 — separator links, completing the bracket contract.**~~ **LANDED (`efef190`, 2026-08-31 — `#11`.)**
 - [x] ~~**Item 12 — the vocabulary, second pass: it is a parse, not a scan.**~~ **LANDED (`f9008c6`, 2026-09-01 — `#12`.)**
 - [x] ~~**Item 5 — indent scope.**~~ **LANDED (`fe5e90e`, 2026-09-02 — `#13`.)**
-- [ ] **Item 6 — the traceability reader.** **OPEN (not queued.)**
+- [x] ~~**Item 6 — the traceability reader.**~~ **LANDED (`f1e9d0a`, 2026-09-03 — `#14`, `#15`.)**
   - [x] ~~**6.1 — `BracketContext` accessors: typed names, opener/closer, inner/outer text.**~~ **LANDED (`4500d0e`, 2026-09-02 — `#14`.)**
-  - [ ] **6.2 — the traceability reader: list compound, `CommentStyle`, `minispecsdom`.** **OPEN (#15.)**
+  - [x] ~~**6.2 — the traceability reader: list compound, `CommentStyle`, `minispecsdom`.**~~ **LANDED (`f1e9d0a`, 2026-09-03 — `#15`.)**
 - [ ] **Item 9 — generalize the schema work into `sdom` tools.** **OPEN (not queued.)**
 - [x] ~~**Item 8 — the vocabulary: it is a parser, not a lexer.**~~ **LANDED (`145ee96`, 2026-08-31 — `#10`.)**
 
@@ -133,8 +133,10 @@ span covered a region whose content also sat in the document list, those bytes
 would be emitted twice. Under this rule every byte has exactly one owner and the
 array tiles.
 
-**And the span rule does not choose the span — editability does.** Only what a
-tool *writes into* is a stenciled field, and the span is the narrowest one
+**And the span rule does not choose the span — editability does.** ~~Only what a
+tool *writes into* is a stenciled field~~ — **widened 2026-09-03 (Bill): what a tool
+reads *or* writes as a value is a stenciled field; binding serves access as well as
+editing, R115 retired to R223.** The span is the narrowest one
 covering those fields. Note what "minimum" constrains: inside a span, tiling
 **forces** children to cover every byte, glue included, so minimality is a
 constraint on the span's **width**, never on the child count within it. When
@@ -1326,6 +1328,12 @@ the case the generator must hit: its opener is `--`, the same token as the write
 descsep. (2) The constructor's output parses back to an `Equals` DOM. (3) 6.2b's kind
 test per language. (4) Fire alarm: make the parser return the interior as opaque text,
 drop a field, or normalize a range — the DOM compare goes red.
+
+**Landed 2026-09-03.** The decisions above migrated on landing: the accessors to
+`specs/bracket-parser.md` and `specs/declarations.md`; the list compound to
+`specs/lists.md`; `CommentStyle` to `specs/bracket-parser.md`; the reader to
+`specs/traceability-comment.md` and `design/crc-TraceabilityComment.md`. The working
+note `.scratch/COMMENTS.md` is superseded by those and kept for the reasoning only.
 
 ### Item 6's decisions
 

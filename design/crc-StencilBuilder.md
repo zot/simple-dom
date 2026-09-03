@@ -37,7 +37,7 @@ into, and this is the tool that cuts it.
   is for
 - **`Done` leaves no two adjacent plain-glue children.** An omitted group would
   otherwise be three `Text` nodes where one belongs, implying a boundary nothing
-  writes into. Which gives `Omit` a falsifiable meaning: omitting a group must
+  reads or writes as a value. Which gives `Omit` a falsifiable meaning: omitting a group must
   produce the **identical** child list to a regex that never named it
 - **Binding is by name, never by position** — alternation gives branches different
   group counts, so a fixed index is right for one input and out of range for

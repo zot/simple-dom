@@ -64,6 +64,6 @@ anything upward; alteration of **any** child is sufficient
 **Alarm:** 2
 **Fire alarm:** Make `Compound.Location` return `c.loc` with only the lengths summed, dropping the faithfulness walk. Red: the compound still reports `Faithful()` after a child is rewritten, here and in the one-field delta.
 **Inject:** sdom/node.go:Compound.Location
-**Pulled:** 2026-08-30 — rang. `TestCompoundDerivesAlteration` and
+**Pulled:** 2026-09-03 — re-pulled after the provenance-less fix and rang in four places: this test, the one-field delta, the checkbox stencil, and the new list write (`after set: "x, y, z" altered=false`). Previously 2026-08-30 — rang. `TestCompoundDerivesAlteration` and
 `TestTheOneFieldDelta` both failed, as predicted. The other 28 held — including
 every corpus test, since dropping the walk loses no bytes.

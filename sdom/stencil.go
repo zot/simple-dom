@@ -8,7 +8,7 @@ import (
 // CRC: crc-StencilBuilder.md | Seq: seq-stencil.md | R96, R97, R99, R107
 //
 // StencilBuilder turns a regex match into a tiled child list. It is a BUILDER,
-// never a Node — "stencil" alone names the region a tool writes into, and this is
+// never a Node — "stencil" alone names the region a tool reads or writes, and this is
 // the tool that cuts it.
 //
 // A schema drives it: the machinery lays out the bytes, and the schema decides

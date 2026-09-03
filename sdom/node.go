@@ -93,7 +93,7 @@ func (t *Text) SetText(s string) {
 // for everything else — the tiling, the concatenation, the summed extent and the
 // propagated alteration are defined once, here.
 //
-// Compounds exist only for stenciling, meaning a region a tool writes into.
+// Compounds exist only for stenciling, meaning a region a tool reads or writes as a value.
 // Never for bracket structure: modelling groups as compounds would make every
 // span query a traversal and every edit a re-parent, and the array is flat
 // precisely because searching and splicing are what this DOM exists for.

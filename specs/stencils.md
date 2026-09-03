@@ -1,6 +1,8 @@
 # Stencils: compounds that parse by regex
 
-A **stencil** is a compound a tool writes *into* — a checkbox, a field, a name.
+A **stencil** is a compound a tool reads or writes *as values* — a checkbox, a field,
+a name. The point of a DOM is to make a file easier to access **and** to edit, and
+binding serves both.
 It parses itself from text with a regex whose **named groups are the fields it
 binds**, and its children tile its span so nothing it matched can go missing.
 
@@ -21,7 +23,7 @@ func (b *StencilBuilder) Done() (kids []Node, remain string)
 ```
 
 It is a **builder**, never a `Node`. "Stencil" alone would collide with the
-established name for the *region* a tool writes into; this is the tool that cuts
+established name for the *region* a tool reads or writes; this is the tool that cuts
 it.
 
 `NewStencilBuilder` reports `false` when the regex does not match, and what that
@@ -148,11 +150,12 @@ pattern at all; they become `Text` from the gaps. The author writes what they bi
 
 ## Minimality
 
-**Editability chooses the span, and the span chooses the children.** Only what a
-tool *writes into* is a bound field. Within a span, tiling forces children to cover
+**Use chooses the span, and the span chooses the children.** What a tool *reads or
+writes as a value* is a bound field — access counts as much as editing, since a
+typed view is how a tool gets at a field either way. Within a span, tiling forces children to cover
 every byte, glue included — so minimality constrains the **span's width**, never
 the child count inside it. When stenciled parts sit far apart, make several stencil
 nodes rather than one wide span that drags the text between them in as children.
 
-The test to apply to any child: *would a tool ever write into this?* If not, it
-should have been a sibling and the span was too wide.
+The test to apply to any child: *would a tool ever read or write this as a value?*
+If not, it should have been a sibling and the span was too wide.

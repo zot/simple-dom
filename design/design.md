@@ -34,7 +34,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
 - [x] crc-BracketContext.md → `sdom/context.go`
 - [x] crc-StencilBuilder.md → `sdom/stencil.go`
 - [x] crc-Bool.md → `sdom/bound.go`
-- [x] crc-TodoItem.md → `sdom/todo.go`
+- [x] crc-TodoItem.md → `sdom/stencil_test.go`
 - [x] crc-List.md → `sdom/list.go`
 - [x] crc-RequirementList.md → `sdom/list.go`
 - [x] crc-TraceabilityComment.md → `minispecsdom/comment.go`
@@ -172,7 +172,7 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   window's index rebuild, or an inspection of the generated code. Until then the requirement
   claims only what has been observed.
 - [x] O13: `StencilBuilder.Omit` has no caller outside its own test, and **that is not a defect** — the original wording of this gap applied an application standard to a library. A library package exports API for *consumers*; its tests are the in-package exercise of that API, and there is no reason it would call its own exports internally. Recorded here rather than deleted because the mistake is worth not repeating: "unused outside tests" is a real signal in application code and a meaningless one in a library. What remains true and worth knowing is narrower — `Omit` exists because a schema will want a group it does not bind, carve Items 4 and 6 both have shapes that need it, and the alternative was forcing a schema to `Put` a `Text` it does not want purely to satisfy the nil check.
-- [ ] O14: `TodoItem` binds `label` for a test-shape reason rather than an editability one,
+- [x] O14: `TodoItem` binds `label` for a test-shape reason rather than an editability one,
   which is a knowing deviation from the minimality rule the same item establishes. The rule says
   only what a tool *writes into* is a bound field; a tool working on todo lists almost certainly
   toggles the checkbox and may never rewrite the label. `label` is bound because a fixture needs
@@ -181,6 +181,11 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   a reader learns from demonstrates a binding its own rule would reject. Repair when a real
   consumer exists: either something writes labels, and the binding is justified, or the fixture
   grows a second genuinely-written field and `label` becomes glue.
+  **Resolved 2026-09-03 (Bill):** the rule was wrong, not the binding. Binding serves access
+  as well as editing — a DOM exists to make a file easier to read *and* to edit — so `label`
+  is bound because a tool reads it. R115 retired to R223; the rule is rewritten at its source
+  in `specs/stencils.md`. `TodoItem` moves to `stencil_test.go`: it is an example, not shipped
+  code.
 - [x] O15: Two guards now cover one property, and the inner one is unreachable. `mergeLocs`
   panics when two locations carry different origins; `New` panics when a document is built from
   nodes of two parses. Since `New` is the only way foreign nodes enter a document — `Split`
@@ -341,3 +346,6 @@ Source: [carves/simple-dom.md](../carves/simple-dom.md), part `#1`.
   than kept.)
 - T3: R95 retired (2026-09-02 Item 6.2 (Bill): the panic it described no longer exists; Mutate's
   re-raise of foreign panics is unchanged but nothing in sdom produces one on this path.)
+- T4: R115 retired by R223 (2026-09-03 (Bill): binding serves access as well as editing — the
+  point of a DOM is to make file access *and* editing easier — so 'only what a tool writes
+  into' was the wrong test.)

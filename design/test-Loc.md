@@ -34,7 +34,7 @@ combinations all unfaithful
 **Alarm:** 1
 **Fire alarm:** Key `mergeLocs` on `Altered()` rather than on `Faithful()`. Red: merging a faithful node with a **synthesized** one yields a location claiming faithfulness at an offset whose bytes it does not render — the two no-provenance cells of the nine flip. This is the injection worth having, because the altered cases keep passing and only the no-provenance ones fail.
 **Inject:** sdom/loc.go:mergeLocs
-**Pulled:** 2026-08-30 — rang. Only this test failed, at `(faithful, none)` and
+**Pulled:** 2026-09-03 — re-pulled after the unreachable origin guard was removed and rang: `merge(faithful, none).Faithful() = true; want false`, both no-provenance cells and nothing else, as the prose predicts. Previously 2026-08-30 — rang. Only this test failed, at `(faithful, none)` and
 `(none, faithful)`; the other seven cells and the other 29 tests held.
 
 ## Test: merged offset takes the leftmost provenance
@@ -65,7 +65,7 @@ ring: rightmost-provenance-wins is associative for exactly the reason
 leftmost-wins is, so it broke the leftmost rule (caught elsewhere) and left this
 property untested. An injection has to be non-associative to reach it.
 **Inject:** sdom/loc.go:mergeLocs
-**Pulled:** 2026-08-30 — rang, on patterns 011, 101 and 111. Crucially
+**Pulled:** 2026-09-03 — re-pulled after the unreachable origin guard was removed and rang: the three mixed patterns disagree between groupings, and `TestSplitThenMergeIsTheIdentity` too. Previously 2026-08-30 — rang, on patterns 011, 101 and 111. Crucially
 `TestMergedOffsetTakesLeftmostProvenance` **passed**, which is what proves the
 injection reached associativity itself rather than the leftmost rule beneath it —
 the discriminator the superseded injection lacked.
@@ -182,7 +182,7 @@ unknown
 `a`'s is nil, so the result keeps `a`'s nil. Red: this test. Silent elsewhere —
 the merged node simply loses its attribution and nothing else looks.
 **Inject:** sdom/loc.go:mergeLocs
-**Pulled:** 2026-08-30 — rang, on exactly one row of its table: *synthesized on
+**Pulled:** 2026-09-03 — re-pulled after the unreachable origin guard was removed and rang: `synthesized on the left: merged origin = unknown; want parsed`, only that row. Previously 2026-08-30 — rang, on exactly one row of its table: *synthesized on
 the left*. The other two rows are unaffected by the injection and correctly stayed
 quiet, which is the table earning its keep — a single combined assertion would have
 said less.

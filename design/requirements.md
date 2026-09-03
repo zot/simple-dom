@@ -21,7 +21,7 @@
 - **R16:** `Compound` is a node whose children tile its span, which renders by concatenating its children's renders and performs no parsing.
 - **R17:** `Compound` is embedded by every compound defined in the layers above `sdom`, which supply only how their own children are computed.
 - **R18:** A bracket group is never a node; no node kind may model one or be named one.
-- **R19:** Compound nodes exist only for stenciling — a region a tool writes into.
+- **R19:** Compound nodes exist only for stenciling — a region a tool reads or writes as a value.
 
 ## Feature: location
 **Source:** specs/location.md
@@ -243,8 +243,11 @@
 - **R112:** `Bool.Value` derives the value from the text on every read.
 - **R113:** `Bool.Set` writes through to the text, which keeps its offset and becomes altered.
 - **R114:** A bound value points at the node already in the child list rather than replacing it.
-- **R115:** Only what a tool writes into is a bound field; minimality constrains a stencil's span, never the number of children within it.
+- **~~R115:~~** (Retired T4 — see R223) Only what a tool writes into is a bound field; minimality constrains a stencil's span, never the number of children within it.
 - **R116:** Stenciled parts separated by text become several stencil nodes rather than one span wide enough to swallow the text between them.
+- **R223:** A bound field is what a tool reads or writes through a typed view — binding serves
+  access as well as editing; minimality constrains a stencil's span, never the number of
+  children within it.
 - **R117:** `Done` leaves no two adjacent children that are both plain glue: an omitted group's text is merged with its neighbours, so omitting a group produces the identical child list to a regex that never named it.
 
 ## Feature: declarations

@@ -2,11 +2,78 @@
 package sdom
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"testing"
 )
+
+// TodoItem is the worked example of what a schema writes — a fixture that lives with
+// the tests, since sdom ships no markdown schema. It stays a real syntax rather than an
+// invented one because the case Bool exists for is a checkbox.
+
+// CRC: crc-TodoItem.md | R96
+//
+// todoRe captures ONLY what TodoItem binds. "- [", "] " and the line's end are not
+// in the pattern at all: they become Text from the gaps between named groups. The
+// author writes what they bind, and a pattern cannot eat bytes.
+var todoRe = regexp.MustCompile(`- \[(?P<checked>[^\]]*)\] ?(?P<label>.*)`)
+
+// ErrNoMatch reports that a schema's regex did not match. What a non-match means
+// is the caller's decision, so this is returned rather than acted on.
+var ErrNoMatch = errors.New("sdom: the text does not match this stencil")
+
+// CRC: crc-TodoItem.md | R96, R223, R116
+//
+// TodoItem is a markdown todo line — "- [ ] label" — and the worked example of
+// what a schema writes. Real syntax rather than an invented fixture, and the case
+// Bool exists for.
+//
+// label is bound because a tool READS it as a value — binding serves access as
+// well as editing — and because two groups prove the gap between them is glue.
+type TodoItem struct {
+	Compound
+	checked *Bool
+	label   *Text
+}
+
+// CRC: crc-TodoItem.md | R114
+func (t *TodoItem) Checked() *Bool { return t.checked }
+
+// CRC: crc-TodoItem.md | R223
+func (t *TodoItem) Label() *Text { return t.label }
+
+// CRC: crc-Node.md | R10, R13
+func (t *TodoItem) Equals(other Node) bool {
+	x, ok := other.(*TodoItem)
+	return ok && t.Compound.Equals(&x.Compound)
+}
+
+// CRC: crc-TodoItem.md | Seq: seq-stencil.md#1 | R96, R102, R104
+//
+// Parse builds what each group becomes, keeps its own references, and takes the
+// children. It is NOT on the Node interface: parsing constructs a concrete node and
+// then sends it parse, so the interface is never involved at this moment.
+func (t *TodoItem) Parse(text string, loc Loc) (string, error) {
+	b, ok := NewStencilBuilder(todoRe, text, loc)
+	if !ok {
+		return text, ErrNoMatch
+	}
+
+	// A Bool is not patched in — the Text goes in the children and the Bool points
+	// at it, so there is one copy of the bytes and nothing to keep in step.
+	checked := NewText(b.Group("checked"))
+	t.checked = NewBool(checked)
+	b.Put("checked", checked)
+
+	t.label = NewText(b.Group("label"))
+	b.Put("label", t.label)
+
+	kids, remain := b.Done()
+	t.Compound = Compound{kids: kids, loc: b.Span()}
+	return remain, nil
+}
 
 func parseTodo(t *testing.T, line string) *TodoItem {
 	t.Helper()

@@ -7,13 +7,18 @@ import (
 
 // CRC: crc-List.md | R199, R200, R202
 func TestListItemsDeriveAndTheLiteralIsPreserved(t *testing.T) {
-	for _, src := range []string{"a,b", " a ,  b ", "crc-Store.md, crc-Index.md"} {
+	cases := map[string][]string{
+		"a,b":                        {"a", "b"},
+		" a ,  b ":                   {"a", "b"},
+		"crc-Store.md, crc-Index.md": {"crc-Store.md", "crc-Index.md"},
+	}
+	for src, want := range cases {
 		l, rest, ok := ParseList(src, Synthetic(0))
 		if !ok || rest != "" {
 			t.Fatalf("%q: ok=%v rest=%q", src, ok, rest)
 		}
-		if got := l.Items(); len(got) != 2 {
-			t.Errorf("%q: items %q, want two", src, got)
+		if got := l.Items(); !slices.Equal(got, want) {
+			t.Errorf("%q: items %q, want %q", src, got, want)
 		}
 		if r, _ := l.Render(); r != src {
 			t.Errorf("%q rendered %q", src, r)

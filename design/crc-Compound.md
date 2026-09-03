@@ -20,7 +20,7 @@ else.
   visit every child to sum lengths anyway, so nothing is saved by stamping — and
   the deferred walk it replaces carried a defect, where a short-circuiting fold
   left later compounds claiming spans they could no longer honour
-- **Compounds exist only for stenciling** — a region a tool writes into. Never
+- **Compounds exist only for stenciling** — a region a tool reads or writes as a value. Never
   for bracket structure
 - Embedded by the regex compound (Item 3), the declaration (Item 4) and the
   traceability comment (Item 6). Each declares its own `Equals`

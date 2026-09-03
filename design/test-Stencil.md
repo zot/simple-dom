@@ -63,7 +63,7 @@ assumed.** The designed injection was to make `Omit` a no-op. Pulled 2026-08-31,
 it does not reach this test's claim at all: with `Omit` inert the group stays
 *bound*, so `Done`'s nil-slot check fires and the test dies in its own setup
 before comparing anything. With that test skipped, **78 of 78 pass** — nothing
-else in the package uses `Omit`; `todo.go` never calls it.
+else in the package uses `Omit`; the `TodoItem` fixture never calls it.
 
 The reason no small injection reaches this is the implementation. **There is no
 merge step to break**: `bounds()` simply does not treat an omitted group as a

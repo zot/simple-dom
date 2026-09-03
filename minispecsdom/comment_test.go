@@ -78,6 +78,11 @@ func FuzzDOMRoundTrip(f *testing.F) {
 			if len(got) != 1 {
 				continue // not recognized: nothing more to check for this input
 			}
+			// The DOM compare below runs the same parser on both sides, so it cannot
+			// see SYMMETRIC under-modelling; this can. Recognition means a field.
+			if c := got[0]; c.CRC() == nil && c.Seq() == nil && c.Test() == nil && c.Refs() == nil {
+				t.Fatalf("%s: %q recognized with no field", name, src)
+			}
 			d2, ctx2 := parse(r, lang)
 			again, _ := Comments(d2, ctx2)
 			if len(again) != 1 || !again[0].Equals(got[0]) {
@@ -227,5 +232,23 @@ func TestAFieldWriteThroughTheNode(t *testing.T) {
 	}
 	if err := c.CRC().SetItems([]string{"a b"}); err == nil {
 		t.Errorf("an item with whitespace was accepted")
+	}
+}
+
+// CRC: crc-TraceabilityComment.md | Seq: seq-anchor.md#1.1 | R219
+//
+// Found by injecting past the alarm list: dropping the kind filter in Comments
+// left every test green. A bracket group or a string whose interior looks like
+// fields is not a comment, and the pass must not so much as try it.
+func TestOnlyCommentGroupsAreCandidates(t *testing.T) {
+	src := "x := f(R7)\ny := \"CRC: crc-A.md | R1\"\nz := [R4, R5]\n"
+	d, ctx := parse(src, &sdom.LangGo)
+	before := len(d.Nodes())
+	cs, err := Comments(d, ctx)
+	if err != nil || len(cs) != 0 {
+		t.Fatalf("%d comments recognized in a file with none (%v)", len(cs), err)
+	}
+	if len(d.Nodes()) != before {
+		t.Errorf("the pass changed a document it recognized nothing in")
 	}
 }
