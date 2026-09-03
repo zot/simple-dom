@@ -148,10 +148,13 @@ func TestAZeroLengthNodeIsNotReadAsNothingHappening(t *testing.T) {
 // Checking only the node count would ALSO take a byte here, so the walk would skip
 // one — and the symptom is a missed marker, not lost bytes.
 func TestAParserThatAdvancesWithoutEmittingIsNotReadAsAMatch(t *testing.T) {
-	a := &advancer{at: 0, by: 2}
+	// From position 1, INSIDE a live run: extending the run changes no node count,
+	// so this is the case the count term alone cannot see. At position 0 the run
+	// would be created, the count would move, and the test would prove nothing.
+	a := &advancer{at: 1, by: 2}
 	d := Parse("abcd", 0, a)
 
-	if got, want := a.seen, []int{0, 2, 3}; !slices.Equal(got, want) {
+	if got, want := a.seen, []int{0, 1, 3}; !slices.Equal(got, want) {
 		t.Fatalf("offered %v, want %v — the walk must not advance over a parser that did", got, want)
 	}
 	if got, want := renders(d), []string{"abcd"}; !slices.Equal(got, want) {

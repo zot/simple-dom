@@ -75,7 +75,7 @@ offered, the group still being open
 **Alarm:** 2
 **Fire alarm:** In `IndentParser.continued`, test the whole source behind the position — `st.Src()[:st.Pos()]` — rather than the live text run that `Last()` returns. Red: a backslash that a comment group consumed now suppresses the following line's indent, so `# c \` before an indented line yields shape `0` instead of `0 4`. CPython treats that indent as significant and rejects it, which is only reachable because it IS significant.
 **Inject:** sdom/indent.go:IndentParser.continued
-**Pulled:** 2026-09-01 — rang exactly as predicted: `shape "0", want "0 4"` on the backslash-ending-a-comment case, and on nothing else. The real continuation and the string cases both stayed correct, so the pending-text test is doing precisely the depth-0 work claimed for it and not more.
+**Pulled:** 2026-09-03 — re-pulled after the check moved from the pending run to `Last()` and rang exactly as before: `a backslash ending a comment: shape "0", want "0 4"`, and on nothing else. Previously 2026-09-01 — rang exactly as predicted: `shape "0", want "0 4"` on the backslash-ending-a-comment case, and on nothing else. The real continuation and the string cases both stayed correct, so the pending-text test is doing precisely the depth-0 work claimed for it and not more.
 
 ## Test: a frame parents to the nearest smaller column
 **Purpose:** R185 — and that two frames at one column are siblings

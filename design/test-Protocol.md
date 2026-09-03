@@ -14,21 +14,23 @@ of the following text — not consumed as text *in addition to* the emission
 **Alarm:** 1
 **Fire alarm:** In `ParserState.run`, delete the node-count term **and its variable** — keep `pos := st.pos`, drop `n`, and test `if st.pos == pos`. Both edits: removing only the term leaves `n` declared and unused, which is a **compile error rather than a red test**, and a build failure proves nothing while reading the same in a terminal. Red: the emission is read as a non-match, so the walk advances over it and the offered positions become `[0, 1]` instead of `[0, 0, 1]` — and the byte it swallows is text here but a bracket opener after a real dedent to column 0. Every byte is still emitted somewhere, so the round trip and the tiling stay green; only a recognition count sees it.
 **Inject:** sdom/parser.go:ParserState.run
-**Pulled:** 2026-09-01 — rang, `offered [0 1], want [0 0 1]`, exactly as predicted — **and the consequence the prose describes arrived with it, three levels deep.** The walk swallowed a `"` after a dedent to column 0, so `TestADedentToColumnZeroBeforeABracketOpenerKeepsTheOpener` saw `*sdom.Text("\"a string statement")` where an `Opener` belonged; the string group therefore never opened; its interior became top-level text; and in the other package `TestADefInsideADocstringIsNotADeclaration` returned `def[notreal] def[real]` — **a `def` inside a docstring recognized as a real declaration.** The round trip and the tiling stayed green the whole way, which is the point: one dropped term in a loop condition reaches from a byte offset to a wrong answer about someone's source code, and nothing that counts bytes can see it.
+**Pulled:** 2026-09-03 — re-pulled after the live text run replaced the flush and rang: `offered [0 1], want [0 0 1]`, plus the dedent-to-column-zero opener test; three failures in all. Previously 2026-09-01 — rang, `offered [0 1], want [0 0 1]`, exactly as predicted — **and the consequence the prose describes arrived with it, three levels deep.** The walk swallowed a `"` after a dedent to column 0, so `TestADedentToColumnZeroBeforeABracketOpenerKeepsTheOpener` saw `*sdom.Text("\"a string statement")` where an `Opener` belonged; the string group therefore never opened; its interior became top-level text; and in the other package `TestADefInsideADocstringIsNotADeclaration` returned `def[notreal] def[real]` — **a `def` inside a docstring recognized as a real declaration.** The round trip and the tiling stayed green the whole way, which is the point: one dropped term in a loop condition reaches from a byte offset to a wrong answer about someone's source code, and nothing that counts bytes can see it.
 
 *First attempt did not build:* dropping the term alone leaves `n` declared and unused, which is a compile error rather than a red test. The prescription now names both edits.
 
 ## Test: a parser that advances without emitting is not read as a match
 **Purpose:** R164 — the half of the rule that the node count alone misses
-**Input:** a parser that advances two bytes and emits nothing
+**Input:** a parser that advances two bytes from position 1 — inside a live run, where
+extending it changes no node count — and emits nothing
 **Expected:** the walk does not also take a byte, so exactly those two bytes land
-in the live text run and the position is where the parser left it
+in the live text run and the position is where the parser left it; offered
+positions are `0, 1, 3`
 **Refs:** crc-ParserState.md, seq-collaborate.md#1.4
 **Code:** sdom/protocol_test.go
 **Alarm:** 2
-**Fire alarm:** In `ParserState.run`, delete the position term **and its variable** — keep `n := len(st.out)`, drop `pos`, and test `if len(st.out) == n`. Both edits, for the reason above: dropping the term alone will not compile. Red: a parser that advanced two bytes is read as having done nothing, so the walk takes a third — offered positions become `[0, 3]` rather than `[0, 2, 3]`. The skipped byte can be a marker, and nothing but a recognition count would notice.
+**Fire alarm:** In `ParserState.run`, delete the position term **and its variable** — keep `n := len(st.out)`, drop `pos`, and test `if len(st.out) == n`. Both edits, for the reason above: dropping the term alone will not compile. Red: a parser that advanced two bytes is read as having done nothing, so the walk takes a third — offered positions become `[0, 1]` rather than `[0, 1, 3]` — the extra advance runs off the end. (Since 2026-09-03 the fixture advances from position 1: at 0 `Advance` creates the live run and the count moves, which would let a count-only walk pass for the wrong reason.) The skipped byte can be a marker, and nothing but a recognition count would notice.
 **Inject:** sdom/parser.go:ParserState.run
-**Pulled:** 2026-09-01 — rang, `offered [0 3], want [0 2 3]`, and **alone** — the other package stayed green and so did every other test in this one. The narrower of the two halves, and the one nothing else in the suite guards.
+**Pulled:** 2026-09-03 — re-pulled after the live text run replaced the flush and rang: `offered [0 1], want [0 1 3]` — the walk's extra advance ran off the end of the four-byte source, so the prose's `[0 1 4]` was one position optimistic; alone, as before. Previously 2026-09-01 — rang, `offered [0 3], want [0 2 3]`, and **alone** — the other package stayed green and so did every other test in this one. The narrower of the two halves, and the one nothing else in the suite guards.
 
 *First attempt did not build*, for the mirror of the reason above: dropping the position term alone leaves `pos` declared and unused.
 
