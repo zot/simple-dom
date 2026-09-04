@@ -101,15 +101,15 @@ source, and each renders exactly the source at its own offset with no adjustment
 **Refs:** crc-Loc.md, crc-Doc.md
 **Code:** sdom/loc_test.go
 **Alarm:** 4
-**Fire alarm:** In `Parse`, thread the base into the parser and add it in `at`, so
-locations come out base-relative. Red: **only this test** — measured twice, on
-2026-08-30 and 2026-08-31. Every offset in the document is wrong by the base and
-nothing else objects, because `Render` never consults an offset. ~~and the tiling
-assertions with it, loud rather than silent~~ — that prediction was wrong both
-times it was checked, and the tiling tests parse at base 0, where the injection
-changes nothing at all.
-**Inject:** sdom/parser.go:Parse, sdom/parser.go:ParserState.At
-**Pulled:** 2026-09-01 — re-pulled after the vocabulary pass and rang a **third** time, still **only this test**, out of a larger suite. The anchor resolved under the new name `Parse` — the one thing a rename can genuinely break, and the reason this pull was worth taking when the property could not have moved. Previously 2026-08-31 — re-pulled after the parser rename and rang again, and again **only this test failed** — the second measurement agreeing with the first, and with neither agreeing with the prescription above. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and less loudly than predicted. **Only this test
+**Fire alarm:** In `Parse`, after `run()`, shift every emitted node's location by the
+base so locations come out base-relative (a type switch over `Text`, `Opener`, `Closer`,
+`Separator`, `Indent`). Red: **only this test** — measured four times, 2026-08-30 through
+2026-09-04. Every offset is wrong by the base and nothing else objects, because `Render`
+never consults an offset and the tiling tests parse at base 0. *Do not* add the base inside
+`At`: since 2026-09-03 `Advance` slices the source from the text node's own offset, so that
+injection panics before any assertion and reads as red for the wrong reason.
+**Inject:** sdom/parser.go:Parse
+**Pulled:** 2026-09-04 — rang on the REWRITTEN injection at `ddcf09f`, by hand: `node 0 begins at 500; offsets must start at 0 regardless of base`, and still **only this test**. The old prescription now panics in `Advance` before any assertion — since 2026-09-03 the parser re-slices its source from the text node's own offset, so a base-shifted location is out of range at parse time; a delegate ran it faithfully and got only the panic, which teaches nothing. Shifting every node after `run()` reaches the property. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang a **third** time, still **only this test**, out of a larger suite. The anchor resolved under the new name `Parse` — the one thing a rename can genuinely break, and the reason this pull was worth taking when the property could not have moved. Previously 2026-08-31 — re-pulled after the parser rename and rang again, and again **only this test failed** — the second measurement agreeing with the first, and with neither agreeing with the prescription above. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and less loudly than predicted. **Only this test
 failed**, out of 64. Every offset in the document was wrong by 500 and the corpus
 round-trip, the tiling test and the faithful-span check all stayed green, because
 `Render` never consults an offset. The prediction of "loud" was wrong.
@@ -163,7 +163,7 @@ protocol side. Everything else works exactly as well without origins — the byt
 tiling, the pairing, the round-trips are all untouched — which is why attribution
 needs an assertion of its own.
 **Inject:** sdom/parser.go:ParserState.At
-**Pulled:** 2026-09-01 — re-pulled after `at` moved onto `ParserState` and rang again, now on **two** tests: this one and `TestOneParseHasOneOrigin`, which did not exist at the last pull. The alarm outgrew its own prediction of *alone*, in the safe direction — the protocol test asks the same question from the other side, so one parser dropping the origin is now caught twice. Everything else stayed green exactly as claimed. Previously 2026-08-31 — re-pulled after the parser rename and rang again, and again alone. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and **alone**: 63 of 64 tests passed with the
+**Pulled:** 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, `node 0 does not carry its own parse's origin`, and `TestOneParseHasOneOrigin` in the protocol suite with it; restore clean. Previously 2026-09-01 — re-pulled after `at` moved onto `ParserState` and rang again, now on **two** tests: this one and `TestOneParseHasOneOrigin`, which did not exist at the last pull. The alarm outgrew its own prediction of *alone*, in the safe direction — the protocol test asks the same question from the other side, so one parser dropping the origin is now caught twice. Everything else stayed green exactly as claimed. Previously 2026-08-31 — re-pulled after the parser rename and rang again, and again alone. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and **alone**: 63 of 64 tests passed with the
 parser attributing nothing at all. The bytes, the tiling, the bracket pairing, the
 cross-derivation check and every corpus round-trip are all indifferent to
 provenance, which is why attribution needs an assertion of its own.

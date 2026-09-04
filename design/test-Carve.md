@@ -10,7 +10,7 @@
 **Alarm:** 1
 **Fire alarm:** drop the region bound so every list item in the file is tried (consume `from` and `to` so it builds). Red: nothing here, since the fixture's other bullets are fenced — so the test also parses a source with a bullet under a later `## Notes`, which becomes a part under the injection; a `### Sub` inside the block does not end it.
 **Inject:** minispecsdom/carve.go:ParseCarve
-**Pulled:** 2026-09-03 — rang: `a bullet outside the region became a part: "Item 1,Item 2,Item 9"`, only that test. The delegate's first attempt left `from`/`to` unused and did not build; re-pulled by hand with them consumed.
+**Pulled:** 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, `a bullet outside the region became a part: "Item 1,Item 2,Item 9"`, only that test; restore clean. Previously 2026-09-03 — rang: `a bullet outside the region became a part: "Item 1,Item 2,Item 9"`, only that test. The delegate's first attempt left `from`/`to` unused and did not build; re-pulled by hand with them consumed.
 
 
 ## Test: no status block, and a fenced one
@@ -33,7 +33,7 @@
 **Alarm:** 3
 **Fire alarm:** replace the first marker regardless of verb. Red: `NOT VERIFIED` is overwritten. A second injection: stop dropping the other transients (`drop` never appended). Red: `**OPEN (#6.)** **OPEN (#5.)**` — this case was added 2026-09-03 after a past-the-list probe; that probe's green was a mis-applied injection (a `sed` that matched nothing), so whether the earlier suite guarded the rule was never established — no earlier test carried two transients, which is the inference the case rests on. Re-run with the injection verified applied, it rang here.
 **Inject:** minispecsdom/partline.go:PartLine.SetMarker
-**Pulled:** 2026-09-03 — rang: `NOT VERIFIED` overwritten by `LANDED (x)`, only that test.
+**Pulled:** 2026-09-04 — re-pulled at `ddcf09f`: the second injection by delegation rang with `**OPEN (#6.)** **OPEN (#5.)**`; the first by hand rang at the same assertion; only that test each time; restore clean. Previously 2026-09-03 — rang: `NOT VERIFIED` overwritten by `LANDED (x)`, only that test.
 
 ## Test: Land is three markings in one act
 **Purpose:** R255
@@ -44,7 +44,7 @@
 **Alarm:** 4
 **Fire alarm:** skip the strike in `Land`. Red: the render keeps the head unstruck while the box and marker changed — the three no longer agree.
 **Inject:** minispecsdom/carve.go:Carve.Land
-**Pulled:** 2026-09-03 — rang: the line landed with `[x]` and the record but the head unstruck — the three no longer agree.
+**Pulled:** 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, `2.2` landed with `[x]` and the record but the head unstruck, only that test; restore clean. Previously 2026-09-03 — rang: the line landed with `[x]` and the record but the head unstruck — the three no longer agree.
 
 ## Test: writes refuse over deviations
 **Purpose:** R279, R280

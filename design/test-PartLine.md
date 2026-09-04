@@ -10,7 +10,7 @@
 **Alarm:** 1
 **Fire alarm:** classify every bold run as a marker, never a head. Red: every key is empty and the titles are nil.
 **Inject:** minispecsdom/partline.go:PartLine.Parse
-**Pulled:** 2026-09-03 — rang: `keys ",,,,"` — the assertion; the strike test then crashed on its own nil map entry, which is that test's shape under this injection and not a production path (a headless line is guarded, and now asserted).
+**Pulled:** 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, `keys ",,,,"` as prescribed, and the strike test crashed on its nil head as before, aborting the package run; restore clean. Previously 2026-09-03 — rang: `keys ",,,,"` — the assertion; the strike test then crashed on its own nil map entry, which is that test's shape under this injection and not a production path (a headless line is guarded, and now asserted).
 
 ## Test: strike is derived and the edit is hidden
 **Purpose:** R241
@@ -32,7 +32,7 @@
 **Alarm:** 3
 **Fire alarm:** return false from `Parse` when the head does not key. Red: the first line is missing from the result and its checkbox is not counted.
 **Inject:** minispecsdom/partline.go:PartLine.Parse
-**Pulled:** 2026-09-03 — rang: `1 lines, want 3` — only the keyed line survived.
+**Pulled:** 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, `1 lines, want 4`, only that test; restore clean. Previously 2026-09-03 — rang: `1 lines, want 3` — only the keyed line survived.
 
 ## Test: a marker write is canonical and guarded
 **Purpose:** R244

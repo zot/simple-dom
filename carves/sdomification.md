@@ -28,7 +28,7 @@ that.
 - [ ] **Item 1 — say what could not be read.** **OPEN (not queued.)**
 - [ ] **Item 2 — cut the tool over.** **OPEN (not queued.)**
 - [x] ~~**Item 3 — write paths refuse.**~~ **LANDED (`44a8955`, 2026-09-04 — `#23`.)**
-- [ ] **Item 4 — lines, and flexible input.** **OPEN (#24.)**
+- [x] ~~**Item 4 — lines, and flexible input.**~~ **LANDED (`ddcf09f`, 2026-09-04 — `#24`.)**
 - [ ] **Item 5 — gap sources.** **OPEN (#25.)**
 
 ## Decisions
@@ -117,6 +117,12 @@ Two reader obligations the tool's diagnostics need (request items 3, 4):
   not queued.**` — is a deviation.
 
 Item 4 widens what Item 3 will accept, so their order matters only in the interim.
+
+**DECIDED (Bill, 2026-09-04): a mis-cased verb stays a deviation.** The ruling's flexibility is
+for the attribution; the verb is the shape itself.
+
+Landed `ddcf09f`: R283–R286 and the four specs' API blocks. The comma form, silent before, is now
+the `marker scheme` deviation.
 
 ## Item 5
 

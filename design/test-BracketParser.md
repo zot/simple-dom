@@ -85,7 +85,7 @@ brackets, quotes and comment markers inside are text
 **Alarm:** 3
 **Fire alarm:** Make `BracketGroup.Restricted` return false unconditionally. Red: every string and comment parses in code mode, so `{` inside a comment opens a group and `//` inside a string starts one. Bytes are preserved and the array still tiles, so the corpus round-trip stays green — this is the recognition-count failure class exactly.
 **Inject:** sdom/bracket.go:BracketGroup.Restricted
-**Pulled:** 2026-08-30 — rang, and widest of the batch: six tests failed,
+**Pulled:** 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, the named test's three cases and seven more across the parser, language, indent, escape and round-trip suites; restore clean. Previously 2026-08-30 — rang, and widest of the batch: six tests failed,
 including `TestLangGo`, `TestLangJavaScript`, the escape test and the recognition
 count. Both corpus round-trips stayed green even so — every string and comment
 was parsing its interior as code.

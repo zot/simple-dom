@@ -15,7 +15,7 @@ advance, so a stamped index keeps a stale stamp and never rebuilds. Nothing abou
 the bytes changes — the render, the tiling and the round-trip all stay green — which
 is the whole class of failure a stamped index has.
 **Inject:** sdom/mutate.go:Doc.Replace
-**Pulled:** 2026-08-31 — rang, and alone. Dropping `d.dirty = true` failed only
+**Pulled:** 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, `generation did not advance; a stamped index would never rebuild`, only that test; restore clean. Previously 2026-08-31 — rang, and alone. Dropping `d.dirty = true` failed only
 `TestReplaceKeepsPositionAndBumpsGeneration`, on exactly its own message: *generation
 did not advance; a stamped index would never rebuild.* Every byte-level check stayed
 green, which is the whole class of failure a stamped index has.
