@@ -1,6 +1,7 @@
 package minispecsdom
 
 import (
+	"errors"
 	"os"
 	"slices"
 	"strings"
@@ -31,21 +32,22 @@ func TestTheFixturesEntriesReadBack(t *testing.T) {
 	if r, _ := p.Render(); r != src {
 		t.Fatal("render differs from source")
 	}
-	if got := ids(p); !slices.Equal(got, []int{8, 12, 3}) {
-		t.Fatalf("ids %v, want [8 12 3]", got)
+	if got := ids(p); !slices.Equal(got, []int{8, 12, 3, 14, 15}) {
+		t.Fatalf("ids %v, want [8 12 3 14 15]", got)
 	}
 	e := p.Entry(8)
 	if e.Title != "The reader" || e.Skill != "mini-spec" || e.Status != "Design settled; ready to build" ||
-		e.SourceDoc != "carves/x.md" || e.PartKey != "7" || e.Next != "write the spec." {
+		e.SourceDoc != "carves/x.md" || e.SourceKey != "7" || e.Next != "write the spec." {
 		t.Errorf("entry 8: %+v", *e)
 	}
-	if e := p.Entry(12); e.Skill != "" || e.PartKey != "2.1" || e.Next != "" || e.Status != "Parked with context" {
+	if e := p.Entry(12); e.Skill != "" || e.SourceKey != "2.1" || e.Next != "" || e.Status != "Parked with context" {
 		t.Errorf("entry 12: %+v", *e)
 	}
-	if p.MaxID() != 12 {
+	if p.MaxID() != 15 {
 		t.Errorf("MaxID %d", p.MaxID())
 	}
-	if u := p.Unread(); len(u) != 1 || u[0] != (Unread{25, "Notes"}) {
+	if u := p.Unread(); len(u) != 2 || u[0] != (Unread{25, "Notes"}) ||
+		u[1] != (Unread{33, "   Source: [design/design.md](design/design.md), gap `O1-O3`."}) {
 		t.Errorf("unread %+v", u)
 	}
 	// R283: every entry knows its line, 1-based.
@@ -77,12 +79,12 @@ func runText(e *Entry) string {
 // CRC: crc-Pending.md | Seq: seq-pending.md#2 | R261, R262, R265
 func TestPlaceByPositionRefusedNotClamped(t *testing.T) {
 	p := ParsePending(pendingFixture(t))
-	e := EntryText{ID: 20, Title: "New", Status: "Fresh.", SourceDoc: "carves/z.md", PartKey: "1"}
+	e := EntryText{ID: 20, Title: "New", Status: "Fresh.", SourceDoc: "carves/z.md", SourceKey: "1"}
 	if err := p.Place(e, 1); err != nil {
 		t.Fatal(err)
 	}
-	if got := ids(p); !slices.Equal(got, []int{20, 8, 12, 3}) {
-		t.Fatalf("after Place at 1: %v, want [20 8 12 3]", got)
+	if got := ids(p); !slices.Equal(got, []int{20, 8, 12, 3, 14, 15}) {
+		t.Fatalf("after Place at 1: %v, want [20 8 12 3 14 15]", got)
 	}
 	r, _ := p.Render()
 	if !strings.Contains(r, "---\n\n## 20. **New**. Fresh.\n   Source: [carves/z.md](carves/z.md), part `#1`.\n\n## 8. ") {
@@ -92,17 +94,17 @@ func TestPlaceByPositionRefusedNotClamped(t *testing.T) {
 	if err != nil || pos != 4 {
 		t.Fatalf("After(12) = %d, %v", pos, err)
 	}
-	if err := p.Place(EntryText{ID: 21, Title: "After twelve", Status: "S.", SourceDoc: "d", PartKey: "2"}, pos); err != nil {
+	if err := p.Place(EntryText{ID: 21, Title: "After twelve", Status: "S.", SourceDoc: "d", SourceKey: "2"}, pos); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.Place(EntryText{ID: 22, Title: "Last", Status: "S.", SourceDoc: "d", PartKey: "3"}, len(p.Entries())+1); err != nil {
+	if err := p.Place(EntryText{ID: 22, Title: "Last", Status: "S.", SourceDoc: "d", SourceKey: "3"}, len(p.Entries())+1); err != nil {
 		t.Fatal(err)
 	}
-	if got := ids(p); !slices.Equal(got, []int{20, 8, 12, 21, 3, 22}) {
-		t.Fatalf("ids %v, want [20 8 12 21 3 22]", got)
+	if got := ids(p); !slices.Equal(got, []int{20, 8, 12, 21, 3, 14, 15, 22}) {
+		t.Fatalf("ids %v, want [20 8 12 21 3 14 15 22]", got)
 	}
 	r, _ = p.Render()
-	if !strings.Contains(r, "kept here until resumed.\n\n## 21. **After twelve**") || !strings.HasSuffix(r, "Not an entry either.\n\n## 22. **Last**. S.\n   Source: [d](d), part `#3`.\n\n") {
+	if !strings.Contains(r, "kept here until resumed.\n\n## 21. **After twelve**") || !strings.HasSuffix(r, "gap `O1-O3`.\n\n## 22. **Last**. S.\n   Source: [d](d), part `#3`.\n\n") {
 		t.Errorf("after and last:\n%s", r)
 	}
 	before, _ := p.Render()
@@ -133,8 +135,8 @@ func TestRemoveDropsExactlyTheRun(t *testing.T) {
 	if r, _ := p.Render(); r != want {
 		t.Errorf("after Remove(12):\n%s\nwant:\n%s", r, want)
 	}
-	if got := ids(p); !slices.Equal(got, []int{8, 3}) {
-		t.Errorf("ids %v, want [8 3]", got)
+	if got := ids(p); !slices.Equal(got, []int{8, 3, 14, 15}) {
+		t.Errorf("ids %v, want [8 3 14 15]", got)
 	}
 	if err := p.Remove(99); err == nil {
 		t.Errorf("Remove(99) accepted")
@@ -157,5 +159,38 @@ func TestARuleEndsARegion(t *testing.T) {
 	}
 	if r, _ := p.Render(); r != "# Pending\n\n---\n\n---\n\nTrailing prose after the rule.\n" {
 		t.Errorf("after Remove:\n%q", r)
+	}
+}
+
+// CRC: crc-Pending.md | Seq: seq-pending.md#1.4.1 | R287, R288, R289
+func TestASourceIsAPartOrAGap(t *testing.T) {
+	p := ParsePending(pendingFixture(t))
+	if e := p.Entry(8); e.Kind != SourcePart || e.SourceKey != "7" {
+		t.Errorf("entry 8: kind %d key %q", e.Kind, e.SourceKey)
+	}
+	if e := p.Entry(14); e.Kind != SourceGap || e.SourceKey != "O136" || e.SourceDoc != "design/design.md" {
+		t.Errorf("entry 14: %+v", *e)
+	}
+	// A range is not a gap source: the entry stands, its source does not, and it is unread.
+	if e := p.Entry(15); e.Kind != SourceNone || e.SourceKey != "" || e.SourceDoc != "design/design.md" {
+		t.Errorf("entry 15: %+v", *e)
+	}
+	// An entry with no Source line is SourceNone and not unread (entry 3).
+	if e := p.Entry(3); e.Kind != SourceNone || e.SourceDoc != "" {
+		t.Errorf("entry 3: %+v", *e)
+	}
+	// The writer emits one form for each kind, and refuses what would not read back.
+	g := EntryText{ID: 30, Title: "Fix", Status: "S.", SourceDoc: "d.md", SourceKey: "O7", Kind: SourceGap}
+	if got, want := g.Text(), "## 30. **Fix**. S.\n   Source: [d.md](d.md), gap `O7`.\n\n"; got != want {
+		t.Errorf("gap form:\n%q\nwant\n%q", got, want)
+	}
+	if err := p.Place(EntryText{ID: 31, Title: "Bad", Status: "S.", SourceDoc: "d.md", SourceKey: "O1, O2", Kind: SourceGap}, 1); !errors.Is(err, ErrBadGapSource) {
+		t.Errorf("a list as a gap source: %v", err)
+	}
+	if err := p.Place(g, len(p.Entries())+1); err != nil {
+		t.Fatal(err)
+	}
+	if e := p.Entry(30); e == nil || e.Kind != SourceGap || e.SourceKey != "O7" {
+		t.Errorf("placed gap entry read back: %+v", e)
 	}
 }

@@ -25,3 +25,9 @@ Answers already obtained, kept here until resumed.
 ## Notes
 
 Not an entry either.
+
+## 14. **A gap repair**. Ready.
+   Source: [design/design.md](design/design.md), gap `O136`.
+
+## 15. **A bad source**. Ready.
+   Source: [design/design.md](design/design.md), gap `O1-O3`.

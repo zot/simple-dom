@@ -18,7 +18,7 @@ import (
 // A backtick is written \x60, which keeps every pattern a raw string.
 var (
 	entryHeadRe  = regexp.MustCompile(`^## (\d+)\. \*\*(.*?)\*\*(?: \(([^)]*)\))?\.?\s*(.*)$`)
-	sourceLineRe = regexp.MustCompile(`^\s*Source:\s*\[[^\]]*\]\(([^)]*)\)(?:,\s*part\s+\x60#?([^\x60]+)\x60)?`)
+	sourceLineRe = regexp.MustCompile(`^\s*Source:\s*\[[^\]]*\]\(([^)]*)\)(?:,\s*(part|gap)\s+\x60([^\x60]+)\x60)?`)
 	nextLineRe   = regexp.MustCompile(`^\s*Next:\s*(.*)$`)
 )
 
@@ -27,6 +27,26 @@ var entryOpenRe = regexp.MustCompile(`^\d+\.`)
 
 // ErrNoEntry reports an id no entry carries.
 var ErrNoEntry = errors.New("minispecsdom: no entry with that id")
+
+// CRC: crc-Pending.md | R288, R289
+//
+// gapIDRe is one gap ID — O136, R42, T7. A range, a list or a `#` is not a gap source,
+// because an entry discharges one thing.
+var gapIDRe = regexp.MustCompile(`^[A-Z]\d+$`)
+
+// ErrBadGapSource reports a Place whose gap key is not one gap ID.
+var ErrBadGapSource = errors.New("minispecsdom: a gap source names exactly one gap ID")
+
+// CRC: crc-Pending.md | R287
+//
+// SourceKind says what a Source: line read as: a carve part, a gap, or neither.
+type SourceKind int
+
+const (
+	SourceNone SourceKind = iota // no Source: line, or one that named neither form
+	SourcePart
+	SourceGap
+)
 
 // CRC: crc-Pending.md | R258
 //
@@ -56,7 +76,8 @@ type Unread struct {
 type Entry struct {
 	ID                   int
 	Title, Skill, Status string
-	SourceDoc, PartKey   string
+	SourceDoc, SourceKey string
+	Kind                 SourceKind
 	Next                 string
 
 	head *schema.Heading
@@ -69,11 +90,12 @@ type Entry struct {
 // CRC: crc-Pending.md | R283
 func (e *Entry) Line() int { return e.line }
 
-// CRC: crc-Pending.md | R261
+// CRC: crc-Pending.md | R261, R289
 // EntryText is what Place writes.
 type EntryText struct {
-	ID                                             int
-	Title, Skill, Status, SourceDoc, PartKey, Next string
+	ID                                               int
+	Title, Skill, Status, SourceDoc, SourceKey, Next string
+	Kind                                             SourceKind // SourceGap writes the gap form; anything else the part form
 }
 
 // CRC: crc-Pending.md | Seq: seq-pending.md#1 | R258, R259, R260, R264
@@ -122,7 +144,9 @@ func (p *Pending) scan() {
 		if cut >= 0 {
 			e.tail, e.cut = nodes[end-1].(*sdom.Text), cut
 		}
-		e.derive()
+		if bad := e.derive(); bad != nil {
+			p.unread = append(p.unread, *bad)
+		}
 		p.entries = append(p.entries, e)
 	}
 }
@@ -162,8 +186,9 @@ func ruleAt(s string) int {
 	return -1
 }
 
-// derive reads the values from the run's rendered bytes.
-func (e *Entry) derive() {
+// derive reads the values from the run's rendered bytes, and returns the `Source:` line
+// it could not read as either form, or nil.
+func (e *Entry) derive() *Unread {
 	var b strings.Builder
 	for i, n := range e.run {
 		s, _ := n.Render()
@@ -177,13 +202,24 @@ func (e *Entry) derive() {
 		e.ID, _ = strconv.Atoi(m[1])
 		e.Title, e.Skill, e.Status = m[2], m[3], strings.TrimSuffix(m[4], ".")
 	}
-	for _, l := range lines[1:] {
+	var bad *Unread
+	for i, l := range lines[1:] {
 		if m := sourceLineRe.FindStringSubmatch(l); m != nil && e.SourceDoc == "" {
-			e.SourceDoc, e.PartKey = m[1], m[2]
+			e.SourceDoc = m[1]
+			word, key := m[2], m[3]
+			switch { // Seq: seq-pending.md#1.4.1
+			case word == "part":
+				e.Kind, e.SourceKey = SourcePart, strings.TrimPrefix(key, "#")
+			case word == "gap" && gapIDRe.MatchString(key):
+				e.Kind, e.SourceKey = SourceGap, key
+			default: // Seq: seq-pending.md#1.4.2
+				bad = &Unread{e.line + i + 1, l}
+			}
 		} else if m := nextLineRe.FindStringSubmatch(l); m != nil && e.Next == "" {
 			e.Next = m[1]
 		}
 	}
+	return bad
 }
 
 // CRC: crc-Pending.md | R258
@@ -227,15 +263,20 @@ func (p *Pending) After(id int) (int, error) {
 	return 0, fmt.Errorf("%w: --after %d", ErrNoEntry, id)
 }
 
-// CRC: crc-Pending.md | R261
-// Text renders the canonical entry: heading line, Source line, Next line, blank line.
+// CRC: crc-Pending.md | Seq: seq-pending.md#2.2 | R261, R289
+// Text renders the canonical entry: heading line, Source line in the part or gap form by
+// Kind, Next line, blank line.
 func (e EntryText) Text() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "## %d. **%s**", e.ID, e.Title)
 	if e.Skill != "" {
 		fmt.Fprintf(&b, " (%s)", e.Skill)
 	}
-	fmt.Fprintf(&b, ". %s\n   Source: [%s](%s), part `#%s`.\n", e.Status, e.SourceDoc, e.SourceDoc, e.PartKey)
+	word, key := "part", "#"+e.SourceKey
+	if e.Kind == SourceGap {
+		word, key = "gap", e.SourceKey
+	}
+	fmt.Fprintf(&b, ". %s\n   Source: [%s](%s), %s `%s`.\n", e.Status, e.SourceDoc, e.SourceDoc, word, key)
 	if e.Next != "" {
 		fmt.Fprintf(&b, "   Next: %s\n", e.Next)
 	}
@@ -252,6 +293,9 @@ func (p *Pending) Place(e EntryText, pos int) error {
 	n := len(p.entries)
 	if pos < 1 || pos > n+1 {
 		return fmt.Errorf("minispecsdom: position %d is outside 1 … %d; refused rather than clamped", pos, n+1)
+	}
+	if e.Kind == SourceGap && !gapIDRe.MatchString(e.SourceKey) { // Seq: seq-pending.md#2.1.1
+		return ErrBadGapSource
 	}
 	text := e.Text()
 	var before sdom.Node

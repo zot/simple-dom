@@ -1,5 +1,5 @@
 # Sequence: the queue file
-**Requirements:** R259, R260, R261, R263
+**Requirements:** R259, R260, R261, R263, R287, R288, R289
 
 ## 1. Reading
 
@@ -11,12 +11,17 @@
         `---` line, where the run is cut
    1.4. Derive the values from the run's rendered bytes: the heading line, the
         `Source:` line, the `Next:` line
+        1.4.1. The `Source:` line reads as `part` or `gap` by its word; a part key drops
+               its `#`, a gap key must be one gap ID; neither is `SourceNone`
+        1.4.2. A `Source:` line that read as neither is listed as unread, with its line
 
 ## 2. Placing
 
 2. `Place(e, pos)`
    2.1. Refuse a position outside `1 … len+1`
-   2.2. Render the canonical entry text, ending in a blank line
+        2.1.1. Refuse a gap source whose key is not one gap ID
+   2.2. Render the canonical entry text, ending in a blank line, in the part or gap form
+        by `Kind`
    2.3. Inside a window, `Insert` it as one synthetic text before the entry at `pos`, or
         at the end; re-read the document and re-derive the entries
 

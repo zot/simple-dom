@@ -23,14 +23,18 @@ func (p *Pending) Remove(id int) error
 type Entry struct {
     ID                int
     Title, Skill, Status string   // derived from the heading line
-    SourceDoc, PartKey string     // derived from the Source: line
+    SourceDoc, SourceKey string   // derived from the Source: line
+    Kind              SourceKind  // SourcePart, SourceGap, or SourceNone when the line did not read
     Next              string      // derived from the Next: line, "" when absent
 }
+type SourceKind int
+const ( SourceNone SourceKind = iota; SourcePart; SourceGap )
 func (e *Entry) Line() int         // 1-based, the heading's line at parse time
 
 type Unread struct { Line int; Text string }   // shared with the done schema
 
-type EntryText struct { ID int; Title, Skill, Status, SourceDoc, PartKey, Next string }
+type EntryText struct { ID int; Title, Skill, Status, SourceDoc, SourceKey, Next string; Kind SourceKind }
+var ErrBadGapSource error   // Place refuses a gap key that is not one gap ID
 ```
 
 **An entry is a view, not a node.** Unlike a part line it has no field a tool writes into:
@@ -38,8 +42,23 @@ the tool mints whole entries and removes whole entries, and reads the number, th
 pointer and the Next line. So the schema keeps each entry as the run of flat nodes from
 its heading to the end of its region, derives its values from that run's rendered bytes at
 the positions `trajectory-format.md` names — `## N.` at column 0, the `Source:` line
-beneath, the `#key` after `part` — and never re-cuts them. Everything in the run stays
-exactly as the base parsed it.
+beneath, the key after `part` or `gap` — and never re-cuts them. Everything in the run
+stays exactly as the base parsed it.
+
+**A source is a carve part or a gap, told apart by the word and by shape.** After the
+document link comes either ``part `#<key>` `` or ``gap `<gap ID>` ``; the reader says which it
+read in `Kind`, and `SourceKey` carries the key for both, the part key without its `#`. A gap
+source names exactly one ID — `O136`, `R42`, `T7` — because an entry discharges one thing: a
+range, a list, or a `#` there does not read, and the entry's `Kind` is `SourceNone`. Such a
+`Source:` line is listed by `Unread` with its line, since a pointer the reader could not follow
+is the silent case. An entry with no `Source:` line at all is `SourceNone` and not listed.
+
+**The writer emits one form for each.** `EntryText.Text()` writes ``part `#<key>` `` or
+``gap `<ID>` `` by `Kind`; `Place` refuses a gap key that is not one gap ID, since a source that
+would not read back is not a source.
+
+*A door kept open, not built:* an entry may one day discharge several parts — `Source:` names
+one and a done entry's body may name more. Nothing here should make that a breaking change.
 
 **A region ends at the next heading of level 2 or higher, or at a `---` line outside a
 fence.** A fence in a body is that entry's: the base emits no heading inside one, so a
@@ -59,7 +78,8 @@ mutation window.
 
 **What it could not read is reported.** A level-2 heading whose text does not open `N.`
 is not an entry; it is listed by `Unread`, since a shape-based reader is blind to what is
-outside its shape and must say so.
+outside its shape and must say so. So is a `Source:` line that names neither a part nor one
+gap ID.
 
 **After each write the document is re-read from its bytes** and the view rebuilt with it.
 A placed entry is one synthetic text until it is parsed, and nothing holds a node of this

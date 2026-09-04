@@ -505,6 +505,12 @@
 - **R263:** `Remove(id)` drops the entry's run inside one mutation window, splitting a shared tail
   text at the region's end.
 - **R264:** `Unread` lists level-2 headings that are not entries; `MaxID` is the largest entry id.
+- **R287:** A `Source:` line names a part or a gap, told apart by the word and by shape; `Entry.Kind`
+  says which was read and `SourceKey` carries the key for either, the part key without its `#`.
+- **R288:** A gap source names exactly one gap ID; a range, a list or a `#` there reads as
+  `SourceNone`, and a `Source:` line that read as neither form is listed by `Unread` with its line.
+- **R289:** `EntryText.Text()` writes the part or gap form by `Kind`; `Place` refuses a gap key that is
+  not one gap ID with `ErrBadGapSource`.
 - **R265:** After each write the document is re-read from its bytes and the entries re-derived, since
   a placed entry is one synthetic text until it is parsed.
 
