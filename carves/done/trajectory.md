@@ -1,7 +1,8 @@
 # Carve: the trajectory reader
 
-> **DRAFT (2026-09-03).** A brainstorm, per Bill's method: the split below is a proposal,
-> the forks are open, and only `## Decisions` is settled. Iterate here, then design.
+> **CLOSED 2026-09-03.** Items 1–6 and 9 landed; Items 7 and 8 moved to
+> `carves/sdomification.md` as its Items 1 and 2, where the sdom-ification of the tool
+> continues. Moved to `carves/done/`.
 
 The mini-spec tool reads and **writes** four kinds of file — `PENDING.md`, `CURRENT.md`,
 `DONE.md`, and `carves/*.md` — and today does it with its own older DOM plus fourteen
@@ -22,9 +23,9 @@ what is still open.
 - [x] ~~**Item 3 — the carve status block.**~~ **LANDED (`7be2e38`, 2026-09-03 — `#19`.)**
 - [x] ~~**Item 4 — the pending file.**~~ **LANDED (`24cfb6f`, 2026-09-03 — `#20`.)**
 - [x] ~~**Item 5 — the done file.**~~ **LANDED (`8b9ce22`, 2026-09-03 — `#21`.)**
-- [ ] **Item 6 — the current file.** **OPEN (#22.)**
-- [ ] **Item 7 — say what could not be read.** **OPEN (not queued.)**
-- [ ] **Item 8 — cut the tool over.** **OPEN (not queued.)**
+- [x] ~~**Item 6 — the current file.**~~ **LANDED (`b2f028b`, 2026-09-03 — `#22`.)**
+- [x] ~~**Item 7 — say what could not be read.**~~ **MOVED (Bill, 2026-09-03 — `carves/sdomification.md` Item 1.)**
+- [x] ~~**Item 8 — cut the tool over.**~~ **MOVED (Bill, 2026-09-03 — `carves/sdomification.md` Item 2.)**
 
 ## Decisions
 
@@ -223,12 +224,16 @@ file with two `## Active` headings is refused rather than guessed.
 
 ## Item 7
 
+*Moved 2026-09-03 to `carves/sdomification.md` Item 1; the text below is the record as it stood.*
+
 The report: what was found and what could not be read, printed even when nothing else
 is. Per file, the count of shape-like lines not recognized and of references not reached.
 This is a reader obligation across Items 3–6 rather than a feature; it is a part so that
 it is scheduled rather than assumed.
 
 ## Item 8
+
+*Moved 2026-09-03 to `carves/sdomification.md` Item 2, with its decision; the text below is the record as it stood.*
 
 Cutting the tool over: `parser/trajectory.go`, `parser/carve.go` and `partline` in
 `~/work/mini-spec/tool` re-pointed at the new readers, and the tool's own older `sdom`

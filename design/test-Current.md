@@ -8,8 +8,9 @@
 **Refs:** crc-Current.md, seq-current.md#1
 **Code:** minispecsdom/current_test.go
 **Alarm:** 1
-**Fire alarm:** end the region at any heading. Red: `Active` stops before the `###` sub-heading.
+**Fire alarm:** end the region at any heading (drop the level test and the variable). Red: `Active` stops before the `###` sub-heading.
 **Inject:** minispecsdom/current.go:Current.regionEnd
+**Pulled:** 2026-09-03 — rang: `Active` cut short of the `###` sub-heading. The delegate's injection left the heading variable unused and did not build; re-pulled by hand with it dropped.
 
 ## Test: a write reaches the region and nothing else
 **Purpose:** R276, R277, R278 — the 2026-08-18 incident, as a property
@@ -20,6 +21,7 @@
 **Alarm:** 2
 **Fire alarm:** bound the region at the end of the file instead of the next `##`. Red: `Reset` deletes the standing sections — the incident, reproduced.
 **Inject:** minispecsdom/current.go:Current.regionEnd
+**Pulled:** 2026-09-03 — rang, and it is the incident: `after Reset` shows both standing sections gone; `Active` also read to the end of the file.
 
 ## Test: exactly one Active
 **Purpose:** R273
@@ -29,4 +31,5 @@
 **Code:** minispecsdom/current_test.go
 **Alarm:** 3
 **Fire alarm:** take the first `Active` heading and ignore a second. Red: the two-heading document parses.
-**Inject:** minispecsdom/current.go:ParseCurrent
+**Inject:** minispecsdom/current.go:Current.parse
+**Pulled:** 2026-09-03 — rang: the two-heading document parsed, only that test. Site is `parse`, the helper.
