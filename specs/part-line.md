@@ -54,7 +54,8 @@ level up.
 not the em dash, a checkbox interior that is neither blank nor `x` (which the base leaves
 as text after the `- `), a verb not in capitals, an `OPEN` attribution that is not exactly
 `#N.` or `not queued.` — each is reported with the shape it must take, and the line still
-parses and its checkbox still counts.
+parses and its checkbox still counts. A read path lists them; a write path refuses on them,
+as the carve schema says.
 
 ## The marker span
 

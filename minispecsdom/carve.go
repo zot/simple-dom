@@ -35,6 +35,42 @@ type Part struct {
 // ErrNoPart reports a write to a key no part carries.
 var ErrNoPart = errors.New("minispecsdom: no part with that key")
 
+// CRC: crc-Carve.md | R282
+//
+// ErrLanded reports a Land over a part whose checkbox is already checked. Refused rather
+// than idempotent: a second landing with a different attribution would otherwise keep the
+// first record silently.
+var ErrLanded = errors.New("minispecsdom: the part is already landed")
+
+// CRC: crc-PartLine.md | R281
+//
+// ErrReopen reports an OPEN written over a part whose checkbox is checked. A landed part
+// is never returned to OPEN by a write, whatever the caller remembers.
+var ErrReopen = errors.New("minispecsdom: the part is landed; a write may not reopen it")
+
+// CRC: crc-PartLine.md | R280
+//
+// DeviationError refuses a write over a line carrying deviations, naming each rule and
+// the shape it must take, so the caller can print the migration rather than write a
+// canonical marker onto a non-conforming line.
+type DeviationError struct {
+	Key        string
+	Deviations []Deviation
+}
+
+func (e *DeviationError) Error() string {
+	var b strings.Builder
+	b.WriteString("minispecsdom: ")
+	if e.Key != "" {
+		b.WriteString(e.Key + ": ")
+	}
+	b.WriteString("the line carries deviations, so it takes no write:")
+	for _, d := range e.Deviations {
+		b.WriteString("\n  " + d.Rule + ": " + d.Target)
+	}
+	return b.String()
+}
+
 // CRC: crc-Carve.md | Seq: seq-carve.md#1 | R248, R249, R250, R251, R252
 //
 // ParseCarve parses with the base, finds the status region, and turns the list items
@@ -152,14 +188,21 @@ func (c *Carve) SetMarker(key, verb, attribution string) error {
 	return p.SetMarker(verb, attribution)
 }
 
-// CRC: crc-Carve.md | Seq: seq-carve.md#2 | R253, R255
+// CRC: crc-Carve.md | Seq: seq-carve.md#2 | R253, R255, R279, R282
 //
 // Land is the completion write, three markings in one act because the format requires
 // them to agree: the box, the strike, and the LANDED record through the marker rule.
+// Every refusal is decided before the first marking, so a refused line is byte-identical.
 func (c *Carve) Land(key, attribution string) error {
 	p := c.Part(key)
 	if p == nil {
 		return ErrNoPart
+	}
+	if err := p.refuse(); err != nil { // Seq: seq-carve.md#2.1.1
+		return err
+	}
+	if p.Checkbox().Checked() { // Seq: seq-carve.md#2.1.2
+		return ErrLanded
 	}
 	p.Checkbox().SetChecked(true)
 	p.Strike(true)

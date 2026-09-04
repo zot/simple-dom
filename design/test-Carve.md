@@ -44,3 +44,36 @@
 **Fire alarm:** skip the strike in `Land`. Red: the render keeps the head unstruck while the box and marker changed — the three no longer agree.
 **Inject:** minispecsdom/carve.go:Carve.Land
 **Pulled:** 2026-09-03 — rang: the line landed with `[x]` and the record but the head unstruck — the three no longer agree.
+
+## Test: writes refuse over deviations
+**Purpose:** R279, R280
+**Input:** a status line `- [ ] **Item 1 — a.** **OPEN (#3)**` (the bare-`#N` scheme, a deviation) → `SetMarker("Item 1", "LANDED", "x")` and `Land("Item 1", "x")`
+**Expected:** each returns a `DeviationError` with key `Item 1` and one deviation, rule `OPEN attribution`; its message names the rule and its target; the render equals the source byte for byte
+**Refs:** crc-Carve.md, crc-PartLine.md, seq-carve.md#2.1.1
+**Code:** minispecsdom/carve_test.go
+**Alarm:** 5
+**Fire alarm:** make `refuse` return nil unconditionally. Red: both writes succeed and the line gains a canonical marker over the deviating one. A second injection, the past-the-list probe of 2026-09-04: move `SetChecked(true)` in `Land` above the refusals. Red: `Land changed a refused line` — the byte-identical assertion is what guards R279's ordering, and it also broke the older landing test with `already landed`.
+**Inject:** minispecsdom/partline.go:PartLine.refuse
+**Pulled:** 2026-09-04 — rang: `SetMarker over a deviating line: <nil>` and `Land over a deviating line: <nil>`; only that test. The changed-line assertion did not print because the test `continue`s after a wrong error type.
+
+## Test: OPEN never reopens a landed part
+**Purpose:** R279, R281
+**Input:** the fixture's `Item 1` (`[x]`, struck, `LANDED`) → `SetMarker("Item 1", "open", "not queued.")`; then `SetMarker("Item 1", "NOT VERIFIED", "Bill, 2026-09-04")`
+**Expected:** the first is `ErrReopen` and the render equals the source; the second succeeds — the guard is on `OPEN`, not on every write over a landed part
+**Refs:** crc-PartLine.md, seq-carve.md#2.3.1
+**Code:** minispecsdom/carve_test.go
+**Alarm:** 6
+**Fire alarm:** drop the `ErrReopen` guard from `SetMarker`. Red: `OPEN (not queued.)` is written beside the `LANDED` record on a checked, struck line.
+**Inject:** minispecsdom/partline.go:PartLine.SetMarker
+**Pulled:** 2026-09-04 — rang: `OPEN over a landed part: <nil>`, and the render showed `**LANDED (…)** **OPEN (not queued.)**` on the checked, struck line; only that test.
+
+## Test: Land refuses over a landed part
+**Purpose:** R279, R282
+**Input:** the fixture's `Item 1` → `Land("Item 1", "` + "`fff`" + `, 2026-09-04 — ` + "`#9`" + `.")`
+**Expected:** `ErrLanded`, and the render equals the source — no second `LANDED` beside the first
+**Refs:** crc-Carve.md, seq-carve.md#2.1.2
+**Code:** minispecsdom/carve_test.go
+**Alarm:** 7
+**Fire alarm:** drop the `Checked()` guard from `Land`. Red: the write succeeds and the line carries two `LANDED` records.
+**Inject:** minispecsdom/carve.go:Carve.Land
+**Pulled:** 2026-09-04 — rang: `Land over a landed part: <nil>`, and the render showed two `LANDED` records side by side; only that test.

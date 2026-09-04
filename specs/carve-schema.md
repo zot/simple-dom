@@ -19,6 +19,9 @@ func (c *Carve) Part(key string) *Part   // nil when no part keys so
 func (c *Carve) SetMarker(key, verb, attribution string) error
 func (c *Carve) Land(key, attribution string) error
 
+var ErrNoPart, ErrLanded, ErrReopen error
+type DeviationError struct { Key string; Deviations []Deviation }   // names each rule and target
+
 type Part struct {
     *PartLine
     Depth  int    // the bullet's leading whitespace; 0 is top level
@@ -61,3 +64,19 @@ format requires them to agree: the checkbox becomes `[x]`, the head is struck, a
 
 Both edit the node's own children — the flat array is untouched — and a write to a key
 no part carries is an error, never a silent no-op.
+
+**Both refuse before they mark, and a refused write leaves the line byte-identical.** A read
+path lists a deviation; a write path refuses on it. Three refusals:
+
+- **A line carrying deviations** takes no write. The error is a `DeviationError` naming the
+  key and every deviation's rule and target, so the caller can print the migration the line
+  needs rather than write a canonical marker onto a shape it does not conform to.
+- **`OPEN` over a checked part** is refused with `ErrReopen`, whatever else the line says. A
+  landed part is never returned to `OPEN` by a write; this is a second guard, not the caller's
+  remembering.
+- **`Land` over a checked part** is refused with `ErrLanded` rather than made idempotent: a
+  second landing carrying a different commit and date would otherwise keep the first record
+  silently, and a double landing is the caller's to see where it happens.
+
+Refusal is decided before any of `Land`'s three markings, so the box, the strike and the
+marker still agree after a refusal because none of them moved.

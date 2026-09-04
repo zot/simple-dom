@@ -353,14 +353,32 @@ func partLines(d *sdom.Doc, ctx *sdom.BracketContext, keep func(*schema.ListItem
 	return out, nil
 }
 
-// CRC: crc-PartLine.md | Seq: seq-carve.md#2.3 | R254
+// CRC: crc-PartLine.md | Seq: seq-carve.md#2.3.1 | R279, R280
+//
+// refuse is the deviation guard every write path runs first: a line carrying deviations
+// takes no write, and the error names each rule and its target.
+func (p *PartLine) refuse() error {
+	if len(p.devs) == 0 {
+		return nil
+	}
+	return &DeviationError{Key: p.Key(), Deviations: p.devs}
+}
+
+// CRC: crc-PartLine.md | Seq: seq-carve.md#2.3 | R254, R279, R280, R281
 //
 // SetMarker applies the tool's rule among this node's children: replace the first
 // TRANSIENT marker — verb OPEN — with the new one, remove any other transient, and
 // append a marker when the line carries none. It selects by the kind of what it
 // replaces, never by what it writes, so a record set over a line that also carries
-// NOT VERIFIED leaves that standing.
+// NOT VERIFIED leaves that standing. It refuses before it touches anything: over
+// deviations, and OPEN over a checked box.
 func (p *PartLine) SetMarker(verb, attribution string) error {
+	if err := p.refuse(); err != nil {
+		return err
+	}
+	if strings.EqualFold(verb, "OPEN") && p.checkbox != nil && p.checkbox.Checked() { // Seq: seq-carve.md#2.3.1
+		return ErrReopen
+	}
 	var first *MarkerSpan
 	var drop []*MarkerSpan
 	for _, m := range p.markers {

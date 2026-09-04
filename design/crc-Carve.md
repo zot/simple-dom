@@ -1,5 +1,5 @@
 # Carve
-**Requirements:** R248, R249, R250, R251, R252, R253, R254, R255, R256
+**Requirements:** R248, R249, R250, R251, R252, R253, R254, R255, R256, R279, R280, R282
 
 The carve file schema: embeds the markdown base, owns the document, and adds the
 status block. The first of the four trajectory file schemas.
@@ -17,7 +17,8 @@ status block. The first of the four trajectory file schemas.
 - `Part(key)`, `Parts`, `Stateless`, `HasStatus`, `Render`
 - `SetMarker(key, …)`: the tool's rule on the keyed line — replace the first transient,
   remove other transients, append when none
-- `Land(key, …)`: box, strike, and a `LANDED` record, in one act
+- `Land(key, …)`: box, strike, and a `LANDED` record, in one act — refused with
+  `ErrLanded` when the box is already checked
 
 ## Constraints
 - **Bounded by the region.** Other checkbox lists in a carve track other things
@@ -25,6 +26,8 @@ status block. The first of the four trajectory file schemas.
   given a state
 - **Depth from whitespace, parent by derivation** — the flat array has no children
 - **Writes touch the node's own children**; a write to an unknown key is an error
+- **Refusal is decided before any marking**, so a refused write is byte-identical; a line
+  carrying deviations refuses with a `DeviationError` naming each rule and target
 
 ## Collaborators
 - schema.MarkdownParser, schema.Heading, schema.ListItem: the base

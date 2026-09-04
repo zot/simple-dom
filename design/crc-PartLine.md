@@ -1,5 +1,5 @@
 # PartLine
-**Requirements:** R236, R237, R238, R240, R241, R242, R245, R246, R247
+**Requirements:** R236, R237, R238, R240, R241, R242, R245, R246, R247, R254, R280, R281
 
 A carve status line as one node over a markdown-parsed document: bound checkbox and
 key, a list of marker spans, and the strike behind an accessor. The first
@@ -20,6 +20,9 @@ key, a list of marker spans, and the strike behind an accessor. The first
 - `Splice(d)`: replaces the run with itself inside a mutation window
 - `IsStruck()`: whether the head sits inside a `~~` group
 - `Strike(on)`: inserts or removes the `~~` pair around the head's bold run
+- `SetMarker(verb, attribution)`: the tool's rule among its own children, after two
+  refusals — a `DeviationError` when the line carries deviations, `ErrReopen` when the
+  verb is `OPEN` and the checkbox is checked
 - `PartLines(d, ctx)`: every list item, parsed and spliced
 
 ## Constraints

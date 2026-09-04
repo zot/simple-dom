@@ -1,5 +1,5 @@
 # Sequence: reading a carve and landing a part
-**Requirements:** R249, R250, R251, R252, R254, R255
+**Requirements:** R249, R250, R251, R252, R254, R255, R279, R280, R281, R282
 
 ## 1. Reading
 
@@ -17,6 +17,10 @@
 
 2. `Land(key, attribution)`
    2.1. Find the part by key — unknown is an error
+        2.1.1. Refuse with a `DeviationError` when the line carries deviations
+        2.1.2. Refuse with `ErrLanded` when the checkbox is already checked
    2.2. `SetChecked(true)` on its checkbox; `Strike(true)` on its head
    2.3. `SetMarker("LANDED", attribution)`: replace the first `OPEN` marker, remove any
         other, append when none
+        2.3.1. `SetMarker` itself refuses first: a `DeviationError` over deviations, and
+               `ErrReopen` when the verb is `OPEN` over a checked box

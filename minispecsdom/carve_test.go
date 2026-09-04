@@ -1,6 +1,7 @@
 package minispecsdom
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -103,5 +104,62 @@ func TestLandIsThreeMarkingsInOneAct(t *testing.T) {
 	r, _ := c.Render()
 	if !strings.Contains(r, "  - [x] ~~**2.2 — the config move.**~~ **LANDED (`abc`, 2026-09-03 — `#8`.)**\n") {
 		t.Errorf("after Land:\n%s", r)
+	}
+}
+
+// CRC: crc-Carve.md | Seq: seq-carve.md#2.1.1 | R279, R280
+func TestWritesRefuseOverDeviations(t *testing.T) {
+	src := "## Status\n\n- [ ] **Item 1 — a.** **OPEN (#3)**\n"
+	c := ParseCarve(src)
+	for _, tc := range []struct {
+		name  string
+		write func() error
+	}{
+		{"SetMarker", func() error { return c.SetMarker("Item 1", "LANDED", "x") }},
+		{"Land", func() error { return c.Land("Item 1", "x") }},
+	} {
+		err := tc.write()
+		var dev *DeviationError
+		if !errors.As(err, &dev) {
+			t.Errorf("%s over a deviating line: %v", tc.name, err)
+			continue
+		}
+		if dev.Key != "Item 1" || len(dev.Deviations) != 1 || dev.Deviations[0].Rule != "OPEN attribution" {
+			t.Errorf("%s: %+v", tc.name, dev)
+		}
+		if !strings.Contains(err.Error(), "OPEN attribution: "+markerTarget) {
+			t.Errorf("%s: the error does not name the rule and target:\n%s", tc.name, err)
+		}
+		if r, _ := c.Render(); r != src {
+			t.Errorf("%s changed a refused line:\n%s", tc.name, r)
+		}
+	}
+}
+
+// CRC: crc-Carve.md | Seq: seq-carve.md#2.3.1 | R279, R281
+func TestOpenNeverReopensALandedPart(t *testing.T) {
+	src := fixture(t)
+	c := ParseCarve(src)
+	if err := c.SetMarker("Item 1", "open", "not queued."); !errors.Is(err, ErrReopen) {
+		t.Errorf("OPEN over a landed part: %v", err)
+	}
+	if r, _ := c.Render(); r != src {
+		t.Errorf("a refused reopen changed the line:\n%s", r)
+	}
+	// The guard is narrow: a record other than OPEN still goes on a landed part.
+	if err := c.SetMarker("Item 1", "NOT VERIFIED", "Bill, 2026-09-04"); err != nil {
+		t.Errorf("a record over a landed part: %v", err)
+	}
+}
+
+// CRC: crc-Carve.md | Seq: seq-carve.md#2.1.2 | R279, R282
+func TestLandRefusesOverALandedPart(t *testing.T) {
+	src := fixture(t)
+	c := ParseCarve(src)
+	if err := c.Land("Item 1", "`fff`, 2026-09-04 — `#9`."); !errors.Is(err, ErrLanded) {
+		t.Errorf("Land over a landed part: %v", err)
+	}
+	if r, _ := c.Render(); r != src {
+		t.Errorf("a refused Land changed the line:\n%s", r)
 	}
 }

@@ -472,6 +472,13 @@
 - **R255:** `Land` checks the box, strikes the head, and sets `LANDED (attribution)` through the
   marker rule, in one act.
 - **R256:** Every part carries its line's deviations.
+- **R279:** `SetMarker` and `Land` decide refusal before any marking, so a refused write leaves the
+  line byte-identical.
+- **R280:** A write over a line carrying deviations is refused with a `DeviationError` naming the
+  key and every deviation's rule and target.
+- **R281:** `SetMarker` refuses `OPEN` over a part whose checkbox is checked, with `ErrReopen`.
+- **R282:** `Land` over a part whose checkbox is checked is refused with `ErrLanded`, not made
+  idempotent.
 
 ## Feature: pending schema
 **Source:** specs/pending-schema.md
