@@ -45,8 +45,12 @@ func TestTheFixturesEntriesReadBack(t *testing.T) {
 	if p.MaxID() != 12 {
 		t.Errorf("MaxID %d", p.MaxID())
 	}
-	if u := p.Unread(); len(u) != 1 || u[0] != "Notes" {
-		t.Errorf("unread %q", u)
+	if u := p.Unread(); len(u) != 1 || u[0] != (Unread{25, "Notes"}) {
+		t.Errorf("unread %+v", u)
+	}
+	// R283: every entry knows its line, 1-based.
+	if p.Entry(8).Line() != 8 || p.Entry(12).Line() != 12 || p.Entry(3).Line() != 19 {
+		t.Errorf("lines %d %d %d", p.Entry(8).Line(), p.Entry(12).Line(), p.Entry(3).Line())
 	}
 	// Entry 12's region holds its ### sub-item; entry 3's holds its fence.
 	if !strings.Contains(runText(p.Entry(12)), "### Parked context") {

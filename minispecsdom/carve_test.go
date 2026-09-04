@@ -109,7 +109,7 @@ func TestLandIsThreeMarkingsInOneAct(t *testing.T) {
 
 // CRC: crc-Carve.md | Seq: seq-carve.md#2.1.1 | R279, R280
 func TestWritesRefuseOverDeviations(t *testing.T) {
-	src := "## Status\n\n- [ ] **Item 1 — a.** **OPEN (#3)**\n"
+	src := "## Status\n\n- [ ] **Item 1 — a.** **OPEN (soon)**\n"
 	c := ParseCarve(src)
 	for _, tc := range []struct {
 		name  string
@@ -161,5 +161,16 @@ func TestLandRefusesOverALandedPart(t *testing.T) {
 	}
 	if r, _ := c.Render(); r != src {
 		t.Errorf("a refused Land changed the line:\n%s", r)
+	}
+}
+
+// CRC: crc-Carve.md | R283
+func TestEveryPartKnowsItsLine(t *testing.T) {
+	c := ParseCarve(fixture(t))
+	want := map[string]int{"Item 1": 7, "2.1": 9, "2.2": 10, "Item 4": 11}
+	for _, p := range c.Parts() {
+		if p.Line() != want[p.Key()] {
+			t.Errorf("%s: line %d, want %d", p.Key(), p.Line(), want[p.Key()])
+		}
 	}
 }

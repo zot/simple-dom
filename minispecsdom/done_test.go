@@ -16,7 +16,7 @@ func doneFixture(t *testing.T) string {
 	return string(b)
 }
 
-// CRC: crc-Done.md | Seq: seq-done.md#1 | R266, R267, R268, R269, R270, R272
+// CRC: crc-Done.md | Seq: seq-done.md#1 | R266, R284, R268, R269, R270, R272
 func TestTheDoneFixturesEntriesReadBack(t *testing.T) {
 	src := doneFixture(t)
 	d := ParseDone(src)
@@ -40,8 +40,12 @@ func TestTheDoneFixturesEntriesReadBack(t *testing.T) {
 	if es[1].PartDoc != "carves/x.md" || es[1].PartKey != "3" || es[1].Commit != "abc1234" {
 		t.Errorf("entry 1 (pointer from the body): %+v", *es[1])
 	}
-	if d.MaxID() != 8 || d.Unread() != 1 {
-		t.Errorf("MaxID %d Unread %d", d.MaxID(), d.Unread())
+	if u := d.Unread(); d.MaxID() != 8 || len(u) != 1 || u[0] != (Unread{21, "- not an entry, but entry-like"}) {
+		t.Errorf("MaxID %d Unread %+v", d.MaxID(), u)
+	}
+	// R283: every entry knows its line, 1-based.
+	if es[0].Line() != 7 || es[1].Line() != 11 || es[2].Line() != 14 {
+		t.Errorf("lines %d %d %d", es[0].Line(), es[1].Line(), es[2].Line())
 	}
 	// An indented bullet inside a body is the entry's, not a boundary.
 	var b strings.Builder

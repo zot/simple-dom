@@ -14,7 +14,7 @@ func (p *Pending) Render() (string, error)
 func (p *Pending) Entries() []*Entry      // in file order — the top entry is active
 func (p *Pending) Entry(id int) *Entry
 func (p *Pending) MaxID() int              // 0 when empty
-func (p *Pending) Unread() []string        // level-2 headings that are not entries
+func (p *Pending) Unread() []Unread        // level-2 headings that are not entries, each with its line
 
 func (p *Pending) Place(e EntryText, pos int) error   // 1-based among entries; len+1 appends
 func (p *Pending) After(id int) (int, error)          // the position that follows a live entry
@@ -26,6 +26,9 @@ type Entry struct {
     SourceDoc, PartKey string     // derived from the Source: line
     Next              string      // derived from the Next: line, "" when absent
 }
+func (e *Entry) Line() int         // 1-based, the heading's line at parse time
+
+type Unread struct { Line int; Text string }   // shared with the done schema
 
 type EntryText struct { ID int; Title, Skill, Status, SourceDoc, PartKey, Next string }
 ```

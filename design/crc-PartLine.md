@@ -1,5 +1,5 @@
 # PartLine
-**Requirements:** R236, R237, R238, R240, R241, R242, R245, R246, R247, R254, R280, R281
+**Requirements:** R236, R237, R238, R240, R241, R242, R245, R246, R247, R254, R280, R281, R285, R286
 
 A carve status line as one node over a markdown-parsed document: bound checkbox and
 key, a list of marker spans, and the strike behind an accessor. The first
@@ -31,6 +31,9 @@ key, a list of marker spans, and the strike behind an accessor. The first
   carve schema's call
 - **Content decides the runs**, the way the tool reads them today: the first bold run
   is the head, a later `VERB (…)` run is a marker
+- **Flexible on input, rigid on output.** An `OPEN` attribution reads in any case, spacing
+  and with an optional stop; a superseded scheme — the comma form — is a deviation, since it
+  is not a marker and would otherwise go unreported
 - **Reuse the base's nodes.** `ListItem`, `Checkbox`, every `**`, `~~` and code-span
   marker are the very objects the parse emitted; only interior texts are re-cut
 - **The strike is a structural edit of the node's own children.** The flat array never

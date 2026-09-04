@@ -52,10 +52,17 @@ level up.
 
 **Deviations are the contract, not an error path.** An unkeyed head, a separator that is
 not the em dash, a checkbox interior that is neither blank nor `x` (which the base leaves
-as text after the `- `), a verb not in capitals, an `OPEN` attribution that is not exactly
-`#N.` or `not queued.` — each is reported with the shape it must take, and the line still
-parses and its checkbox still counts. A read path lists them; a write path refuses on them,
-as the carve schema says.
+as text after the `- `), a verb not in capitals, an `OPEN` attribution that is neither
+`#N` nor `not queued`, a bold run in the superseded comma form (`**OPEN, not queued.**`) —
+each is reported with the shape it must take, and the line still parses and its checkbox
+still counts. A read path lists them; a write path refuses on them, as the carve schema says.
+
+**Flexible on input, rigid on output.** The reader accepts what it is handed in any case,
+with any inner spacing, with or without a full stop — `OPEN (not queued)`, `OPEN (Not
+queued.)`, `OPEN (#3)` all read clean, since the format's own table writes `OPEN (#N)` — and
+`Set` writes one canonical form. A superseded *scheme* is different from a loose spelling
+and stays a deviation: the bare-number key, and the comma form, which is not a marker at
+all and would otherwise go unreported — the silent case the reader exists to name.
 
 ## The marker span
 

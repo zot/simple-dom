@@ -441,7 +441,7 @@
   flat array is untouched, so no mutation window is involved; no consumer touches a `~~` node.
 - **R242:** Deviations are reported, each naming its rule and target shape — unkeyed head,
   non-em-dash separator, non-conforming checkbox interior, verb not in capitals, an `OPEN`
-  attribution not exactly `#N.` or `not queued.` — and the line still parses.
+  attribution off its shape (R285), the comma-form marker (R286) — and the line still parses.
 - **R243:** `MarkerSpan` tiles `**` through `**` reusing both; its verb is a bound `Text`; its
   attribution and queue ID are derived by rendering the nodes between the parentheses.
 - **R244:** `MarkerSpan.Set` rewrites the interior canonically as one text under the guarded write:
@@ -472,6 +472,14 @@
 - **R255:** `Land` checks the box, strikes the head, and sets `LANDED (attribution)` through the
   marker rule, in one act.
 - **R256:** Every part carries its line's deviations.
+- **R283:** `Part`, `Entry` and `DoneEntry` report `Line()`: the 1-based line of the part line,
+  heading or bullet as the document stood at parse time.
+- **R284:** `Pending.Unread` and `Done.Unread` return `[]Unread`, each with the line and text of
+  what was not read.
+- **R285:** An `OPEN` attribution reads `#N` or `not queued` in any case, with any inner spacing and
+  an optional full stop; anything else is the `OPEN attribution` deviation.
+- **R286:** A bold run after the head whose interior opens with a verb and a comma — the superseded
+  `OPEN, not queued` form — is not a marker and is reported as the `marker scheme` deviation.
 - **R279:** `SetMarker` and `Land` decide refusal before any marking, so a refused write leaves the
   line byte-identical.
 - **R280:** A write over a line carrying deviations is refused with a `DeviationError` naming the
@@ -505,7 +513,7 @@
 
 - **R266:** `Done` embeds the markdown base and owns the done file's DOM; `ParseDone` makes one and
   `Render` re-emits it.
-- **R267:** An entry begins at a column-0 list item whose text opens with bold; a column-0 list item
+- **~~R267:~~** (Retired T5 — see R284) An entry begins at a column-0 list item whose text opens with bold; a column-0 list item
   that does not is entry-like and counted by `Unread`.
 - **R268:** A region runs to the next entry-like bullet at column 0 or a heading of level 2 or
   higher; a fenced quotation can neither begin nor end one.

@@ -27,6 +27,7 @@ type Part struct {
     Depth  int    // the bullet's leading whitespace; 0 is top level
     Parent *Part  // the nearest preceding part with a smaller depth, or nil
 }
+func (p *Part) Line() int   // 1-based, at parse time
 ```
 
 ## What it reads
@@ -49,6 +50,10 @@ flat array has no children; a part's `Parent` is derived as the nearest precedin
 with a smaller depth, the rule the indent frames already use.
 
 Every part carries its line's deviations, so the shape a line must take travels with it.
+
+**Every part reports its line**, 1-based, as the document stood when it was parsed: the
+tool's diagnostics print `file:line`, and a count without a line is a report nobody can act
+on. A line is read at parse time, not tracked through writes.
 
 ## What it writes
 

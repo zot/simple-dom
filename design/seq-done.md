@@ -1,5 +1,5 @@
 # Sequence: the ledger
-**Requirements:** R267, R268, R269, R271
+**Requirements:** R284, R268, R269, R271
 
 ## 1. Reading
 

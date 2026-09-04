@@ -1,5 +1,5 @@
 # Done
-**Requirements:** R266, R267, R268, R269, R270, R271, R272
+**Requirements:** R266, R267, R268, R269, R270, R271, R272, R283, R284
 
 The done file schema: embeds the markdown base, owns the ledger, and adds the
 completion entry as a view over a list-item region.
@@ -7,7 +7,8 @@ completion entry as a view over a list-item region.
 ## Knows
 - its `Doc`, the markdown parser and its contexts
 - its entries, most recent first, each with its run and derived values
-- how many column-0 bullets were entry-like but not entries
+- the column-0 bullets that were entry-like but not entries, each with its line and text
+- each entry's line at parse time
 
 ## Does
 - `ParseDone`: parses with the base, walks column-0 `ListItem`s, and for each whose

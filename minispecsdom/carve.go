@@ -30,7 +30,11 @@ type Part struct {
 	*PartLine
 	Depth  int
 	Parent *Part
+	line   int // 1-based, at parse time
 }
+
+// CRC: crc-Carve.md | R283
+func (p *Part) Line() int { return p.line }
 
 // ErrNoPart reports a write to a key no part carries.
 var ErrNoPart = errors.New("minispecsdom: no part with that key")
@@ -94,7 +98,7 @@ func ParseCarve(src string) *Carve {
 			c.stateless = append(c.stateless, l)
 			continue
 		}
-		p := &Part{PartLine: l, Depth: c.depth(l)}
+		p := &Part{PartLine: l, Depth: c.depth(l), line: c.doc.Line(l.item.Location().Offset())}
 		for len(stack) > 0 && stack[len(stack)-1].Depth >= p.Depth {
 			stack = stack[:len(stack)-1]
 		}

@@ -27,7 +27,7 @@ that.
 
 - [ ] **Item 1 — say what could not be read.** **OPEN (not queued.)**
 - [ ] **Item 2 — cut the tool over.** **OPEN (not queued.)**
-- [ ] **Item 3 — write paths refuse.** **OPEN (#23.)**
+- [x] ~~**Item 3 — write paths refuse.**~~ **LANDED (`44a8955`, 2026-09-04 — `#23`.)**
 - [ ] **Item 4 — lines, and flexible input.** **OPEN (#24.)**
 - [ ] **Item 5 — gap sources.** **OPEN (#25.)**
 
@@ -91,13 +91,15 @@ same principle applied at a different guard (request items 2, 5, 6):
   two-contradictory-markers failure the marker rule exists to prevent. The request allowed
   refuse-or-idempotent; see the decision.
 
-**DECIDED (Daneel, 2026-09-04, pending Bill's confirmation): `Land` refuses.** Idempotent
+**DECIDED (Bill, 2026-09-04, on Daneel's proposal): `Land` refuses.** Idempotent
 would keep the first record silently when a second landing carried a different commit and
 date — a lie in whichever direction the caller meant. Refusal makes a double `finish` visible
 where it happens, which is the composite verb's problem to handle, not the reader's to hide.
 
 A refusal is decided before any of the three markings, so a refused `Land` leaves the line
 byte-identical: the box, the strike and the marker agree because none of them moved.
+
+Landed `44a8955`: the decisions are R279–R282 and `specs/carve-schema.md`'s "What it writes".
 
 ## Item 4
 

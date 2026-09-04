@@ -12,6 +12,7 @@
 **Inject:** minispecsdom/carve.go:ParseCarve
 **Pulled:** 2026-09-03 — rang: `a bullet outside the region became a part: "Item 1,Item 2,Item 9"`, only that test. The delegate's first attempt left `from`/`to` unused and did not build; re-pulled by hand with them consumed.
 
+
 ## Test: no status block, and a fenced one
 **Purpose:** R249, R250
 **Input:** a document with no `## Status`; a document whose only `## Status` is inside a fence
@@ -77,3 +78,14 @@
 **Fire alarm:** drop the `Checked()` guard from `Land`. Red: the write succeeds and the line carries two `LANDED` records.
 **Inject:** minispecsdom/carve.go:Carve.Land
 **Pulled:** 2026-09-04 — rang: `Land over a landed part: <nil>`, and the render showed two `LANDED` records side by side; only that test.
+
+## Test: every part knows its line
+**Purpose:** R283
+**Input:** the fixture
+**Expected:** `Item 1` line 7, `2.1` line 9, `2.2` line 10, `Item 4` line 11 — 1-based, as parsed
+**Refs:** crc-Carve.md
+**Code:** minispecsdom/carve_test.go
+**Alarm:** 8
+**Fire alarm:** build each `Part` without its line (`line` left zero). Red: every part reports 0.
+**Inject:** minispecsdom/carve.go:ParseCarve
+**Pulled:** 2026-09-04 — rang: `Item 1: line 0, want 7` and the other three parts; only that test.

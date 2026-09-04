@@ -377,3 +377,5 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
   2, 2026-09-03): re-parsing the written interior through the markdown base would close it at
   the cost of a second parser inside a write; decide once a consumer compares written nodes
   structurally.
+
+- T5: R267 retired by R284 (2026-09-04 sdomification Item 4: Unread carries lines)

@@ -1,5 +1,5 @@
 # MarkerSpan
-**Requirements:** R239, R243, R244, R246
+**Requirements:** R239, R243, R244, R246, R285
 
 `**VERB (attribution)**` as a stencil over the bold run the base emitted: the verb
 bound, the attribution derived, and one canonical write.

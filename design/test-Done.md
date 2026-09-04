@@ -22,3 +22,14 @@
 **Fire alarm:** insert at the end instead of before the first entry. Red: the new entry is last.
 **Inject:** minispecsdom/done.go:Done.Prepend
 **Pulled:** 2026-09-03 — rang: the new entry rendered last, after the entry-like bullet, only that test.
+
+## Test: entries and entry-like bullets carry their line
+**Purpose:** R283, R284
+**Input:** the fixture (folded into "the fixture's entries read back")
+**Expected:** entries at lines 7, 11, 14; `Unread` is one `{21, "- not an entry, but entry-like"}`
+**Refs:** crc-Done.md, seq-done.md#1
+**Code:** minispecsdom/done_test.go
+**Alarm:** 4
+**Fire alarm:** record every line as 0 in `scan`. Red: the line assertions and the unread comparison both fail.
+**Inject:** minispecsdom/done.go:Done.scan
+**Pulled:** 2026-09-04 — rang: `Unread [{Line:0 Text:- not an entry, but entry-like}]` and `lines 0 0 0`; only that test. Same non-building first attempt as the pending alarm. Re-pulled the same day after the simplification pass hoisted `off`: the unread line alone was injected and rang on the unread assertion.

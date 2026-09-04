@@ -189,3 +189,33 @@ func TestAMarkerWriteIsCanonicalAndGuarded(t *testing.T) {
 		t.Errorf("a refused write changed the document")
 	}
 }
+
+// CRC: crc-PartLine.md | R285, R286
+func TestFlexibleOnInputRigidOnOutput(t *testing.T) {
+	// Loose spellings of the two OPEN attributions read clean.
+	for _, a := range []string{"#3.", "#3", "not queued.", "not queued", "Not  queued.", "NOT QUEUED"} {
+		_, ps := lines(t, "- [ ] **Item 1 — a.** **OPEN ("+a+")**\n")
+		if d := ps[0].Deviations(); len(d) != 0 {
+			t.Errorf("OPEN (%s): %v", a, d)
+		}
+	}
+	// A superseded scheme stays a deviation, and so does anything off the shape.
+	for src, rule := range map[string]string{
+		"- [ ] **Item 1 — a.** **OPEN, not queued.**\n": "marker scheme",
+		"- [ ] **Item 1 — a.** **OPEN (soon)**\n":       "OPEN attribution",
+	} {
+		_, ps := lines(t, src)
+		d := ps[0].Deviations()
+		if len(d) != 1 || d[0].Rule != rule || d[0].Target == "" {
+			t.Errorf("%q: %v", src, d)
+		}
+	}
+	// The write side is still one form: Set writes the canonical stop-less attribution as given.
+	_, ps := lines(t, "- [ ] **Item 1 — a.** **open (Not queued)**\n")
+	if err := ps[0].Markers()[0].Set("OPEN", "#4."); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ := ps[0].Render(); r != "- [ ] **Item 1 — a.** **OPEN (#4.)**" {
+		t.Errorf("after Set: %q", r)
+	}
+}

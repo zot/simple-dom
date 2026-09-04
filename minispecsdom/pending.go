@@ -38,7 +38,16 @@ type Pending struct {
 	ctx    *sdom.BracketContext
 
 	entries []*Entry
-	unread  []string
+	unread  []Unread
+}
+
+// CRC: crc-Pending.md | R284
+//
+// Unread is one thing a reader did not read as an entry: its 1-based line and its
+// text, so the report is one somebody can act on. Shared with the done schema.
+type Unread struct {
+	Line int
+	Text string
 }
 
 // CRC: crc-Pending.md | R260
@@ -51,10 +60,14 @@ type Entry struct {
 	Next                 string
 
 	head *schema.Heading
+	line int         // 1-based, at parse time
 	run  []sdom.Node // head first, through the last node of the region
 	tail *sdom.Text  // the run's last text when the region ends inside it
 	cut  int         // where the region ends inside tail
 }
+
+// CRC: crc-Pending.md | R283
+func (e *Entry) Line() int { return e.line }
 
 // CRC: crc-Pending.md | R261
 // EntryText is what Place writes.
@@ -98,13 +111,14 @@ func (p *Pending) scan() {
 		if i+1 < len(nodes) {
 			title = headingText(nodes[i+1])
 		}
+		line := p.doc.Line(h.Location().Offset())
 		if !entryOpenRe.MatchString(title) {
-			p.unread = append(p.unread, title)
+			p.unread = append(p.unread, Unread{line, title})
 			continue
 		}
 		end, cut := p.regionEnd(i)
 		// Cloned: a sub-slice of the document's own array shifts under a Remove.
-		e := &Entry{head: h, run: slices.Clone(nodes[i:end])}
+		e := &Entry{head: h, line: line, run: slices.Clone(nodes[i:end])}
 		if cut >= 0 {
 			e.tail, e.cut = nodes[end-1].(*sdom.Text), cut
 		}
@@ -182,7 +196,7 @@ func (p *Pending) Render() (string, error) { return p.doc.Render() }
 func (p *Pending) Entries() []*Entry { return p.entries }
 
 // CRC: crc-Pending.md | R264
-func (p *Pending) Unread() []string { return p.unread }
+func (p *Pending) Unread() []Unread { return p.unread }
 
 // CRC: crc-Pending.md | R260
 func (p *Pending) Entry(id int) *Entry {

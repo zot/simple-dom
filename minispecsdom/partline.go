@@ -38,8 +38,20 @@ var queueIDRe = regexp.MustCompile(`#(\d+)`)
 // so an off-form one is reported rather than passed over.
 var checkboxTextRe = regexp.MustCompile(`^\[.\]`)
 
-// queuedRe is the queued form of an `OPEN` attribution; `not queued.` is the other.
-var queuedRe = regexp.MustCompile(`^#\d+\.$`)
+// CRC: crc-MarkerSpan.md | R285
+//
+// queuedRe and notQueuedRe are the two `OPEN` attributions, read flexibly — any case,
+// any inner spacing, an optional full stop — while Set writes one canonical form.
+var (
+	queuedRe    = regexp.MustCompile(`^#\d+\.?$`)
+	notQueuedRe = regexp.MustCompile(`(?i)^not\s+queued\.?$`)
+)
+
+// CRC: crc-PartLine.md | R286
+//
+// commaSchemeRe recognizes the superseded comma form of a marker — `OPEN, not queued.` —
+// which is not a marker at all and would otherwise go unreported.
+var commaSchemeRe = regexp.MustCompile(`(?is)^[a-z][a-z -]*,`)
 
 // ErrMarkerRefused reports a MarkerSpan.Set whose render would not read back as the
 // verb and attribution that were set. The literal is unchanged.
@@ -55,7 +67,8 @@ const (
 	keyTarget      = "a part is keyed `Item N` and a subpart `N.M`, separated from its title by an em dash"
 	checkboxTarget = "`[ ]` for open, `[x]` for landed"
 	verbTarget     = "a marker verb is written in capitals"
-	markerTarget   = "an `OPEN` attribution is exactly `#N.` or `not queued.`"
+	markerTarget   = "an `OPEN` attribution is `#N` or `not queued`"
+	schemeTarget   = "a marker is `**VERB (attribution)**`; the comma form `**OPEN, not queued.**` is superseded"
 )
 
 // CRC: crc-PartLine.md | R236, R240, R246
@@ -177,6 +190,9 @@ func (p *PartLine) Parse(item *schema.ListItem, ctx *sdom.BracketContext) bool {
 			p.devs = append(p.devs, m.deviations()...)
 			kids = append(kids, m)
 		} else {
+			if commaSchemeRe.MatchString(firstText(interior)) {
+				p.devs = append(p.devs, Deviation{"marker scheme", schemeTarget})
+			}
 			kids = append(kids, o)
 			kids = append(kids, interior...)
 			kids = append(kids, cl)
@@ -206,6 +222,19 @@ func boldRun(n sdom.Node, ctx *sdom.BracketContext) (*sdom.Opener, *sdom.Closer)
 		return nil, nil
 	}
 	return o, cl
+}
+
+// firstText renders the first node of a run when it is a Text, else "".
+func firstText(nodes []sdom.Node) string {
+	if len(nodes) == 0 {
+		return ""
+	}
+	t, ok := nodes[0].(*sdom.Text)
+	if !ok {
+		return ""
+	}
+	s, _ := t.Render()
+	return s
 }
 
 // cutHead re-cuts the head's first text into key, separator glue and title, or leaves
@@ -470,8 +499,8 @@ func newMarkerSpan(o *sdom.Opener, interior []sdom.Node, cl *sdom.Closer) *Marke
 	if !ok {
 		return nil
 	}
-	firstText, _ := first.Render()
-	m := markerRe.FindStringSubmatch(firstText)
+	head, _ := first.Render()
+	m := markerRe.FindStringSubmatch(head)
 	if m == nil {
 		return nil
 	}
@@ -479,11 +508,11 @@ func newMarkerSpan(o *sdom.Opener, interior []sdom.Node, cl *sdom.Closer) *Marke
 
 	ms := &MarkerSpan{verb: cutText(first, 0, len(verb))}
 	kids := []sdom.Node{o, ms.verb}
-	at := strings.IndexByte(firstText[len(verb):], '(')
+	at := strings.IndexByte(head[len(verb):], '(')
 	if at < 0 {
 		// No attribution: the rest of the run is glue and the span is empty.
-		if len(verb) < len(firstText) {
-			kids = append(kids, cutText(first, len(verb), len(firstText)))
+		if len(verb) < len(head) {
+			kids = append(kids, cutText(first, len(verb), len(head)))
 		}
 		kids = append(kids, interior[1:]...)
 		ms.attrFrom, ms.attrTo = len(kids), len(kids)
@@ -499,8 +528,8 @@ func newMarkerSpan(o *sdom.Opener, interior []sdom.Node, cl *sdom.Closer) *Marke
 		// last text — the same text when the run is one, otherwise past the middle.
 		from := open + 1
 		if len(interior) > 1 {
-			if from < len(firstText) {
-				kids = append(kids, cutText(first, from, len(firstText)))
+			if from < len(head) {
+				kids = append(kids, cutText(first, from, len(head)))
 			}
 			kids = append(kids, interior[1:len(interior)-1]...)
 			from = 0
@@ -560,7 +589,7 @@ func (m *MarkerSpan) deviations() []Deviation {
 		out = append(out, Deviation{"verb case", verbTarget})
 	}
 	if m.isOpen() {
-		if a := m.Attribution(); a != "not queued." && !queuedRe.MatchString(a) {
+		if a := m.Attribution(); !queuedRe.MatchString(a) && !notQueuedRe.MatchString(a) {
 			out = append(out, Deviation{"OPEN attribution", markerTarget})
 		}
 	}

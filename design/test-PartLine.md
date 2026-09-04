@@ -44,3 +44,14 @@
 **Fire alarm:** drop the re-parse in `Set`. Red: the second write is accepted and the marker's verb reads `BAD)`.
 **Inject:** minispecsdom/partline.go:MarkerSpan.Set
 **Pulled:** 2026-09-03 — rang: `a verb with a parenthesis was accepted` and `a refused write changed the document`, only that test.
+
+## Test: flexible on input, rigid on output
+**Purpose:** R285, R286
+**Input:** `OPEN (…)` with `#3.`, `#3`, `not queued.`, `not queued`, `Not  queued.`, `NOT QUEUED`; then `**OPEN, not queued.**` and `**OPEN (soon)**`; then `Set("OPEN", "#4.")` over `**open (Not queued)**`
+**Expected:** the six loose spellings report no deviation; the comma form reports `marker scheme` and the off-shape attribution `OPEN attribution`, each with a target; the write renders `**OPEN (#4.)**`
+**Refs:** crc-PartLine.md, crc-MarkerSpan.md
+**Code:** minispecsdom/partline_test.go
+**Alarm:** 5
+**Fire alarm:** restore the exact match — `a != "not queued."` in place of `notQueuedRe`. Red: `not queued`, `Not  queued.` and `NOT QUEUED` report `OPEN attribution`. A second injection: drop the `commaSchemeRe` check from `Parse`. Red: the comma form reports nothing — the silent case.
+**Inject:** minispecsdom/partline.go:MarkerSpan.deviations, minispecsdom/partline.go:PartLine.Parse
+**Pulled:** 2026-09-04 — both rang: the exact match reported `OPEN attribution` on `not queued`, `Not  queued.` and `NOT QUEUED` (the two stop-ful forms stayed clean, as the old rule allowed); the dropped scheme check reported `[]` on the comma form; only that test each time. Both re-pulled the same day after the simplification pass reordered the operands and inlined `firstText`: rang again.

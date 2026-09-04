@@ -14,7 +14,7 @@ func (d *Done) Render() (string, error)
 
 func (d *Done) Entries() []*DoneEntry   // in file order: most recent first
 func (d *Done) MaxID() int              // the largest queue ID in any identifier slot
-func (d *Done) Unread() int             // `- ` lines at column 0 that did not read as entries
+func (d *Done) Unread() []Unread        // `- ` lines at column 0 that did not read as entries, each with its line
 
 func (d *Done) Prepend(header, body string) error
 
@@ -26,10 +26,11 @@ type DoneEntry struct {
     Commit  string     // the first backquoted run after the header's bold
     PartDoc, PartKey string  // the backquoted doc#key, from the header or the body
 }
+func (e *DoneEntry) Line() int   // 1-based, the bullet's line at parse time
 ```
 
 **An entry begins at `- **` at column 0.** A list item there whose text opens with bold is
-an entry; a list item at column 0 that does not is *entry-like* and counted by `Unread`,
+an entry; a list item at column 0 that does not is *entry-like* and listed by `Unread` with its line and text,
 because a shape-based reader reports clean over what it never recognized unless it says
 so. Both are read from the base's `ListItem` node and the text after it.
 

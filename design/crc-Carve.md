@@ -1,5 +1,5 @@
 # Carve
-**Requirements:** R248, R249, R250, R251, R252, R253, R254, R255, R256, R279, R280, R282
+**Requirements:** R248, R249, R250, R251, R252, R253, R254, R255, R256, R279, R280, R282, R283
 
 The carve file schema: embeds the markdown base, owns the document, and adds the
 status block. The first of the four trajectory file schemas.
@@ -7,7 +7,7 @@ status block. The first of the four trajectory file schemas.
 ## Knows
 - its `Doc`, the markdown parser and its contexts
 - the status heading, or that there is none
-- its parts, in order, each a `PartLine` with a depth and a parent
+- its parts, in order, each a `PartLine` with a depth, a parent and its line at parse time
 - its stateless status lines
 
 ## Does

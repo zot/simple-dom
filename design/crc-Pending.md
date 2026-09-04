@@ -1,5 +1,5 @@
 # Pending
-**Requirements:** R258, R259, R260, R261, R262, R263, R264, R265
+**Requirements:** R258, R259, R260, R261, R262, R263, R264, R265, R283, R284
 
 The pending file schema: embeds the markdown base, owns the document, and adds the
 queue entry — a view over a heading region, since nothing in an entry is a field a
@@ -8,7 +8,8 @@ tool writes into.
 ## Knows
 - its `Doc`, the markdown parser and its contexts
 - its entries, in file order, each with its run of nodes and derived values
-- the level-2 headings that are not entries
+- the level-2 headings that are not entries, each with its line
+- each entry's line at parse time
 
 ## Does
 - `ParsePending`: parses with the base, walks level-2 headings, and for each whose

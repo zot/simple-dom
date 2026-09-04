@@ -44,3 +44,14 @@
 **Fire alarm:** drop the `---` branch in `regionEnd`. Red: the region runs to the end of the file and `Remove` takes the rule and the prose with it. Every other test stayed green under this injection on 2026-09-03, since the fixture's only rule precedes its entries.
 **Inject:** minispecsdom/pending.go:Pending.regionEnd
 **Pulled:** 2026-09-03 — rang: `the region ran past the rule`, only this test; injection verified applied, restored by reverse edit.
+
+## Test: entries and unread headings carry their line
+**Purpose:** R283, R284
+**Input:** the fixture (folded into "the fixture's entries read back")
+**Expected:** entries 8, 12, 3 at lines 8, 12, 19; `Unread` is one `{25, "Notes"}`
+**Refs:** crc-Pending.md, seq-pending.md#1
+**Code:** minispecsdom/pending_test.go
+**Alarm:** 5
+**Fire alarm:** record every line as 0 in `scan` — entries and unread alike. Red: the line assertions and the unread comparison both fail.
+**Inject:** minispecsdom/pending.go:Pending.scan
+**Pulled:** 2026-09-04 — rang: `unread [{Line:0 Text:Notes}]` and `lines 0 0 0`; only that test. A first attempt did not build: the probe comment swallowed the closing parenthesis on the same line. Re-pulled the same day after the simplification pass hoisted the line into a local: rang again.

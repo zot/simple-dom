@@ -30,7 +30,7 @@ type Done struct {
 	ctx    *sdom.BracketContext
 
 	entries []*DoneEntry
-	unread  int
+	unread  []Unread
 }
 
 // CRC: crc-Done.md | R270, R272
@@ -43,8 +43,12 @@ type DoneEntry struct {
 	PartDoc, PartKey string
 
 	item *schema.ListItem
+	line int // 1-based, at parse time
 	run  []sdom.Node
 }
+
+// CRC: crc-Done.md | R283
+func (e *DoneEntry) Line() int { return e.line }
 
 // CRC: crc-Done.md | Seq: seq-done.md#1 | R266, R267, R268
 func ParseDone(src string) *Done {
@@ -61,24 +65,31 @@ func (d *Done) parse(src string) {
 	d.scan()
 }
 
-// scan re-derives the entries and the entry-like count.
+// scan re-derives the entries and the entry-like lines.
 func (d *Done) scan() {
-	d.entries, d.unread = nil, 0
+	d.entries, d.unread = nil, nil
 	nodes := d.doc.Nodes()
 	for i, n := range nodes {
 		it, ok := n.(*schema.ListItem)
 		if !ok || !d.atColumnZero(it) {
 			continue
 		}
+		off := it.Location().Offset()
 		if !d.opensBold(i) {
-			d.unread++
+			d.unread = append(d.unread, Unread{d.doc.Line(off), d.lineText(off)})
 			continue
 		}
 		// Cloned: a sub-slice of the document's own array shifts under a mutation.
-		e := &DoneEntry{item: it, run: slices.Clone(nodes[i:d.regionEnd(i)])}
+		e := &DoneEntry{item: it, line: d.doc.Line(off), run: slices.Clone(nodes[i:d.regionEnd(i)])}
 		e.derive()
 		d.entries = append(d.entries, e)
 	}
+}
+
+// lineText is the source line beginning at off, without its newline.
+func (d *Done) lineText(off int) string {
+	s, _, _ := strings.Cut(d.doc.Source()[off:], "\n")
+	return s
 }
 
 // atColumnZero reports whether the bullet begins its line.
@@ -168,8 +179,8 @@ func (d *Done) Render() (string, error) { return d.doc.Render() }
 // CRC: crc-Done.md | R267
 func (d *Done) Entries() []*DoneEntry { return d.entries }
 
-// CRC: crc-Done.md | R267
-func (d *Done) Unread() int { return d.unread }
+// CRC: crc-Done.md | R284
+func (d *Done) Unread() []Unread { return d.unread }
 
 // CRC: crc-Done.md | R272
 func (d *Done) MaxID() int {
