@@ -197,7 +197,7 @@ func TestASourceIsAPartOrAGap(t *testing.T) {
 
 // CRC: crc-Pending.md | R301
 func TestAGroupOpenAtEndOfInputIsUnreadInPending(t *testing.T) {
-	src := "# Pending\n\n---\n\n## 1. **T**. s\n   Source: [x](x.md), part `#Item 1`.\n\n``oops`\n## 2. **U**. s\n"
+	src := "# Pending\n\n---\n\n## 1. **T**. s\n   Source: [x](x.md), part `#1`.\n\n``oops`\n## 2. **U**. s\n"
 	p := ParsePending(src)
 	if len(p.Entries()) != 1 {
 		t.Errorf("%d entries, want the one before the span", len(p.Entries()))
@@ -210,8 +210,8 @@ func TestAGroupOpenAtEndOfInputIsUnreadInPending(t *testing.T) {
 
 // CRC: crc-Pending.md | Seq: seq-pending.md#2.3.1 | R305
 func TestPlaceAtTheLastPositionLandsBeforeTheRule(t *testing.T) {
-	e := EntryText{ID: 20, Title: "New", Status: "Fresh.", SourceDoc: "carves/z.md", SourceKey: "Item 1"}
-	placed := "## 20. **New**. Fresh.\n   Source: [carves/z.md](carves/z.md), part `#Item 1`.\n"
+	e := EntryText{ID: 20, Title: "New", Status: "Fresh.", SourceDoc: "carves/z.md", SourceKey: "1"}
+	placed := "## 20. **New**. Fresh.\n   Source: [carves/z.md](carves/z.md), part `#1`.\n"
 
 	p := ParsePending(pendingFixture(t) + "\n---\n\nprose after the entries.\n")
 	if err := p.Place(e, len(p.Entries())+1); err != nil {
@@ -240,7 +240,7 @@ func TestPlaceAtTheLastPositionLandsBeforeTheRule(t *testing.T) {
 
 // CRC: crc-Pending.md | Seq: seq-pending.md#3.2.1 | R305, R306
 func TestPlaceThenRemoveIsTheIdentity(t *testing.T) {
-	e := EntryText{ID: 20, Title: "New", Status: "Fresh.", SourceDoc: "carves/z.md", SourceKey: "Item 1"}
+	e := EntryText{ID: 20, Title: "New", Status: "Fresh.", SourceDoc: "carves/z.md", SourceKey: "1"}
 	fixture := pendingFixture(t)
 	withRule := fixture + "\n---\n\nprose after the entries.\n"
 	for name, c := range map[string]struct{ src, want string }{
@@ -263,7 +263,7 @@ func TestPlaceThenRemoveIsTheIdentity(t *testing.T) {
 
 // CRC: crc-Pending.md | Seq: seq-pending.md#1.2 | R313
 func TestATitleWithEmphasisInsideReadsWhole(t *testing.T) {
-	p := ParsePending("# P\n\n---\n\n## 5. **A **b** c** (skill). status here.\n   Source: [x](x.md), part `#Item 1`.\n")
+	p := ParsePending("# P\n\n---\n\n## 5. **A **b** c** (skill). status here.\n   Source: [x](x.md), part `#1`.\n")
 	e := p.Entry(5)
 	if e == nil {
 		t.Fatal("entry 5 not read")

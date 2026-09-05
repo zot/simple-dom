@@ -20,7 +20,7 @@ func (p *PartLine) Parse(item *schema.ListItem, ctx *sdom.BracketContext) bool
 func (p *PartLine) Splice(d *sdom.Doc) error        // inside a mutation window
 
 func (p *PartLine) Checkbox() *schema.Checkbox       // nil when the line has none
-func (p *PartLine) Key() string                      // "Item 1", "2.2"; "" when unkeyed
+func (p *PartLine) Key() string                      // the fragment: "1", "2.2"; "" when unkeyed
 func (p *PartLine) Title() *sdom.Text                // nil when there is no keyed head
 func (p *PartLine) Markers() []*MarkerSpan
 func (p *PartLine) IsStruck() bool
@@ -93,3 +93,11 @@ func PartLines(d *sdom.Doc, ctx *sdom.BracketContext) ([]*PartLine, error)
 
 Every `ListItem` in document order, parsed and spliced in its own mutation window — the
 convenience the carve schema builds its status reader on, and what the tests drive.
+
+**One key form: the fragment.** `Key()` returns what `carves/x.md#<key>` carries — `4` for a
+part, `2.2` for a subpart — and `Item ` is the head's display word, bound in the node but not
+part of the key. Before this the part key was `Item 4` and the subpart key `2.2`, two shapes
+for one identity and a third in the fragment; mini-spec's `finish` wrote pointers in the
+fragment form and its validator compared them to `Key()`, so every landing read as an orphan.
+DECIDED (Bill, 2026-09-05): the fragment, everywhere — `Part(key)`, `SetMarker`, `Land`, the
+pending `Source:` line — and no reader accepts both shapes, since two forms was the defect.

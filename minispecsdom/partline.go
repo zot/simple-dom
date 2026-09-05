@@ -102,7 +102,9 @@ func (p *PartLine) Key() string {
 		return ""
 	}
 	s, _ := p.key.Render()
-	return s
+	// R318: one key form, the fragment — `4` for a part, `2.2` for a subpart — which is what
+	// `carves/x.md#<key>` carries. `Item ` is the head's display word, not part of the key.
+	return strings.TrimPrefix(s, "Item ")
 }
 
 // CRC: crc-PartLine.md | R238

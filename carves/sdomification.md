@@ -39,7 +39,7 @@ brainstormed, not listed ahead of that.
 - [x] ~~**Item 7 — markers replace every transient and precede prose.**~~ **LANDED (`3ea6bf9`, 2026-09-05 — `#30`.)**
 - [x] ~~**Item 8 — the title read follows emphasis to its own close.**~~ **LANDED (`8648687`, 2026-09-05 — `#31`.)**
 - [x] ~~**Item 9 — the current file's refusals are sentinels.**~~ **LANDED (`0c606db`, 2026-09-05 — `#28`.)**
-- [ ] **Item 10 — `Mutate` proves the tree describes the bytes.** **OPEN (#32.)**
+- [x] ~~**Item 10 — `Mutate` proves the tree describes the bytes.**~~ **LANDED (`7b28619`, 2026-09-05 — `#32`.)**
 - [ ] **Item 11 — one key form: the fragment.** **OPEN (#33.)**
 
 ## Decisions
@@ -264,6 +264,9 @@ the file, and the file stays untouched because nothing is written until render r
 Stated plainly, as the request states it: this proves the tree describes the bytes. It does
 not prove the edit addressed the right region, which the August re-parse check claimed and
 could not do.
+
+Landed `7b28619`: R314–R317 — as read-back, DECIDED (Bill, 2026-09-05) in place of the node-kind
+comparison, which a synthetic placement fails by design.
 
 ## Item 11
 

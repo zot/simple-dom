@@ -500,6 +500,9 @@
 - **R247:** Bound texts and glue are re-cut from the interior texts; no bytes are lost or
   normalised on read, and an unedited line renders back byte-exact.
 - **R308:** A `REVERTED` attribution that is not `#N` is the `REVERTED attribution` deviation.
+- **R318:** `Key()` returns the fragment — `4` for a part, `2.2` for a subpart — the one key form,
+  which `Part`, `SetMarker`, `Land` and the pending `Source:` line all use; `Item ` is the head's
+  display word, not part of the key.
 
 ## Feature: carve schema
 **Source:** specs/carve-schema.md

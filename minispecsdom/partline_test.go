@@ -54,11 +54,11 @@ func TestTheStatusBlocksLinesReadBack(t *testing.T) {
 	for _, p := range ps {
 		keys = append(keys, p.Key())
 	}
-	if got := strings.Join(keys, ","); got != "Item 1,Item 2,2.1,2.2,Item 4" {
+	if got := strings.Join(keys, ","); got != "1,2,2.1,2.2,4" {
 		t.Fatalf("keys %q", got)
 	}
 	m := byKey(ps)
-	for k, want := range map[string]string{"Item 1": "x", "Item 2": "-", "2.1": "x", "2.2": " ", "Item 4": " "} {
+	for k, want := range map[string]string{"1": "x", "2": "-", "2.1": "x", "2.2": " ", "4": " "} {
 		cb := m[k].Checkbox()
 		switch {
 		case want == "-" && cb != nil:
@@ -69,7 +69,7 @@ func TestTheStatusBlocksLinesReadBack(t *testing.T) {
 			t.Errorf("%s: checked=%v", k, cb.Checked())
 		}
 	}
-	one := m["Item 1"]
+	one := m["1"]
 	if len(one.Markers()) != 1 {
 		t.Fatalf("Item 1: %d markers", len(one.Markers()))
 	}
@@ -86,7 +86,7 @@ func TestTheStatusBlocksLinesReadBack(t *testing.T) {
 	if title, _ := one.Title().Render(); title != "record and resolve." {
 		t.Errorf("title %q", title)
 	}
-	two := m["Item 2"]
+	two := m["2"]
 	if two.IsStruck() || len(two.Markers()) != 1 {
 		t.Errorf("Item 2: struck=%v markers=%d", two.IsStruck(), len(two.Markers()))
 	} else if v, _ := two.Markers()[0].Verb().Render(); v != "SPLIT" {
@@ -109,8 +109,8 @@ func TestStrikeIsDerivedAndHidden(t *testing.T) {
 	d, ps := lines(t, src)
 	m := byKey(ps)
 	m["2.2"].Strike(true)
-	m["Item 1"].Strike(false)
-	if !m["2.2"].IsStruck() || m["Item 1"].IsStruck() {
+	m["1"].Strike(false)
+	if !m["2.2"].IsStruck() || m["1"].IsStruck() {
 		t.Fatalf("IsStruck did not follow Strike")
 	}
 	r, _ := d.Render()
@@ -122,7 +122,7 @@ func TestStrikeIsDerivedAndHidden(t *testing.T) {
 	}
 	// Every other byte is where it was: undo both and compare.
 	m["2.2"].Strike(false)
-	m["Item 1"].Strike(true)
+	m["1"].Strike(true)
 	if r, _ := d.Render(); r != src {
 		t.Errorf("strike/unstrike moved other bytes")
 	}

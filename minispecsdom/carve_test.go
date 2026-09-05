@@ -22,7 +22,7 @@ func TestTheFixturesStatusBlockReadsAsParts(t *testing.T) {
 	if !c.HasStatus() {
 		t.Fatal("no status block found")
 	}
-	if got := keysOf(c.Parts()); got != "Item 1,2.1,2.2,Item 4" {
+	if got := keysOf(c.Parts()); got != "1,2.1,2.2,4" {
 		t.Fatalf("parts %q", got)
 	}
 	depths, parents := []int{}, []string{}
@@ -37,10 +37,10 @@ func TestTheFixturesStatusBlockReadsAsParts(t *testing.T) {
 	if !slices.Equal(depths, []int{0, 2, 2, 0}) {
 		t.Errorf("depths %v, want [0 2 2 0]", depths)
 	}
-	if got := strings.Join(parents, ","); got != "-,Item 1,Item 1,-" {
+	if got := strings.Join(parents, ","); got != "-,1,1,-" {
 		t.Errorf("parents %q", got)
 	}
-	if len(c.Stateless()) != 1 || c.Stateless()[0].Key() != "Item 2" {
+	if len(c.Stateless()) != 1 || c.Stateless()[0].Key() != "2" {
 		t.Errorf("stateless %d", len(c.Stateless()))
 	}
 	if r, _ := c.Render(); r != src {
@@ -49,7 +49,7 @@ func TestTheFixturesStatusBlockReadsAsParts(t *testing.T) {
 	// A bullet outside the region is not a part; a level-3 heading does not end the
 	// region, a level-2 one does.
 	outside := ParseCarve("## Status\n\n- [ ] **Item 1 — a.** **OPEN (not queued.)**\n\n### Sub\n\n- [ ] **Item 2 — still inside.**\n\n## Notes\n\n- [ ] **Item 9 — not a part.**\n")
-	if got := keysOf(outside.Parts()); got != "Item 1,Item 2" {
+	if got := keysOf(outside.Parts()); got != "1,2" {
 		t.Errorf("a bullet outside the region became a part: %q", got)
 	}
 }
@@ -67,7 +67,7 @@ func TestNoStatusBlockAndAFencedOne(t *testing.T) {
 // CRC: crc-Carve.md | Seq: seq-carve.md#2.3 | R253, R254
 func TestSetMarkerFollowsTheToolsRule(t *testing.T) {
 	c := ParseCarve(fixture(t))
-	if err := c.SetMarker("Item 4", "OPEN", "#9."); err != nil {
+	if err := c.SetMarker("4", "OPEN", "#9."); err != nil {
 		t.Fatal(err)
 	}
 	r, _ := c.Render()
@@ -76,25 +76,25 @@ func TestSetMarkerFollowsTheToolsRule(t *testing.T) {
 	}
 	src := "## Status\n\n- [ ] **Item 1 — a.** **NOT VERIFIED.** **OPEN (#8.)**\n- [ ] **Item 2 — b.**\n- [ ] **Item 3 — c.** **OPEN (#4.)** **OPEN (#5.)**\n- [ ] **Item 4 — d.** **REVERTED (#70.)** Needs Item 1.\n- [ ] **Item 5 — e.** Needs Item 1.\n"
 	c = ParseCarve(src)
-	if err := c.SetMarker("Item 1", "LANDED", "x"); err != nil {
+	if err := c.SetMarker("1", "LANDED", "x"); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.SetMarker("Item 2", "DEFERRED", "Bill, 2026-09-03"); err != nil {
+	if err := c.SetMarker("2", "DEFERRED", "Bill, 2026-09-03"); err != nil {
 		t.Fatal(err)
 	}
 	// Two transients on one line: the first is replaced, the second removed.
-	if err := c.SetMarker("Item 3", "OPEN", "#6."); err != nil {
+	if err := c.SetMarker("3", "OPEN", "#6."); err != nil {
 		t.Fatal(err)
 	}
 	// R307: REVERTED is a transient, replaced by the replay's OPEN rather than joined by it;
 	// and a marker appended to a line with trailing prose goes before the prose.
-	if err := c.SetMarker("Item 4", "OPEN", "#70."); err != nil {
+	if err := c.SetMarker("4", "OPEN", "#70."); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.SetMarker("Item 5", "OPEN", "#3."); err != nil {
+	if err := c.SetMarker("5", "OPEN", "#3."); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.SetMarker("Item 7", "OPEN", "#1."); err == nil {
+	if err := c.SetMarker("7", "OPEN", "#1."); err == nil {
 		t.Errorf("an unknown key was accepted")
 	}
 	want := "## Status\n\n- [ ] **Item 1 — a.** **NOT VERIFIED.** **LANDED (x)**\n- [ ] **Item 2 — b.** **DEFERRED (Bill, 2026-09-03)**\n- [ ] **Item 3 — c.** **OPEN (#6.)**\n- [ ] **Item 4 — d.** **OPEN (#70.)** Needs Item 1.\n- [ ] **Item 5 — e.** **OPEN (#3.)** Needs Item 1.\n"
@@ -123,8 +123,8 @@ func TestWritesRefuseOverDeviations(t *testing.T) {
 		name  string
 		write func() error
 	}{
-		{"SetMarker", func() error { return c.SetMarker("Item 1", "LANDED", "x") }},
-		{"Land", func() error { return c.Land("Item 1", "x") }},
+		{"SetMarker", func() error { return c.SetMarker("1", "LANDED", "x") }},
+		{"Land", func() error { return c.Land("1", "x") }},
 	} {
 		err := tc.write()
 		var dev *DeviationError
@@ -132,7 +132,7 @@ func TestWritesRefuseOverDeviations(t *testing.T) {
 			t.Errorf("%s over a deviating line: %v", tc.name, err)
 			continue
 		}
-		if dev.Key != "Item 1" || len(dev.Deviations) != 1 || dev.Deviations[0].Rule != "OPEN attribution" {
+		if dev.Key != "1" || len(dev.Deviations) != 1 || dev.Deviations[0].Rule != "OPEN attribution" {
 			t.Errorf("%s: %+v", tc.name, dev)
 		}
 		if !strings.Contains(err.Error(), "OPEN attribution: "+markerTarget) {
@@ -148,14 +148,14 @@ func TestWritesRefuseOverDeviations(t *testing.T) {
 func TestOpenNeverReopensALandedPart(t *testing.T) {
 	src := fixture(t)
 	c := ParseCarve(src)
-	if err := c.SetMarker("Item 1", "open", "not queued."); !errors.Is(err, ErrReopen) {
+	if err := c.SetMarker("1", "open", "not queued."); !errors.Is(err, ErrReopen) {
 		t.Errorf("OPEN over a landed part: %v", err)
 	}
 	if r, _ := c.Render(); r != src {
 		t.Errorf("a refused reopen changed the line:\n%s", r)
 	}
 	// The guard is narrow: a record other than OPEN still goes on a landed part.
-	if err := c.SetMarker("Item 1", "NOT VERIFIED", "Bill, 2026-09-04"); err != nil {
+	if err := c.SetMarker("1", "NOT VERIFIED", "Bill, 2026-09-04"); err != nil {
 		t.Errorf("a record over a landed part: %v", err)
 	}
 }
@@ -164,7 +164,7 @@ func TestOpenNeverReopensALandedPart(t *testing.T) {
 func TestLandRefusesOverALandedPart(t *testing.T) {
 	src := fixture(t)
 	c := ParseCarve(src)
-	if err := c.Land("Item 1", "`fff`, 2026-09-04 — `#9`."); !errors.Is(err, ErrLanded) {
+	if err := c.Land("1", "`fff`, 2026-09-04 — `#9`."); !errors.Is(err, ErrLanded) {
 		t.Errorf("Land over a landed part: %v", err)
 	}
 	if r, _ := c.Render(); r != src {
@@ -175,7 +175,7 @@ func TestLandRefusesOverALandedPart(t *testing.T) {
 // CRC: crc-Carve.md | R283
 func TestEveryPartKnowsItsLine(t *testing.T) {
 	c := ParseCarve(fixture(t))
-	want := map[string]int{"Item 1": 7, "2.1": 9, "2.2": 10, "Item 4": 11}
+	want := map[string]int{"1": 7, "2.1": 9, "2.2": 10, "4": 11}
 	for _, p := range c.Parts() {
 		if p.Line() != want[p.Key()] {
 			t.Errorf("%s: line %d, want %d", p.Key(), p.Line(), want[p.Key()])
@@ -204,5 +204,16 @@ func TestACloserThatClosesNothingIsUnread(t *testing.T) {
 	// trailing two-run opened (never closed), and the three-run itself (closes nothing).
 	if len(u) != 3 || !strings.Contains(u[0].Text, "never closed") || !strings.Contains(u[1].Text, "never closed") || !strings.Contains(u[2].Text, "```` closes nothing") {
 		t.Errorf("unread %+v, want two never-closed spans and the rejected three-run", u)
+	}
+}
+
+// CRC: crc-Carve.md | R318
+func TestTheKeyIsTheFragment(t *testing.T) {
+	c := ParseCarve(fixture(t))
+	if c.Part("4") == nil || c.Part("Item 4") != nil {
+		t.Errorf("Part resolves by the fragment alone: %v %v", c.Part("4") != nil, c.Part("Item 4") != nil)
+	}
+	if k := c.Stateless()[0].Key(); k != "2" {
+		t.Errorf("stateless key %q, want 2", k)
 	}
 }

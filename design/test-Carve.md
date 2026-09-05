@@ -4,7 +4,7 @@
 ## Test: the fixture's status block reads as parts
 **Purpose:** R248, R249, R250, R251, R252, R256
 **Input:** `sdom/schema/testdata/trajectory-sample.md`
-**Expected:** `HasStatus`; four parts keyed `Item 1`, `2.1`, `2.2`, `Item 4` with depths `0, 2, 2, 0` and parents nil, `Item 1`, `Item 1`, nil — the subparts follow `Item 1` because the split parent between them has no checkbox; one stateless line keyed `Item 2`; the body's `- [ ] inside a fence` is not a part; the render is byte-exact
+**Expected:** `HasStatus`; four parts keyed `1`, `2.1`, `2.2`, `4` with depths `0, 2, 2, 0` and parents nil, `1`, `1`, nil — the subparts follow `Item 1` because the split parent between them has no checkbox; one stateless line keyed `Item 2`; the body's `- [ ] inside a fence` is not a part; the render is byte-exact
 **Refs:** crc-Carve.md, seq-carve.md#1
 **Code:** minispecsdom/carve_test.go
 **Alarm:** 1
@@ -44,12 +44,12 @@
 **Alarm:** 4
 **Fire alarm:** skip the strike in `Land`. Red: the render keeps the head unstruck while the box and marker changed — the three no longer agree.
 **Inject:** minispecsdom/carve.go:Carve.Land
-**Pulled:** 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, `2.2` landed with `[x]` and the record but the head unstruck, only that test; restore clean. Previously 2026-09-03 — rang: the line landed with `[x]` and the record but the head unstruck — the three no longer agree.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller after Item 10 added the read-back to the site; rang: the read-back itself caught it — `Carve.Land on "2.2" did not read back: want … checked and struck, got … struck false` — only that test. Previously 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, `2.2` landed with `[x]` and the record but the head unstruck, only that test; restore clean. Previously 2026-09-03 — rang: the line landed with `[x]` and the record but the head unstruck — the three no longer agree.
 
 ## Test: writes refuse over deviations
 **Purpose:** R279, R280
 **Input:** a status line `- [ ] **Item 1 — a.** **OPEN (#3)**` (the bare-`#N` scheme, a deviation) → `SetMarker("Item 1", "LANDED", "x")` and `Land("Item 1", "x")`
-**Expected:** each returns a `DeviationError` with key `Item 1` and one deviation, rule `OPEN attribution`; its message names the rule and its target; the render equals the source byte for byte
+**Expected:** each returns a `DeviationError` with key `1` and one deviation, rule `OPEN attribution`; its message names the rule and its target; the render equals the source byte for byte
 **Refs:** crc-Carve.md, crc-PartLine.md, seq-carve.md#2.1.1
 **Code:** minispecsdom/carve_test.go
 **Alarm:** 5
@@ -59,7 +59,7 @@
 
 ## Test: OPEN never reopens a landed part
 **Purpose:** R279, R281
-**Input:** the fixture's `Item 1` (`[x]`, struck, `LANDED`) → `SetMarker("Item 1", "open", "not queued.")`; then `SetMarker("Item 1", "NOT VERIFIED", "Bill, 2026-09-04")`
+**Input:** the fixture's `Item 1` (`[x]`, struck, `LANDED`) → `SetMarker("1", "open", "not queued.")`; then `SetMarker("1", "NOT VERIFIED", "Bill, 2026-09-04")`
 **Expected:** the first is `ErrReopen` and the render equals the source; the second succeeds — the guard is on `OPEN`, not on every write over a landed part
 **Refs:** crc-PartLine.md, seq-carve.md#2.3.1
 **Code:** minispecsdom/carve_test.go
@@ -70,14 +70,14 @@
 
 ## Test: Land refuses over a landed part
 **Purpose:** R279, R282
-**Input:** the fixture's `Item 1` → `Land("Item 1", "` + "`fff`" + `, 2026-09-04 — ` + "`#9`" + `.")`
+**Input:** the fixture's `Item 1` → `Land("1", "` + "`fff`" + `, 2026-09-04 — ` + "`#9`" + `.")`
 **Expected:** `ErrLanded`, and the render equals the source — no second `LANDED` beside the first
 **Refs:** crc-Carve.md, seq-carve.md#2.1.2
 **Code:** minispecsdom/carve_test.go
 **Alarm:** 7
 **Fire alarm:** drop the `Checked()` guard from `Land`. Red: the write succeeds and the line carries two `LANDED` records.
 **Inject:** minispecsdom/carve.go:Carve.Land
-**Pulled:** 2026-09-04 — rang: `Land over a landed part: <nil>`, and the render showed two `LANDED` records side by side; only that test.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller after Item 10 added the read-back to the site; rang: `Land over a landed part: <nil>` and the line carrying two `LANDED` records, only that test. Previously 2026-09-04 — rang: `Land over a landed part: <nil>`, and the render showed two `LANDED` records side by side; only that test.
 
 ## Test: every part knows its line
 **Purpose:** R283

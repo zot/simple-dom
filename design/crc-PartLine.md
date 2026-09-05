@@ -1,5 +1,5 @@
 # PartLine
-**Requirements:** R236, R237, R238, R240, R241, R242, R245, R246, R247, R280, R281, R285, R286, R307, R308
+**Requirements:** R236, R237, R238, R240, R241, R242, R245, R246, R247, R280, R281, R285, R286, R307, R308, R318
 
 A carve status line as one node over a markdown-parsed document: bound checkbox and
 key, a list of marker spans, and the strike behind an accessor. The first
@@ -8,7 +8,8 @@ key, a list of marker spans, and the strike behind an accessor. The first
 ## Knows
 - its children, through the embedded `Compound`: the base's `ListItem`, its `Checkbox`
   if any, the head's markers and re-cut texts, the marker spans, interspersed text
-- typed views: `Checkbox()` (the base's node, nil when absent), `Key()`, `Title()`,
+- typed views: `Checkbox()` (the base's node, nil when absent), `Key()` — the fragment,
+  `4` or `2.2`, with `Item ` left to the display — `Title()`,
   `Markers()`, `Deviations()`
 - the head's bold opener, so `IsStruck`/`Strike` can find and wrap it
 

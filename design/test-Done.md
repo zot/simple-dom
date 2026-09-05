@@ -21,7 +21,7 @@
 **Alarm:** 2
 **Fire alarm:** insert at the end instead of before the first entry. Red: the new entry is last.
 **Inject:** minispecsdom/done.go:Done.Prepend
-**Pulled:** 2026-09-03 — rang: the new entry rendered last, after the entry-like bullet, only that test.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller after Item 10 added the read-back to the site; rang: the read-back caught it — `Done.Prepend … did not read back`, the old first entry still first — only that test. Previously 2026-09-03 — rang: the new entry rendered last, after the entry-like bullet, only that test.
 
 ## Test: entries and entry-like bullets carry their line
 **Purpose:** R283, R284

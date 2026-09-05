@@ -14,7 +14,7 @@ func (c *Carve) Render() (string, error)
 func (c *Carve) HasStatus() bool
 func (c *Carve) Parts() []*Part          // every part line with a checkbox, in order
 func (c *Carve) Stateless() []*PartLine  // status lines with no checkbox: split parents, standing constraints
-func (c *Carve) Part(key string) *Part   // nil when no part keys so
+func (c *Carve) Part(key string) *Part   // by the fragment — `4`, `2.2`; nil when no part keys so
 func (c *Carve) Unread() []Unread        // groups open at end of input, each with its opener's line
 
 func (c *Carve) SetMarker(key, verb, attribution string) error

@@ -4,7 +4,7 @@
 ## Test: the status block's lines read back
 **Purpose:** R236, R238, R239, R240, R243, R247 — the five things the tool reads, from the committed fixture
 **Input:** `sdom/schema/testdata/trajectory-sample.md` through `PartLines`
-**Expected:** five part lines; keys `Item 1`, `Item 2`, `2.1`, `2.2`, `Item 4`; checkboxes true, none, true, false, false; `Item 1`'s marker verb `LANDED`, queue ID 3, attribution containing the commit; `Item 2` struck false with verb `SPLIT`; `2.2` queue ID 8; the document renders back byte-exact
+**Expected:** five part lines; keys `1`, `2`, `2.1`, `2.2`, `4`; checkboxes true, none, true, false, false; `Item 1`'s marker verb `LANDED`, queue ID 3, attribution containing the commit; `Item 2` struck false with verb `SPLIT`; `2.2` queue ID 8; the document renders back byte-exact
 **Refs:** crc-PartLine.md, seq-partline.md#1
 **Code:** minispecsdom/partline_test.go
 **Alarm:** 1
@@ -55,3 +55,13 @@
 **Fire alarm:** restore the exact match — `a != "not queued."` in place of `notQueuedRe`. Red: `not queued`, `Not  queued.` and `NOT QUEUED` report `OPEN attribution`. A second injection: drop the `commaSchemeRe` check from `Parse`. Red: the comma form reports nothing — the silent case.
 **Inject:** minispecsdom/partline.go:MarkerSpan.deviations, minispecsdom/partline.go:PartLine.Parse
 **Pulled:** 2026-09-05 — re-pulled by a delegated puller after Item 7 rewrote the site; rang: both injections — the exact match reported `OPEN attribution` on all three spellings, and without the comma-scheme check the comma form reported nothing — only that test each. Previously 2026-09-04 — both rang: the exact match reported `OPEN attribution` on `not queued`, `Not  queued.` and `NOT QUEUED` (the two stop-ful forms stayed clean, as the old rule allowed); the dropped scheme check reported `[]` on the comma form; only that test each time. Both re-pulled the same day after the simplification pass reordered the operands and inlined `firstText`: rang again.
+
+## Test: the key is the fragment
+**Purpose:** R318 — one key form
+**Input:** the fixture's keyed lines
+**Expected:** keys `1`, `2.1`, `2.2`, `4`, and the stateless line's `2`; `Part("4")` resolves and `Part("Item 4")` does not
+**Refs:** crc-PartLine.md, crc-Carve.md
+**Code:** minispecsdom/carve_test.go
+**Fire alarm:** return the bound text whole. Red: every key expectation in the carve and part-line tests reads `Item N`.
+**Inject:** minispecsdom/partline.go:PartLine.Key
+**Pulled:** 2026-09-05 — rang in 9 tests across the carve and part-line files.
