@@ -59,8 +59,11 @@ on. A line is read at parse time, not tracked through writes.
 ## What it writes
 
 **`SetMarker(key, verb, attribution)`** applies the tool's rule to the keyed line: replace
-the first *transient* marker — one whose verb is `OPEN` — with the new one, remove any
-other transient, and append a marker when the line carries none. It selects by the kind of
+the first *transient* marker — one whose verb is `OPEN` or `REVERTED`, the two a revert and
+a replay write over each other — with the new one, remove any other transient, and, when the
+line carries none, insert a marker where the grammar `Head Marker* Text?` puts it: after the
+head and any markers and **before the trailing prose**, never after it, so the written line is
+one this reader lists as conforming. It selects by the kind of
 what it replaces, never by what it writes, so setting a record over a line that also
 carries `NOT VERIFIED` leaves that standing.
 

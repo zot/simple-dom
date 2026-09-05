@@ -24,9 +24,9 @@
 **Pulled:** 2026-09-03 — rang: `IsStruck did not follow Strike` — the whole-line wrap leaves the head's opener with `- ` before it, so the derivation reads false; caught one assertion earlier than the render check predicted.
 
 ## Test: deviations name the target
-**Purpose:** R237, R242 — an unkeyed line parses and reports
-**Input:** `- [ ] **Part A — old scheme.** **OPEN (#8.)**`, `- [X] **Item 3 - hyphen.**`, `- [ ] **Item 5 — ok.** **open (soon.)**`, and `- a plain bullet`
-**Expected:** four part lines, all parsed; deviations: key form; checkbox interior and separator; verb case and `OPEN` attribution; key form — each carrying its target text; on the plain bullet `IsStruck` is false and `Strike(true)` changes nothing
+**Purpose:** R237, R242, R308 — an unkeyed line parses and reports
+**Input:** `- [ ] **Part A — old scheme.** **OPEN (#8.)**`, `- [X] **Item 3 - hyphen.**`, `- [ ] **Item 5 — ok.** **open (soon.)**`, `- a plain bullet`, and `- [ ] **Item 6 — r.** **REVERTED (Bill)**`
+**Expected:** five part lines, all parsed; deviations: key form; checkbox interior and separator; verb case and `OPEN` attribution; key form; `REVERTED` attribution — each carrying its target text; on the plain bullet `IsStruck` is false and `Strike(true)` changes nothing
 **Refs:** crc-PartLine.md
 **Code:** minispecsdom/partline_test.go
 **Alarm:** 3

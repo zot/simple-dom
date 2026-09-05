@@ -74,7 +74,7 @@ func TestSetMarkerFollowsTheToolsRule(t *testing.T) {
 	if !strings.Contains(r, "- [ ] **Item 4 — fail fast.** **OPEN (#9.)**\n") {
 		t.Errorf("Item 4 after SetMarker:\n%s", r)
 	}
-	src := "## Status\n\n- [ ] **Item 1 — a.** **NOT VERIFIED.** **OPEN (#8.)**\n- [ ] **Item 2 — b.**\n- [ ] **Item 3 — c.** **OPEN (#4.)** **OPEN (#5.)**\n"
+	src := "## Status\n\n- [ ] **Item 1 — a.** **NOT VERIFIED.** **OPEN (#8.)**\n- [ ] **Item 2 — b.**\n- [ ] **Item 3 — c.** **OPEN (#4.)** **OPEN (#5.)**\n- [ ] **Item 4 — d.** **REVERTED (#70.)** Needs Item 1.\n- [ ] **Item 5 — e.** Needs Item 1.\n"
 	c = ParseCarve(src)
 	if err := c.SetMarker("Item 1", "LANDED", "x"); err != nil {
 		t.Fatal(err)
@@ -86,10 +86,18 @@ func TestSetMarkerFollowsTheToolsRule(t *testing.T) {
 	if err := c.SetMarker("Item 3", "OPEN", "#6."); err != nil {
 		t.Fatal(err)
 	}
+	// R307: REVERTED is a transient, replaced by the replay's OPEN rather than joined by it;
+	// and a marker appended to a line with trailing prose goes before the prose.
+	if err := c.SetMarker("Item 4", "OPEN", "#70."); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SetMarker("Item 5", "OPEN", "#3."); err != nil {
+		t.Fatal(err)
+	}
 	if err := c.SetMarker("Item 7", "OPEN", "#1."); err == nil {
 		t.Errorf("an unknown key was accepted")
 	}
-	want := "## Status\n\n- [ ] **Item 1 — a.** **NOT VERIFIED.** **LANDED (x)**\n- [ ] **Item 2 — b.** **DEFERRED (Bill, 2026-09-03)**\n- [ ] **Item 3 — c.** **OPEN (#6.)**\n"
+	want := "## Status\n\n- [ ] **Item 1 — a.** **NOT VERIFIED.** **LANDED (x)**\n- [ ] **Item 2 — b.** **DEFERRED (Bill, 2026-09-03)**\n- [ ] **Item 3 — c.** **OPEN (#6.)**\n- [ ] **Item 4 — d.** **OPEN (#70.)** Needs Item 1.\n- [ ] **Item 5 — e.** **OPEN (#3.)** Needs Item 1.\n"
 	if r, _ := c.Render(); r != want {
 		t.Errorf("got:\n%s\nwant:\n%s", r, want)
 	}

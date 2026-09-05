@@ -65,7 +65,7 @@
 **Alarm:** 6
 **Fire alarm:** drop the `gapIDRe` check from `derive` so any backquoted gap key reads as `SourceGap`. Red: entry 15 reads as a gap keyed `O1-O3` and leaves `Unread`. A second injection: drop the refusal from `Place`. Red: the list is placed, and reads back as `SourceNone`.
 **Inject:** minispecsdom/pending.go:Entry.derive, minispecsdom/pending.go:Pending.Place
-**Pulled:** 2026-09-04 — both rang: without the ID check entry 15 read as `Kind:2` keyed `O1-O3` and `Unread` shrank to `Notes` alone (the fixture test objected too); without the refusal `a list as a gap source: <nil>`; only those tests; restore clean. The `derive` injection re-pulled the same day after the simplification pass named the groups: rang again.
+**Pulled:** 2026-09-05 — the `Place` injection re-pulled by hand after Item 6 rewrote `Place`; rang: `TestASourceIsAPartOrAGap`, only that test. Previously 2026-09-04 — both rang: without the ID check entry 15 read as `Kind:2` keyed `O1-O3` and `Unread` shrank to `Notes` alone (the fixture test objected too); without the refusal `a list as a gap source: <nil>`; only those tests; restore clean. The `derive` injection re-pulled the same day after the simplification pass named the groups: rang again.
 
 ## Test: a group open at end of input is unread
 **Purpose:** R301

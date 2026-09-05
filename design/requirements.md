@@ -486,6 +486,7 @@
 - **R246:** `PartLine` and `MarkerSpan` each declare their own `Equals`, comparing children.
 - **R247:** Bound texts and glue are re-cut from the interior texts; no bytes are lost or
   normalised on read, and an unedited line renders back byte-exact.
+- **R308:** A `REVERTED` attribution that is not `#N` is the `REVERTED attribution` deviation.
 
 ## Feature: carve schema
 **Source:** specs/carve-schema.md
@@ -501,7 +502,7 @@
 - **R252:** `Depth` is the bullet's leading whitespace, and `Parent` is the nearest preceding
   part with a smaller depth, or nil.
 - **R253:** `Part(key)` finds a part by its key; a write to a key no part carries is an error.
-- **R254:** `SetMarker` replaces the first transient marker — verb `OPEN` — removes any other
+- **~~R254:~~** (Retired T10 — see R307) `SetMarker` replaces the first transient marker — verb `OPEN` — removes any other
   transient, and appends a marker when the line carries none; it selects by what it replaces.
 - **R255:** `Land` checks the box, strikes the head, and sets `LANDED (attribution)` through the
   marker rule, in one act.
@@ -523,6 +524,9 @@
   idempotent.
 - **R302:** `Carve.Unread` lists every group open at end of input at its opener's line, with the
   text *`<marker>` open to end of input*.
+- **R307:** `SetMarker` replaces the first transient marker — verb `OPEN` or `REVERTED` — removes any
+  other transient, and when the line carries none inserts the marker after the head and any markers
+  and before the trailing prose; it selects by what it replaces.
 
 ## Feature: pending schema
 **Source:** specs/pending-schema.md

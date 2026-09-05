@@ -68,6 +68,7 @@ const (
 	checkboxTarget = "`[ ]` for open, `[x]` for landed"
 	verbTarget     = "a marker verb is written in capitals"
 	markerTarget   = "an `OPEN` attribution is `#N` or `not queued`"
+	revertedTarget = "a `REVERTED` attribution is `#N`"
 	schemeTarget   = "a marker is `**VERB (attribution)**`; the comma form `**OPEN, not queued.**` is superseded"
 )
 
@@ -393,14 +394,14 @@ func (p *PartLine) refuse() error {
 	return &DeviationError{Key: p.Key(), Deviations: p.devs}
 }
 
-// CRC: crc-PartLine.md | Seq: seq-carve.md#2.3 | R254, R279, R280, R281
+// CRC: crc-PartLine.md | Seq: seq-carve.md#2.3 | R307, R279, R280, R281
 //
 // SetMarker applies the tool's rule among this node's children: replace the first
-// TRANSIENT marker — verb OPEN — with the new one, remove any other transient, and
-// append a marker when the line carries none. It selects by the kind of what it
-// replaces, never by what it writes, so a record set over a line that also carries
-// NOT VERIFIED leaves that standing. It refuses before it touches anything: over
-// deviations, and OPEN over a checked box.
+// TRANSIENT marker — verb OPEN or REVERTED — with the new one, remove any other
+// transient, and insert a marker before the trailing prose when the line carries none.
+// It selects by the kind of what it replaces, never by what it writes, so a record set
+// over a line that also carries NOT VERIFIED leaves that standing. It refuses before it
+// touches anything: over deviations, and OPEN over a checked box.
 func (p *PartLine) SetMarker(verb, attribution string) error {
 	if err := p.refuse(); err != nil {
 		return err
@@ -411,7 +412,7 @@ func (p *PartLine) SetMarker(verb, attribution string) error {
 	var first *MarkerSpan
 	var drop []*MarkerSpan
 	for _, m := range p.markers {
-		if !m.isOpen() {
+		if !m.isTransient() { // R307: OPEN and REVERTED are what a write replaces
 			continue
 		}
 		if first == nil {
@@ -438,12 +439,49 @@ func (p *PartLine) SetMarker(verb, attribution string) error {
 		if m == nil {
 			return ErrMarkerRefused
 		}
-		out = append(out, sdom.NewText(" ", sdom.Synthetic(1)), m)
+		out = p.insertMarker(out, m) // R307: before trailing prose, never after it
 		p.markers = append(p.markers, m)
 	}
 	p.markers = slices.DeleteFunc(p.markers, func(m *MarkerSpan) bool { return slices.Contains(drop, m) })
 	p.Compound = *sdom.NewCompound(p.item.Location(), out...)
 	return nil
+}
+
+// CRC: crc-PartLine.md | Seq: seq-carve.md#2.3 | R307
+//
+// insertMarker places a new marker where the grammar `Head Marker* Text?` puts it: after
+// the head and any markers, before the trailing prose — which is the first text past the
+// head's closer with anything in it but whitespace. With no such text the marker ends the
+// line, as before.
+func (p *PartLine) insertMarker(kids []sdom.Node, m *MarkerSpan) []sdom.Node {
+	ins := []sdom.Node{sdom.NewText(" ", sdom.Synthetic(1)), m}
+	at := p.proseAt(kids)
+	if at < 0 {
+		return append(kids, ins...)
+	}
+	if s, _ := kids[at].Render(); !strings.HasPrefix(s, " ") {
+		ins = append(ins, sdom.NewText(" ", sdom.Synthetic(1))) // the prose brings none of its own
+	}
+	return slices.Insert(kids, at, ins...)
+}
+
+// proseAt is the index of the trailing prose among kids — the first text after the head's
+// bold run that is not all whitespace — or -1 when the line ends in its head or markers.
+func (p *PartLine) proseAt(kids []sdom.Node) int {
+	pastHead := false
+	for i, k := range kids {
+		switch n := k.(type) {
+		case *sdom.Closer:
+			if s, _ := n.Render(); s == "**" {
+				pastHead = true
+			}
+		case *sdom.Text:
+			if s, _ := n.Render(); pastHead && strings.TrimSpace(s) != "" {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 // newMarker builds a synthetic marker span the way Set writes one, or nil when the
@@ -575,18 +613,33 @@ func (m *MarkerSpan) QueueID() (int, bool) {
 	return n, true
 }
 
-// isOpen reports the transient marker: verb OPEN, whatever its case.
+// isOpen reports the OPEN marker, whatever its case.
 func (m *MarkerSpan) isOpen() bool {
 	v, _ := m.verb.Render()
 	return strings.EqualFold(v, "OPEN")
 }
 
-// deviations reports the marker's own rules: verb case, and the OPEN attribution.
+// isReverted reports the REVERTED marker, whatever its case.
+func (m *MarkerSpan) isReverted() bool {
+	v, _ := m.verb.Render()
+	return strings.EqualFold(v, "REVERTED")
+}
+
+// CRC: crc-PartLine.md | R307
+// isTransient reports a marker a write replaces: OPEN, and REVERTED — what a revert writes
+// over `OPEN (#N)` and what a replay writes `OPEN (#N)` back over.
+func (m *MarkerSpan) isTransient() bool { return m.isOpen() || m.isReverted() }
+
+// deviations reports the marker's own rules: verb case, and the OPEN and REVERTED
+// attributions.
 func (m *MarkerSpan) deviations() []Deviation {
 	var out []Deviation
 	v, _ := m.verb.Render()
 	if v != strings.ToUpper(v) {
 		out = append(out, Deviation{"verb case", verbTarget})
+	}
+	if m.isReverted() && !queuedRe.MatchString(m.Attribution()) {
+		out = append(out, Deviation{"REVERTED attribution", revertedTarget}) // R308
 	}
 	if m.isOpen() {
 		if a := m.Attribution(); !queuedRe.MatchString(a) && !notQueuedRe.MatchString(a) {

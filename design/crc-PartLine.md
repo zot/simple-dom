@@ -1,5 +1,5 @@
 # PartLine
-**Requirements:** R236, R237, R238, R240, R241, R242, R245, R246, R247, R254, R280, R281, R285, R286
+**Requirements:** R236, R237, R238, R240, R241, R242, R245, R246, R247, R280, R281, R285, R286, R307, R308
 
 A carve status line as one node over a markdown-parsed document: bound checkbox and
 key, a list of marker spans, and the strike behind an accessor. The first

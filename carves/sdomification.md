@@ -35,7 +35,7 @@ brainstormed, not listed ahead of that.
 - [x] ~~**Item 3 — write paths refuse.**~~ **LANDED (`44a8955`, 2026-09-04 — `#23`.)**
 - [x] ~~**Item 4 — lines, and flexible input.**~~ **LANDED (`ddcf09f`, 2026-09-04 — `#24`.)**
 - [x] ~~**Item 5 — gap sources.**~~ **LANDED (`85fef32`, 2026-09-04 — `#25`.)**
-- [ ] **Item 6 — pending writes end at the rule and round-trip.** **OPEN (#29.)**
+- [x] ~~**Item 6 — pending writes end at the rule and round-trip.**~~ **LANDED (`f778c07`, 2026-09-05 — `#29`.)**
 - [ ] **Item 7 — markers replace every transient and precede prose.** **OPEN (#30.)**
 - [ ] **Item 8 — the title read follows emphasis to its own close.** **OPEN (#31.)**
 - [x] ~~**Item 9 — the current file's refusals are sentinels.**~~ **LANDED (`0c606db`, 2026-09-05 — `#28`.)**
@@ -175,6 +175,8 @@ and 2), both measured by test on mini-spec's side 2026-09-05:
   test skips by name until this lands.
 
 Acceptance is that round trip over a fixture with and without trailing commentary.
+
+Landed `f778c07`: R305 → T8 (R261), R306 → T9 (R263).
 
 ## Item 7
 

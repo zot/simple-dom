@@ -1,5 +1,5 @@
 # Sequence: reading a carve and landing a part
-**Requirements:** R249, R250, R251, R252, R254, R255, R279, R280, R281, R282
+**Requirements:** R249, R250, R251, R252, R255, R279, R280, R281, R282, R307
 
 ## 1. Reading
 

@@ -130,10 +130,10 @@ func TestStrikeIsDerivedAndHidden(t *testing.T) {
 
 // CRC: crc-PartLine.md | R237, R242
 func TestDeviationsNameTheTarget(t *testing.T) {
-	src := "- [ ] **Part A — old scheme.** **OPEN (#8.)**\n- [X] **Item 3 - hyphen.**\n- [ ] **Item 5 — ok.** **open (soon.)**\n- a plain bullet\n"
+	src := "- [ ] **Part A — old scheme.** **OPEN (#8.)**\n- [X] **Item 3 - hyphen.**\n- [ ] **Item 5 — ok.** **open (soon.)**\n- a plain bullet\n- [ ] **Item 6 — r.** **REVERTED (Bill)**\n"
 	d, ps := lines(t, src)
-	if len(ps) != 4 {
-		t.Fatalf("%d lines, want 4", len(ps))
+	if len(ps) != 5 {
+		t.Fatalf("%d lines, want 5", len(ps))
 	}
 	rules := func(p *PartLine) string {
 		var r []string
@@ -153,6 +153,9 @@ func TestDeviationsNameTheTarget(t *testing.T) {
 	}
 	if got := rules(ps[2]); got != "verb case,OPEN attribution" {
 		t.Errorf("line 3 deviations %q", got)
+	}
+	if got := rules(ps[4]); got != "REVERTED attribution" { // R308
+		t.Errorf("line 5 deviations %q", got)
 	}
 	if ps[0].Checkbox() == nil || ps[0].Checkbox().Checked() {
 		t.Errorf("an unkeyed line's checkbox must still count")

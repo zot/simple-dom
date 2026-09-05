@@ -53,7 +53,8 @@ level up.
 **Deviations are the contract, not an error path.** An unkeyed head, a separator that is
 not the em dash, a checkbox interior that is neither blank nor `x` (which the base leaves
 as text after the `- `), a verb not in capitals, an `OPEN` attribution that is neither
-`#N` nor `not queued`, a bold run in the superseded comma form (`**OPEN, not queued.**`) —
+`#N` nor `not queued`, a `REVERTED` attribution that is not `#N`, a bold run in the superseded
+comma form (`**OPEN, not queued.**`) —
 each is reported with the shape it must take, and the line still parses and its checkbox
 still counts. A read path lists them; a write path refuses on them, as the carve schema says.
 
