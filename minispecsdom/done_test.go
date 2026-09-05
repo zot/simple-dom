@@ -79,3 +79,16 @@ func TestPrependLandsAfterTheRule(t *testing.T) {
 		t.Errorf("empty ledger after Prepend:\n%q", r)
 	}
 }
+
+// CRC: crc-Done.md | R300
+func TestAGroupOpenAtEndOfInputIsUnreadInDone(t *testing.T) {
+	src := "# Done\n\n---\n\n- **2026-09-05 — #1: T.** (`abc`)\nbody\n```\nlost tail\n- **2026-09-04 — #2: U.**\n"
+	d := ParseDone(src)
+	if len(d.Entries()) != 1 {
+		t.Errorf("%d entries, want the one before the fence", len(d.Entries()))
+	}
+	u := d.Unread()
+	if len(u) != 1 || u[0].Line != 7 || !strings.Contains(u[0].Text, "open to end of input") || !strings.Contains(u[0].Text, "```") {
+		t.Errorf("unread %+v, want the fence at line 7", u)
+	}
+}

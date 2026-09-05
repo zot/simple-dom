@@ -84,6 +84,7 @@ func (d *Done) scan() {
 		e.derive()
 		d.entries = append(d.entries, e)
 	}
+	d.unread = append(d.unread, unclosed(d.ctx)...) // R300: last, as file order has it
 }
 
 // lineText is the source line beginning at off, without its newline.

@@ -15,6 +15,7 @@ func (c *Carve) HasStatus() bool
 func (c *Carve) Parts() []*Part          // every part line with a checkbox, in order
 func (c *Carve) Stateless() []*PartLine  // status lines with no checkbox: split parents, standing constraints
 func (c *Carve) Part(key string) *Part   // nil when no part keys so
+func (c *Carve) Unread() []Unread        // groups open at end of input, each with its opener's line
 
 func (c *Carve) SetMarker(key, verb, attribution string) error
 func (c *Carve) Land(key, attribution string) error
@@ -85,3 +86,8 @@ path lists a deviation; a write path refuses on it. Three refusals:
 
 Refusal is decided before any of `Land`'s three markings, so the box, the strike and the
 marker still agree after a refusal because none of them moved.
+
+**A group open at end of input is unread.** `Unread` lists every opener the base's context
+reports as closed by end of input, at its line, with the text *`<marker>` open to end of input*.
+A carve has no other unread kind yet; this is the first entry of the report sdomification
+Item 1 will grow.

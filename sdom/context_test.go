@@ -478,3 +478,27 @@ func TestOpenerAndCloserRefreshLikeEveryOtherAccessor(t *testing.T) {
 			"answered from an index the document has moved past", got)
 	}
 }
+
+// CRC: crc-BracketContext.md | R299
+func TestUnclosedNamesTheGroupsThatRanToEndOfInput(t *testing.T) {
+	render := func(openers []*Opener) string {
+		var b strings.Builder
+		for _, o := range openers {
+			s, _ := o.Render()
+			b.WriteString(s)
+		}
+		return b.String()
+	}
+	_, ctx := parse("a(b) `raw", 0, &LangGo)
+	if got := render(ctx.Unclosed()); got != "`" {
+		t.Errorf("unclosed %q, want the backtick alone", got)
+	}
+	_, ctx = parse("x{y", 0, &LangGo)
+	if got := render(ctx.Unclosed()); got != "{" {
+		t.Errorf("unclosed %q, want the brace alone", got)
+	}
+	_, ctx = parse("(a) [b]", 0, &LangGo)
+	if got := ctx.Unclosed(); got != nil {
+		t.Errorf("balanced document lists %d unclosed", len(got))
+	}
+}

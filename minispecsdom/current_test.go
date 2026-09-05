@@ -105,3 +105,19 @@ func TestExactlyOneActive(t *testing.T) {
 		}
 	}
 }
+
+// CRC: crc-Current.md | R303
+func TestAGroupOpenAtEndOfInputIsUnreadInCurrent(t *testing.T) {
+	src := "# C\n\n## Active\n\n_No active item._\n\n## Notes\n\n`x\n"
+	c, err := ParseCurrent(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Occupied() {
+		t.Errorf("active %q, want the region left empty", c.Active())
+	}
+	u := c.Unread()
+	if len(u) != 1 || u[0].Line != 9 || !strings.Contains(u[0].Text, "open to end of input") {
+		t.Errorf("unread %+v, want the span at line 9", u)
+	}
+}

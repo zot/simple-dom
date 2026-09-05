@@ -149,6 +149,7 @@ func (p *Pending) scan() {
 		}
 		p.entries = append(p.entries, e)
 	}
+	p.unread = append(p.unread, unclosed(p.ctx)...) // R301: last, as file order has it
 }
 
 // CRC: crc-Pending.md | Seq: seq-pending.md#1.3 | R259

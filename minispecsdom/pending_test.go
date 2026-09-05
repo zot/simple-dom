@@ -194,3 +194,16 @@ func TestASourceIsAPartOrAGap(t *testing.T) {
 		t.Errorf("placed gap entry read back: %+v", e)
 	}
 }
+
+// CRC: crc-Pending.md | R301
+func TestAGroupOpenAtEndOfInputIsUnreadInPending(t *testing.T) {
+	src := "# Pending\n\n---\n\n## 1. **T**. s\n   Source: [x](x.md), part `#Item 1`.\n\n``oops`\n## 2. **U**. s\n"
+	p := ParsePending(src)
+	if len(p.Entries()) != 1 {
+		t.Errorf("%d entries, want the one before the span", len(p.Entries()))
+	}
+	u := p.Unread()
+	if len(u) != 1 || u[0].Line != 8 || !strings.Contains(u[0].Text, "open to end of input") {
+		t.Errorf("unread %+v, want the span at line 8", u)
+	}
+}

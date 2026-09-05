@@ -27,6 +27,7 @@ type Current struct {
 	active   *schema.Heading
 	from, to int // node indices: the heading, and one past the region's last node
 	standing []string
+	unread   []Unread
 }
 
 // CRC: crc-Current.md | Seq: seq-current.md#1 | R273, R274, R275
@@ -46,6 +47,7 @@ func (c *Current) parse(src string) error {
 	c.parser = schema.NewMarkdownParser()
 	c.doc = sdom.Parse(src, 0, c.parser)
 	c.ctx = c.parser.Indent().Brackets().Context()
+	c.unread = unclosed(c.ctx) // R303
 	c.active, c.standing = nil, nil
 	nodes := c.doc.Nodes()
 	for i, n := range nodes {
@@ -116,6 +118,10 @@ func (c *Current) Occupied() bool { return c.Active() != "" }
 
 // CRC: crc-Current.md | R275
 func (c *Current) Standing() []string { return c.standing }
+
+// CRC: crc-Current.md | R303
+// Unread lists what the reader could not read: today, every group open at end of input.
+func (c *Current) Unread() []Unread { return c.unread }
 
 // CRC: crc-Current.md | Seq: seq-current.md#2 | R276, R277, R278
 // SetActive replaces the region's body, refusing over a held item.

@@ -89,3 +89,10 @@
 **Fire alarm:** build each `Part` without its line (`line` left zero). Red: every part reports 0.
 **Inject:** minispecsdom/carve.go:ParseCarve
 **Pulled:** 2026-09-04 — rang: `Item 1: line 0, want 7` and the other three parts; only that test.
+
+## Test: a group open at end of input is unread
+**Purpose:** R302
+**Input:** a carve whose status block is followed by a code span that never closes
+**Expected:** `Unread` holds one item at the span's line naming the marker; the parts still read
+**Refs:** crc-Carve.md
+**Code:** minispecsdom/carve_test.go

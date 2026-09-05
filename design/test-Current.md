@@ -33,3 +33,10 @@
 **Fire alarm:** take the first `Active` heading and ignore a second. Red: the two-heading document parses.
 **Inject:** minispecsdom/current.go:Current.parse
 **Pulled:** 2026-09-03 — rang: the two-heading document parsed, only that test. Site is `parse`, the helper.
+
+## Test: a group open at end of input is unread
+**Purpose:** R303
+**Input:** a current file whose standing section ends in a code span that never closes
+**Expected:** `Unread` holds one item at the span's line naming the marker; the Active region still reads
+**Refs:** crc-Current.md
+**Code:** minispecsdom/current_test.go

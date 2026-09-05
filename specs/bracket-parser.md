@@ -305,12 +305,21 @@ already knew. Both return nil for an unmatched marker.
 func (bc *BracketContext) InnerText(n Node) string
 // OuterText returns the bytes from a group's opener through its closer.
 func (bc *BracketContext) OuterText(n Node) string
+// Unclosed returns the openers whose group ran to end of input rather than to a closer.
+func (bc *BracketContext) Unclosed() []*Opener
 ```
 
 `n` names the group by being its opener or its closer. A group left open at end of
 input runs to the end of the source. These exist because a reader that has found a
 comment group wants its interior as one string, and slicing it from the node
 locations by hand is the kind of thing a library owes rather than each consumer.
+
+**`Unclosed()` returns the openers whose group was closed by end of input rather than by a
+closer**, in document order, derived from the pairing like everything else the context
+answers. A fence or span that runs to the end of a file takes every later heading and list
+item with it, and a reader above the base can list nothing as unread, because nothing
+entry-like survived to be unread. This is where that loss is visible, one layer down; the
+readers carry it up.
 
 **`Doc()` returns the document the context is bound to**, nil before the parse's `Done`. A
 reader that has an opener and wants the nodes it encloses needs the array, and the

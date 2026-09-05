@@ -14,7 +14,7 @@ func (p *Pending) Render() (string, error)
 func (p *Pending) Entries() []*Entry      // in file order — the top entry is active
 func (p *Pending) Entry(id int) *Entry
 func (p *Pending) MaxID() int              // 0 when empty
-func (p *Pending) Unread() []Unread        // level-2 headings that are not entries, each with its line
+func (p *Pending) Unread() []Unread        // level-2 headings that are not entries, and groups open at end of input; each with its line
 
 func (p *Pending) Place(e EntryText, pos int) error   // 1-based among entries; len+1 appends
 func (p *Pending) After(id int) (int, error)          // the position that follows a live entry
@@ -31,7 +31,7 @@ type SourceKind int
 const ( SourceNone SourceKind = iota; SourcePart; SourceGap )
 func (e *Entry) Line() int         // 1-based, the heading's line at parse time
 
-type Unread struct { Line int; Text string }   // shared with the done schema
+type Unread struct { Line int; Text string }   // shared by every reader here
 
 type EntryText struct { ID int; Title, Skill, Status, SourceDoc, SourceKey, Next string; Kind SourceKind }
 var ErrBadGapSource error   // Place refuses a gap key that is not one gap ID
@@ -84,3 +84,7 @@ gap ID.
 **After each write the document is re-read from its bytes** and the view rebuilt with it.
 A placed entry is one synthetic text until it is parsed, and nothing holds a node of this
 document across a write, so re-reading costs nothing a consumer can see.
+
+**A group open at end of input is unread**, listed at the opener's line with the text
+*`<marker>` open to end of input*, after the unread headings — the same rule and reason as the
+done schema's.

@@ -14,7 +14,7 @@ func (d *Done) Render() (string, error)
 
 func (d *Done) Entries() []*DoneEntry   // in file order: most recent first
 func (d *Done) MaxID() int              // the largest queue ID in any identifier slot
-func (d *Done) Unread() []Unread        // `- ` lines at column 0 that did not read as entries, each with its line
+func (d *Done) Unread() []Unread        // `- ` lines at column 0 that did not read as entries, and groups open at end of input; each with its line
 
 func (d *Done) Prepend(header, body string) error
 
@@ -55,3 +55,10 @@ it. The document is re-read after the write.
 **Values are derived, never stored**, from the entry's rendered bytes at those positions.
 An entry is a view over its run, as a queue entry is; nothing in it is a field a tool
 writes into.
+
+**A group open at end of input is unread.** The base's context answers `Unclosed`; every such
+opener is listed by `Unread` at its line, with the text *`<marker>` open to end of input*, after
+the entry-like lines — which is file order, since nothing structured can follow a group still
+open at the end. A fence or span that runs to end of file takes every later
+entry with it and leaves nothing entry-like to list, which is why the reader must say this
+itself rather than wait to notice.

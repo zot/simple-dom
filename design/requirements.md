@@ -221,6 +221,8 @@
   naming the group, and a test over every shipped table keeps the panic from a consumer.
 - **R297:** The any-close fallback recognizes literal closers only; a close-is-open marker
   outside its group is an opener and has already matched as one.
+- **R299:** `BracketContext.Unclosed` returns the openers whose group ran to end of input rather
+  than to a closer, in document order, derived from the pairing.
 
 ## Feature: indent scope
 **Source:** specs/indent-parser.md
@@ -519,6 +521,8 @@
 - **R281:** `SetMarker` refuses `OPEN` over a part whose checkbox is checked, with `ErrReopen`.
 - **R282:** `Land` over a part whose checkbox is checked is refused with `ErrLanded`, not made
   idempotent.
+- **R302:** `Carve.Unread` lists every group open at end of input at its opener's line, with the
+  text *`<marker>` open to end of input*.
 
 ## Feature: pending schema
 **Source:** specs/pending-schema.md
@@ -545,6 +549,9 @@
   not one gap ID with `ErrBadGapSource`.
 - **R265:** After each write the document is re-read from its bytes and the entries re-derived, since
   a placed entry is one synthetic text until it is parsed.
+- **R301:** `Pending.Unread` lists every group open at end of input at its opener's line, with the
+  text *`<marker>` open to end of input*, after the unread headings — file order, for the same
+  reason as the done schema's.
 
 ## Feature: done schema
 **Source:** specs/done-schema.md
@@ -564,6 +571,9 @@
   re-read after the write.
 - **R272:** `MaxID` is the largest queue ID in any identifier slot; values are derived from the run's
   rendered bytes and never stored.
+- **R300:** `Done.Unread` lists every group open at end of input at its opener's line, with the
+  text *`<marker>` open to end of input*, after the entry-like lines — file order, since nothing
+  structured can follow a group still open at the end.
 
 ## Feature: current schema
 **Source:** specs/current-schema.md
@@ -579,3 +589,5 @@
   node outside the region, so every byte outside it is unchanged by construction.
 - **R277:** `SetActive` refuses when the region is occupied.
 - **R278:** The document is re-read after each write.
+- **R303:** `Current.Unread` lists every group open at end of input at its opener's line, with the
+  text *`<marker>` open to end of input*.

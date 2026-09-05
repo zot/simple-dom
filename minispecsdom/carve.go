@@ -20,6 +20,7 @@ type Carve struct {
 	status    *schema.Heading
 	parts     []*Part
 	stateless []*PartLine
+	unread    []Unread
 }
 
 // CRC: crc-Carve.md | R252
@@ -83,6 +84,7 @@ func ParseCarve(src string) *Carve {
 	c := &Carve{parser: schema.NewMarkdownParser()}
 	c.doc = sdom.Parse(src, 0, c.parser)
 	c.ctx = c.parser.Indent().Brackets().Context()
+	c.unread = unclosed(c.ctx) // R302
 
 	from, to, ok := c.statusRegion()
 	if !ok {
@@ -172,6 +174,10 @@ func (c *Carve) Parts() []*Part { return c.parts }
 
 // CRC: crc-Carve.md | R251
 func (c *Carve) Stateless() []*PartLine { return c.stateless }
+
+// CRC: crc-Carve.md | R302
+// Unread lists what the reader could not read: today, every group open at end of input.
+func (c *Carve) Unread() []Unread { return c.unread }
 
 // CRC: crc-Carve.md | R253
 func (c *Carve) Part(key string) *Part {

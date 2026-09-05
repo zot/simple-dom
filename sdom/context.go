@@ -388,6 +388,22 @@ func (bc *BracketContext) groupOf(text string) *BracketGroup {
 	return nil
 }
 
+// CRC: crc-BracketContext.md | R299
+// Unclosed returns the openers whose group ran to end of input rather than to a
+// closer, in document order — derived from the pairing like every other answer here.
+// A fence that runs to end of file takes every later heading with it, and this is where
+// that is visible.
+func (bc *BracketContext) Unclosed() []*Opener {
+	bc.refresh()
+	var out []*Opener
+	for _, n := range bc.doc.Nodes() {
+		if o, ok := n.(*Opener); ok && bc.info[o].closer == nil {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
 // attach binds the context to the document it was parsed from and stamps it
 // with the generation the parse's own links describe, so the first read of a
 // freshly parsed document rebuilds nothing.

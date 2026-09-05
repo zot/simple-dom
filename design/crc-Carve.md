@@ -1,5 +1,5 @@
 # Carve
-**Requirements:** R248, R249, R250, R251, R252, R253, R254, R255, R256, R279, R280, R282, R283
+**Requirements:** R248, R249, R250, R251, R252, R253, R254, R255, R256, R279, R280, R282, R283, R302
 
 The carve file schema: embeds the markdown base, owns the document, and adds the
 status block. The first of the four trajectory file schemas.
@@ -14,7 +14,8 @@ status block. The first of the four trajectory file schemas.
 - `ParseCarve`: parses with the base, finds the status region, turns the list items
   inside it — and only those — into part lines, splitting them into parts and
   stateless lines, deriving depth and parent
-- `Part(key)`, `Parts`, `Stateless`, `HasStatus`, `Render`
+- `Part(key)`, `Parts`, `Stateless`, `HasStatus`, `Render`; `Unread`: every group the context
+  reports open at end of input, at its opener's line
 - `SetMarker(key, …)`: the tool's rule on the keyed line — replace the first transient,
   remove other transients, append when none
 - `Land(key, …)`: box, strike, and a `LANDED` record, in one act — refused with

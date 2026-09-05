@@ -33,3 +33,13 @@
 **Fire alarm:** record every line as 0 in `scan`. Red: the line assertions and the unread comparison both fail.
 **Inject:** minispecsdom/done.go:Done.scan
 **Pulled:** 2026-09-04 — rang: `Unread [{Line:0 Text:- not an entry, but entry-like}]` and `lines 0 0 0`; only that test. Same non-building first attempt as the pending alarm. Re-pulled the same day after the simplification pass hoisted `off`: the unread line alone was injected and rang on the unread assertion.
+
+## Test: a group open at end of input is unread
+**Purpose:** R300 — the failure `Unread` exists to prevent, arriving one layer below it
+**Input:** a done file whose last entry is followed by a fence that never closes
+**Expected:** `Unread` holds one item at the fence's line whose text names the marker and says it is open to end of input; the entries before it still read
+**Refs:** crc-Done.md
+**Code:** minispecsdom/done_test.go
+**Fire alarm:** make `unclosed` return nil. Red: this test and its three siblings in the pending, carve and current designs — one helper, four readers.
+**Inject:** minispecsdom/unread.go:unclosed
+**Pulled:** 2026-09-05 — rang in exactly the four sibling tests; re-pulled the same day after the simplifier dropped the helper's `doc` parameter, rang in the same four. **Past the list, same day:** disabling the line sort that first followed this helper rang nothing, and on inspection could not — nothing structured follows a group still open at the end, so the unclosed lines are last in file order by construction. The sort was removed; the requirements say *after*, not *sorted*.

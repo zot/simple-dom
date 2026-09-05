@@ -192,3 +192,13 @@ answer for the wrong reason and the test would prove nothing.
 **Fire alarm:** Remove `bc.refresh()` from `Opener`. Red: `Opener(close)` still names the removed opener. This is the same hole `Separators` had on 2026-08-31: every other pairing test rebuilds through some other accessor first, so nothing depended on these two refreshing themselves. The edit must **remove** a marker, for the reason the Separators entry gives.
 **Inject:** sdom/context.go:BracketContext.Opener
 **Pulled:** 2026-09-02 — rang: `Opener(close) = &{{( …}}, want nil`, only this test, both packages otherwise green; the closer half stayed green under this injection since it removes the refresh from `Opener` alone.
+
+## Test: Unclosed names the groups that ran to end of input
+**Purpose:** R299 — the lost tail of a document is visible here, one layer below the readers
+**Input:** `a(b) \`raw` and `x{y` under Go; a balanced document
+**Expected:** the backtick opener alone, then the brace alone, in document order; nil for the balanced document
+**Refs:** crc-BracketContext.md
+**Code:** sdom/context_test.go
+**Fire alarm:** have `Unclosed` skip the refresh. Red: after a mutation that removes a closer, the stale index still pairs it and the opener is not listed — the same hole `Separators` and `Opener` had.
+**Inject:** sdom/context.go:BracketContext.Unclosed
+**Pulled:** 2026-09-05 — rang in six tests: this one and, above the base, every reader's fixture read-back and unclosed test — with no refresh the index is empty on first ask, and every opener reads as unclosed.

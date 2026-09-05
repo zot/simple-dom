@@ -174,3 +174,16 @@ func TestEveryPartKnowsItsLine(t *testing.T) {
 		}
 	}
 }
+
+// CRC: crc-Carve.md | R302
+func TestAGroupOpenAtEndOfInputIsUnreadInCarve(t *testing.T) {
+	src := "# C\n\n## Status\n\n- [ ] **Item 1 — t.** **OPEN (not queued.)**\n\n`x\n"
+	c := ParseCarve(src)
+	if len(c.Parts()) != 1 {
+		t.Errorf("%d parts, want 1", len(c.Parts()))
+	}
+	u := c.Unread()
+	if len(u) != 1 || u[0].Line != 7 || !strings.Contains(u[0].Text, "open to end of input") {
+		t.Errorf("unread %+v, want the span at line 7", u)
+	}
+}

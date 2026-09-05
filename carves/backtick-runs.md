@@ -33,8 +33,8 @@ proposal is `~/work/mini-spec/requests/backtick-run-groups.md`; our acknowledgem
 
 ## Status
 
-- [ ] **Item 1 — backtick runs as one group.** **OPEN (#26.)**
-- [ ] **Item 2 — a group open at end of input is reported.** **OPEN (not queued.)**
+- [x] ~~**Item 1 — backtick runs as one group.**~~ **LANDED (`c42cd24`, 2026-09-05 — `#26`.)**
+- [ ] **Item 2 — a group open at end of input is reported.** **OPEN (#27.)**
 
 ## Decisions
 
@@ -128,6 +128,9 @@ tests, not as design:
   into a three-run inside a two-span left a two-run followed by text, which closed the span.
   Go has no lookbehind, and none is needed: the run is taken as one piece, so the parse never
   stands inside it. R293 says so.
+
+Landed `c42cd24`: R290–R298, `specs/bracket-parser.md` "Runs, and markers that close themselves",
+`specs/markdown.md`'s table; R65 → R294 (T6), R227 → R298 (T7).
 
 **Measured 2026-09-05, before landing.** mini-spec's `DONE.md` (210 KB, 60 entries by grep —
 the file has grown since the request's 58): the old reader returned 17 entries, the new one

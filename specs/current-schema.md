@@ -15,6 +15,7 @@ func (c *Current) Render() (string, error)
 func (c *Current) Active() string         // the region's body, trimmed; "" when only the placeholder
 func (c *Current) Occupied() bool         // the region holds something other than the placeholder
 func (c *Current) Standing() []string     // the other level-2 headings, in order
+func (c *Current) Unread() []Unread       // groups open at end of input, each with its opener's line
 
 func (c *Current) SetActive(body string) error   // refuses when Occupied
 func (c *Current) Reset() error                  // writes the placeholder
@@ -39,3 +40,7 @@ another would discard it, and the pending file is the stack to park it on first.
 
 **The placeholder is `_No active item._`**, and `Occupied` is the region holding anything
 else. The document is re-read after each write.
+
+**A group open at end of input is unread.** `Unread` lists every opener the base's context
+reports as closed by end of input, at its line, with the text *`<marker>` open to end of input*;
+a fenced `## Active` that never closes is how the region goes missing without a refusal.
