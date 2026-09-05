@@ -34,7 +34,7 @@ proposal is `~/work/mini-spec/requests/backtick-run-groups.md`; our acknowledgem
 ## Status
 
 - [x] ~~**Item 1 — backtick runs as one group.**~~ **LANDED (`c42cd24`, 2026-09-05 — `#26`.)**
-- [ ] **Item 2 — a group open at end of input is reported.** **OPEN (#27.)**
+- [x] ~~**Item 2 — a group open at end of input is reported.**~~ **LANDED (`f3c947e`, 2026-09-05 — `#27`.)**
 
 ## Decisions
 
@@ -163,3 +163,7 @@ inherits it.
 
 **Acceptance.** A fixture whose last span has no closer; the report names its opener and
 line; the byte round-trip is unchanged, since reporting is not repair.
+
+Landed `f3c947e`: R299 on the context, R300–R303 on the four readers; the carve and current
+readers gained `Unread()`. A line sort the build first added proved dead — nothing structured
+follows a group still open at the end — and was removed under a past-the-list probe.

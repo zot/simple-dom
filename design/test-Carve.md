@@ -10,7 +10,7 @@
 **Alarm:** 1
 **Fire alarm:** drop the region bound so every list item in the file is tried (consume `from` and `to` so it builds). Red: nothing here, since the fixture's other bullets are fenced — so the test also parses a source with a bullet under a later `## Notes`, which becomes a part under the injection; a `### Sub` inside the block does not end it.
 **Inject:** minispecsdom/carve.go:ParseCarve
-**Pulled:** 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, `a bullet outside the region became a part: "Item 1,Item 2,Item 9"`, only that test; restore clean. Previously 2026-09-03 — rang: `a bullet outside the region became a part: "Item 1,Item 2,Item 9"`, only that test. The delegate's first attempt left `from`/`to` unused and did not build; re-pulled by hand with them consumed.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller after the reader gained the unclosed report; rang: `a bullet outside the region became a part: "Item 1,Item 2,Item 9"`, only that test. Previously 2026-09-04 — re-pulled at `ddcf09f` by delegation: rang, `a bullet outside the region became a part: "Item 1,Item 2,Item 9"`, only that test; restore clean. Previously 2026-09-03 — rang: `a bullet outside the region became a part: "Item 1,Item 2,Item 9"`, only that test. The delegate's first attempt left `from`/`to` unused and did not build; re-pulled by hand with them consumed.
 
 
 ## Test: no status block, and a fenced one
@@ -88,7 +88,7 @@
 **Alarm:** 8
 **Fire alarm:** build each `Part` without its line (`line` left zero). Red: every part reports 0.
 **Inject:** minispecsdom/carve.go:ParseCarve
-**Pulled:** 2026-09-04 — rang: `Item 1: line 0, want 7` and the other three parts; only that test.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller after `ParseCarve` gained the unclosed report; rang: `Item 1: line 0, want 7` and the three other parts, only that test. Previously 2026-09-04 — rang: `Item 1: line 0, want 7` and the other three parts; only that test.
 
 ## Test: a group open at end of input is unread
 **Purpose:** R302

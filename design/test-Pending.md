@@ -21,7 +21,7 @@
 **Alarm:** 2
 **Fire alarm:** clamp an out-of-range position to the nearest valid one. Red: `Place` at 0 succeeds and the entry lands first.
 **Inject:** minispecsdom/pending.go:Pending.Place
-**Pulled:** 2026-09-03 — rang: `position 0 accepted`, `position len+2 accepted`, `a refused Place changed the document`, only that test.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller (stale since Item 5 moved `Place` on 2026-09-04); rang: `position 0 accepted`, `position len+2 accepted`, `a refused Place changed the document`, only that test. Previously 2026-09-03 — rang: `position 0 accepted`, `position len+2 accepted`, `a refused Place changed the document`, only that test.
 
 ## Test: Remove drops exactly the run
 **Purpose:** R263
@@ -54,7 +54,7 @@
 **Alarm:** 5
 **Fire alarm:** record every line as 0 in `scan` — entries and unread alike. Red: the line assertions and the unread comparison both fail.
 **Inject:** minispecsdom/pending.go:Pending.scan
-**Pulled:** 2026-09-04 — rang: `unread [{Line:0 Text:Notes}]` and `lines 0 0 0`; only that test. A first attempt did not build: the probe comment swallowed the closing parenthesis on the same line. Re-pulled the same day after the simplification pass hoisted the line into a local: rang again.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller after the reader gained the unclosed report; rang: `unread [{Line:0 Text:Notes} …]` and `lines 0 0 0`, only the fixture read-back. Previously 2026-09-04 — rang: `unread [{Line:0 Text:Notes}]` and `lines 0 0 0`; only that test. A first attempt did not build: the probe comment swallowed the closing parenthesis on the same line. Re-pulled the same day after the simplification pass hoisted the line into a local: rang again.
 
 ## Test: a source is a part or a gap
 **Purpose:** R287, R288, R289

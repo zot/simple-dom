@@ -32,7 +32,7 @@
 **Alarm:** 3
 **Fire alarm:** take the first `Active` heading and ignore a second. Red: the two-heading document parses.
 **Inject:** minispecsdom/current.go:Current.parse
-**Pulled:** 2026-09-03 — rang: the two-heading document parsed, only that test. Site is `parse`, the helper.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller after `parse` gained the unclosed report; rang: the two-heading document `parsed`, only `TestExactlyOneActive`. Previously 2026-09-03 — rang: the two-heading document parsed, only that test. Site is `parse`, the helper.
 
 ## Test: a group open at end of input is unread
 **Purpose:** R303

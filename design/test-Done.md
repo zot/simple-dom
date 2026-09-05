@@ -32,7 +32,7 @@
 **Alarm:** 4
 **Fire alarm:** record every line as 0 in `scan`. Red: the line assertions and the unread comparison both fail.
 **Inject:** minispecsdom/done.go:Done.scan
-**Pulled:** 2026-09-04 — rang: `Unread [{Line:0 Text:- not an entry, but entry-like}]` and `lines 0 0 0`; only that test. Same non-building first attempt as the pending alarm. Re-pulled the same day after the simplification pass hoisted `off`: the unread line alone was injected and rang on the unread assertion.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller after the reader gained the unclosed report; rang: `Unread [{Line:0 Text:- not an entry, but entry-like}]` and `lines 0 0 0`, only the fixture read-back. Previously 2026-09-04 — rang: `Unread [{Line:0 Text:- not an entry, but entry-like}]` and `lines 0 0 0`; only that test. Same non-building first attempt as the pending alarm. Re-pulled the same day after the simplification pass hoisted `off`: the unread line alone was injected and rang on the unread assertion.
 
 ## Test: a group open at end of input is unread
 **Purpose:** R300 — the failure `Unread` exists to prevent, arriving one layer below it
