@@ -381,3 +381,5 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - T5: R267 retired by R284 (2026-09-04 sdomification Item 4: Unread carries lines)
 - T6: R65 retired by R294 (2026-09-05 backtick-runs Item 1: AllowedInner names groups, not openers)
 - T7: R227 retired by R298 (2026-09-05 backtick-runs Item 1: the fence and the code span are one pattern group)
+- T8: R261 retired by R305 (2026-09-05 sdomification Item 6: Place lands where the entries end)
+- T9: R263 retired by R306 (2026-09-05 sdomification Item 6: Remove closes the tail; Place then Remove is the identity)

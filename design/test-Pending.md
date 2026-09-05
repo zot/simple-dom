@@ -13,18 +13,18 @@
 **Pulled:** 2026-09-03 — rang: `the sub-item is not inside entry 12's region`, and `Remove(12)` left the sub-item behind — two tests.
 
 ## Test: Place by position, refused not clamped
-**Purpose:** R261, R262, R265
+**Purpose:** R305, R262, R265
 **Input:** `Place` at 1, at `len+1`, and after id 12; then at 0 and at `len+2`
-**Expected:** the renders show the new entry before the first, at the end, and after 12's region, each separated by a blank line; `Entries` reflects each write; the two bad positions error and the render is unchanged
+**Expected:** the renders show the new entry before the first, at the end — the file still ending in one newline — and after 12's region, each separated by a blank line; `Entries` reflects each write; the two bad positions error and the render is unchanged
 **Refs:** crc-Pending.md, seq-pending.md#2
 **Code:** minispecsdom/pending_test.go
 **Alarm:** 2
 **Fire alarm:** clamp an out-of-range position to the nearest valid one. Red: `Place` at 0 succeeds and the entry lands first.
 **Inject:** minispecsdom/pending.go:Pending.Place
-**Pulled:** 2026-09-05 — re-pulled by a delegated puller (stale since Item 5 moved `Place` on 2026-09-04); rang: `position 0 accepted`, `position len+2 accepted`, `a refused Place changed the document`, only that test. Previously 2026-09-03 — rang: `position 0 accepted`, `position len+2 accepted`, `a refused Place changed the document`, only that test.
+**Pulled:** 2026-09-05 — re-pulled after the simplifier restructured `Place`; rang in the same test. Earlier the same day: re-pulled by hand after Item 6 rewrote the site; rang: `position 0 accepted`, `position len+2 accepted`, `a refused Place changed the document`, only that test. Previously 2026-09-05 — re-pulled by a delegated puller (stale since Item 5 moved `Place` on 2026-09-04); rang: `position 0 accepted`, `position len+2 accepted`, `a refused Place changed the document`, only that test. Previously 2026-09-03 — rang: `position 0 accepted`, `position len+2 accepted`, `a refused Place changed the document`, only that test.
 
 ## Test: Remove drops exactly the run
-**Purpose:** R263
+**Purpose:** R306
 **Input:** `Remove(12)` on the fixture, then `Remove(99)`
 **Expected:** the render equals the fixture with entry 12's lines gone and its neighbours' bytes untouched; entries read `8, 3, 14, 15`; the unknown id errors
 **Refs:** crc-Pending.md, seq-pending.md#3
@@ -32,7 +32,7 @@
 **Alarm:** 3
 **Fire alarm:** skip the tail split so the next entry's leading bytes go with the removed run. Red: the render loses the following entry's heading.
 **Inject:** minispecsdom/pending.go:Pending.Remove
-**Pulled:** 2026-09-03 — rang: the rule-ends-region test, `after Remove: "# Pending\n\n---\n\n"` — the rule and the prose went with the run.
+**Pulled:** 2026-09-05 — re-pulled by hand after Item 6 rewrote the site; rang: the rule-ends-region test (`after Remove:`) and the new identity test's rule-and-commentary case, which lost its rule to the run. Previously 2026-09-03 — rang: the rule-ends-region test, `after Remove: "# Pending\n\n---\n\n"` — the rule and the prose went with the run.
 
 ## Test: a rule ends a region
 **Purpose:** R259, R263 — found by injecting past the alarm list, not by design
@@ -73,3 +73,23 @@
 **Expected:** `Unread` holds one item at the span's line naming the marker; the entry still reads
 **Refs:** crc-Pending.md
 **Code:** minispecsdom/pending_test.go
+
+## Test: Place at the last position lands before the rule
+**Purpose:** R305 — where the entries end, not where the file does
+**Input:** the fixture followed by `---` and commentary, `Place` at `len+1`; the same with every entry removed first, then `Place` at 1; a file whose header rule is its last line
+**Expected:** the new entry sits after the last entry and before the rule with one blank line each side; with no entries it sits after the header rule; with nothing after the rule it ends the file in one newline
+**Refs:** crc-Pending.md, seq-pending.md#2.3.1, seq-pending.md#2.3.3
+**Code:** minispecsdom/pending_test.go
+**Fire alarm:** make the last-position case fall through to `appendEntry`. Red: the entry lands after the commentary.
+**Inject:** minispecsdom/pending.go:Pending.Place
+**Pulled:** 2026-09-05 — re-pulled after the simplifier restructured `Place` into guard clauses; rang: `TestPlaceAtTheLastPositionLandsBeforeTheRule`, only that test. A first attempt left unreachable code, which `go vet` refuses — no evidence, not silence. Earlier the same day: rang: `entry not between the last entry and the rule`, only that test; the first pull of the sibling alarm below was a false silent — the injection left a variable unused and the build failed, which the pull script read as no failures. A build failure must be read as no evidence, never as green.
+
+## Test: Place then Remove is the identity
+**Purpose:** R305, R306 — old R480 on `old-sdom`: `add-item` and `finish` are inverses or they are not
+**Input:** the fixture as it is, the fixture with a trailing rule and commentary, and the fixture with no final newline; `Place` at `len+1` then `Remove` of the new id
+**Expected:** the render equals the source byte for byte in the first two shapes; the third gains its missing final newline and is otherwise identical
+**Refs:** crc-Pending.md, seq-pending.md#2.3.2, seq-pending.md#3.2.1
+**Code:** minispecsdom/pending_test.go
+**Fire alarm:** drop `closeTail` from `Remove`. Red: the plain fixture ends in a blank line after the round trip — the one-line growth mini-spec measured.
+**Inject:** minispecsdom/pending.go:Pending.Remove
+**Pulled:** 2026-09-05 — rang: `plain: not the identity; tail …`.\n\n` and the no-final-newline case, only `TestPlaceThenRemoveIsTheIdentity`.

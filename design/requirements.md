@@ -534,11 +534,11 @@
 - **R260:** An entry is a view over its run of flat nodes, its values derived from the rendered
   bytes at the format's positions — number, title, skill, status, Source document and part key,
   Next — and nothing in the run is re-cut.
-- **R261:** `Place(e, pos)` inserts the canonical entry text as one synthetic node before the entry
+- **~~R261:~~** (Retired T8 — see R305) `Place(e, pos)` inserts the canonical entry text as one synthetic node before the entry
   at `pos`, or at the end when `pos` is one past the last; a position outside that range is
   refused, not clamped.
 - **R262:** `After(id)` resolves the position following a live entry and refuses an unknown id.
-- **R263:** `Remove(id)` drops the entry's run inside one mutation window, splitting a shared tail
+- **~~R263:~~** (Retired T9 — see R306) `Remove(id)` drops the entry's run inside one mutation window, splitting a shared tail
   text at the region's end.
 - **R264:** `Unread` lists level-2 headings that are not entries; `MaxID` is the largest entry id.
 - **R287:** A `Source:` line names a part or a gap, told apart by the word and by shape; `Entry.Kind`
@@ -552,6 +552,14 @@
 - **R301:** `Pending.Unread` lists every group open at end of input at its opener's line, with the
   text *`<marker>` open to end of input*, after the unread headings — file order, for the same
   reason as the done schema's.
+- **R305:** `Place(e, pos)` inserts the canonical entry text as one synthetic node before the entry
+  at `pos`; at one past the last it lands where the entries end — before the rule that closes the
+  region when one follows, else at end of file with the separator adjusted so the file ends in one
+  newline, and with no entries at all after the header's rule; a position outside `1 … len+1` is
+  refused, not clamped.
+- **R306:** `Remove(id)` drops the entry's run inside one mutation window, splitting a shared tail
+  text at the region's end, and when the entry was the last thing in the file drops the blank line
+  its placement opened, so that `Place` then `Remove` is byte-identical.
 
 ## Feature: done schema
 **Source:** specs/done-schema.md

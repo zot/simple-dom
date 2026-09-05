@@ -16,7 +16,7 @@ func (p *Pending) Entry(id int) *Entry
 func (p *Pending) MaxID() int              // 0 when empty
 func (p *Pending) Unread() []Unread        // level-2 headings that are not entries, and groups open at end of input; each with its line
 
-func (p *Pending) Place(e EntryText, pos int) error   // 1-based among entries; len+1 appends
+func (p *Pending) Place(e EntryText, pos int) error   // 1-based among entries; len+1 lands where the entries end
 func (p *Pending) After(id int) (int, error)          // the position that follows a live entry
 func (p *Pending) Remove(id int) error
 
@@ -65,16 +65,21 @@ fence.** A fence in a body is that entry's: the base emits no heading inside one
 quoted `## 5.` cannot end an entry, by construction.
 
 **Placement is a node placement, never a byte splice.** `Place(e, pos)` renders the
-canonical entry — heading line, `Source:` line, `Next:` line when given, a trailing blank
-line — as one synthetic text and inserts it before the entry at `pos`, or at the end when
-`pos` is one past the last. A position outside `1 … len+1` is **refused, not clamped**:
-a clamp silently reinterprets an instruction the caller was specific about. `After(id)`
-resolves the position following a live entry and refuses an unknown one. `--next`, which
-consults the current file, is resolved by the caller before it reaches here.
+canonical entry — the heading line, the `Source:` line, an optional `Next:` line, a blank
+line — as one synthetic text and inserts it before the entry at `pos`. **At one past the
+last it lands where the entries end, not where the file does**: before the rule that closes
+the region when one follows — the shape `trajectory-format.md` describes, entries then `---`
+then commentary — else at end of file, where the separator is adjusted so the file still ends
+in one newline; with no entries at all, after the header's rule. A position outside
+`1 … len+1` is **refused, not clamped**: a clamp silently reinterprets an instruction the
+caller was specific about.
 
-**Removal drops the run.** `Remove(id)` takes the entry's nodes out of the array — splitting
-the last text at the region's end when the next entry's bytes share it — inside one
-mutation window.
+**Removal drops the run, and Place then Remove is the identity.** `Remove(id)` takes the
+entry's nodes out of the array — splitting the shared tail text at the region's end so the
+next entry's or the rule's bytes stay — and, when the entry was the last thing in the file,
+drops the blank line its placement opened. `add-item` and `finish` are inverses or they are
+not, and the byte-identical round trip is the test that says which; measured 2026-09-05
+before this, every round grew the file by one blank line.
 
 **What it could not read is reported.** A level-2 heading whose text does not open `N.`
 is not an entry; it is listed by `Unread`, since a shape-based reader is blind to what is

@@ -38,7 +38,7 @@ brainstormed, not listed ahead of that.
 - [ ] **Item 6 — pending writes end at the rule and round-trip.** **OPEN (#29.)**
 - [ ] **Item 7 — markers replace every transient and precede prose.** **OPEN (#30.)**
 - [ ] **Item 8 — the title read follows emphasis to its own close.** **OPEN (#31.)**
-- [ ] **Item 9 — the current file's refusals are sentinels.** **OPEN (#28.)**
+- [x] ~~**Item 9 — the current file's refusals are sentinels.**~~ **LANDED (`0c606db`, 2026-09-05 — `#28`.)**
 - [ ] **Item 10 — `Mutate` proves the tree describes the bytes.** **OPEN (#32.)**
 - [ ] **Item 11 — one key form: the fragment.** **OPEN (#33.)**
 
@@ -212,6 +212,8 @@ many-headings cases are `errors.New` at `current.go`, and mini-spec tells them a
 `strings.Contains` on the message to name the repair — *add the heading beneath the rule,
 holding `_No active item._`*. `ErrNoActive` and `ErrManyActive`, beside the existing
 `ErrOccupied`, make that a type switch. Small, and the smallest part here.
+
+Landed `0c606db`: R304.
 
 ## Item 10
 

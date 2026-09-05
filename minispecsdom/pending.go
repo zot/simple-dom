@@ -285,11 +285,14 @@ func (e EntryText) Text() string {
 	return b.String()
 }
 
-// CRC: crc-Pending.md | Seq: seq-pending.md#2 | R261, R265
+// CRC: crc-Pending.md | Seq: seq-pending.md#2 | R305, R265
 //
-// Place inserts the canonical entry as ONE synthetic text before the entry at pos, or
-// at the end when pos is one past the last. Refused rather than clamped outside that
-// range: a clamp silently reinterprets an instruction the caller was specific about.
+// Place inserts the canonical entry as ONE synthetic text before the entry at pos.
+// At one past the last it lands where the entries END, not where the file does: before
+// the rule that closes the region when one follows, else at end of file — where the
+// separator is adjusted so the file still ends in one newline — and, with no entries at
+// all, after the header's rule. Refused rather than clamped outside 1 … len+1: a clamp
+// silently reinterprets an instruction the caller was specific about.
 func (p *Pending) Place(e EntryText, pos int) error {
 	n := len(p.entries)
 	if pos < 1 || pos > n+1 {
@@ -299,14 +302,23 @@ func (p *Pending) Place(e EntryText, pos int) error {
 		return ErrBadGapSource
 	}
 	text := e.Text()
-	var before sdom.Node
-	if pos <= n {
-		before = p.entries[pos-1].head
-	} else if !strings.HasSuffix(p.doc.Source(), "\n\n") {
-		text = "\n" + text
-	}
 	if err := p.doc.Mutate(func() error {
-		return p.doc.Insert(before, sdom.NewText(text, sdom.Synthetic(len(text))))
+		if pos <= n {
+			return p.insert(text, p.entries[pos-1].head)
+		}
+		if n == 0 {
+			return p.placeFirst(text)
+		}
+		last := p.entries[n-1]
+		if last.tail == nil {
+			return p.appendEntry(text)
+		}
+		// Seq: seq-pending.md#2.3.1 — before the rule that ends the region.
+		_, right, err := p.doc.Split(last.tail, last.cut)
+		if err != nil {
+			return err
+		}
+		return p.insert(text, right)
 	}); err != nil {
 		return err
 	}
@@ -314,10 +326,70 @@ func (p *Pending) Place(e EntryText, pos int) error {
 	return nil
 }
 
-// CRC: crc-Pending.md | Seq: seq-pending.md#3 | R263, R265
+// insert puts text before a node as one synthetic text.
+func (p *Pending) insert(text string, before sdom.Node) error {
+	return p.doc.Insert(before, sdom.NewText(text, sdom.Synthetic(len(text))))
+}
+
+// CRC: crc-Pending.md | Seq: seq-pending.md#2.3.2 | R305
+//
+// appendEntry lands an entry at end of file: a blank line separates it from what precedes
+// it, and the canonical text's own trailing blank line is dropped so the file ends in one
+// newline — the shape Remove restores.
+func (p *Pending) appendEntry(text string) error {
+	src := p.doc.Source()
+	switch {
+	case strings.HasSuffix(src, "\n\n"): // the blank line is already there
+	case strings.HasSuffix(src, "\n"):
+		text = "\n" + text
+	default:
+		text = "\n\n" + text
+	}
+	return p.insert(strings.TrimSuffix(text, "\n"), nil)
+}
+
+// CRC: crc-Pending.md | Seq: seq-pending.md#2.3.3 | R305
+//
+// placeFirst lands the only entry after the header's rule — the first `---` line in the
+// file — with one blank line between, whether the rule is followed by commentary or by
+// nothing; with no rule at all the entry goes at end of file.
+func (p *Pending) placeFirst(text string) error {
+	nodes := p.doc.Nodes()
+	for i, n := range nodes {
+		t, ok := n.(*sdom.Text)
+		if !ok {
+			continue
+		}
+		s, _ := t.Render()
+		at := ruleAt(s)
+		if at < 0 {
+			continue
+		}
+		cut := at + len("---\n")
+		if cut > len(s) || (cut == len(s) && i == len(nodes)-1) {
+			// The rule is the file's last line, with no newline or with nothing after it.
+			return p.appendEntry(text)
+		}
+		if strings.HasPrefix(s[cut:], "\n") {
+			cut++ // the blank line after the rule already exists
+		} else {
+			text = "\n" + text
+		}
+		_, right, err := p.doc.Split(t, cut)
+		if err != nil {
+			return err
+		}
+		return p.insert(text, right)
+	}
+	return p.appendEntry(text)
+}
+
+// CRC: crc-Pending.md | Seq: seq-pending.md#3 | R306, R265
 //
 // Remove drops the entry's run inside one window, splitting the shared tail text at
-// the region's end so the next entry's bytes stay.
+// the region's end so the next entry's bytes stay. When the entry was the last thing in
+// the file, the blank line its placement opened is dropped too, so that Place then Remove
+// is the identity on the bytes — add-item and finish are inverses or they are not.
 func (p *Pending) Remove(id int) error {
 	e := p.Entry(id)
 	if e == nil {
@@ -332,15 +404,46 @@ func (p *Pending) Remove(id int) error {
 			}
 			run[len(run)-1] = left // the right half is the next entry's
 		}
+		tail := p.tailBefore(e.head, run) // resolved before the array moves under the removal
 		for _, n := range run {
 			if err := p.doc.Remove(n); err != nil {
 				return err
 			}
 		}
+		closeTail(tail) // Seq: seq-pending.md#3.2.1
 		return nil
 	}); err != nil {
 		return err
 	}
 	p.reload()
 	return nil
+}
+
+// CRC: crc-Pending.md | Seq: seq-pending.md#3.2.1 | R306
+// tailBefore is the text that will end the file once run is removed — the nearest text
+// before head, past any Indent where the entry's indented lines return to column zero —
+// or nil when the run is not the last thing in the file. Resolved before the removal,
+// because the node array is live and moves under it.
+func (p *Pending) tailBefore(head sdom.Node, run []sdom.Node) *sdom.Text {
+	nodes := p.doc.Nodes()
+	if run[len(run)-1] != nodes[len(nodes)-1] {
+		return nil
+	}
+	for i := slices.Index(nodes, head) - 1; i >= 0; i-- {
+		if t, ok := nodes[i].(*sdom.Text); ok {
+			return t
+		}
+	}
+	return nil
+}
+
+// closeTail trims the file back to one trailing newline when removing the last entry
+// left it ending in a blank line — the separator appendEntry opened.
+func closeTail(t *sdom.Text) {
+	if t == nil {
+		return
+	}
+	if s, _ := t.Render(); strings.HasSuffix(s, "\n\n") {
+		t.SetText(strings.TrimSuffix(s, "\n"))
+	}
 }

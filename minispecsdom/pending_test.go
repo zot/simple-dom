@@ -104,7 +104,7 @@ func TestPlaceByPositionRefusedNotClamped(t *testing.T) {
 		t.Fatalf("ids %v, want [20 8 12 21 3 14 15 22]", got)
 	}
 	r, _ = p.Render()
-	if !strings.Contains(r, "kept here until resumed.\n\n## 21. **After twelve**") || !strings.HasSuffix(r, "gap `O1-O3`.\n\n## 22. **Last**. S.\n   Source: [d](d), part `#3`.\n\n") {
+	if !strings.Contains(r, "kept here until resumed.\n\n## 21. **After twelve**") || !strings.HasSuffix(r, "gap `O1-O3`.\n\n## 22. **Last**. S.\n   Source: [d](d), part `#3`.\n") {
 		t.Errorf("after and last:\n%s", r)
 	}
 	before, _ := p.Render()
@@ -205,5 +205,58 @@ func TestAGroupOpenAtEndOfInputIsUnreadInPending(t *testing.T) {
 	u := p.Unread()
 	if len(u) != 1 || u[0].Line != 8 || !strings.Contains(u[0].Text, "open to end of input") {
 		t.Errorf("unread %+v, want the span at line 8", u)
+	}
+}
+
+// CRC: crc-Pending.md | Seq: seq-pending.md#2.3.1 | R305
+func TestPlaceAtTheLastPositionLandsBeforeTheRule(t *testing.T) {
+	e := EntryText{ID: 20, Title: "New", Status: "Fresh.", SourceDoc: "carves/z.md", SourceKey: "Item 1"}
+	placed := "## 20. **New**. Fresh.\n   Source: [carves/z.md](carves/z.md), part `#Item 1`.\n"
+
+	p := ParsePending(pendingFixture(t) + "\n---\n\nprose after the entries.\n")
+	if err := p.Place(e, len(p.Entries())+1); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := p.Render(); !strings.Contains(got, "gap `O1-O3`.\n\n"+placed+"\n---\n\nprose") {
+		t.Errorf("entry not between the last entry and the rule:\n%s", got[len(got)-200:])
+	}
+
+	// No entries: after the header rule — before the commentary rule when one follows,
+	// and ending the file in one newline when nothing does.
+	for name, c := range map[string]struct{ src, want string }{
+		"commentary follows": {"# Pending\n\nqueue.\n\n---\n\n---\n\nprose after the entries.\n",
+			"# Pending\n\nqueue.\n\n---\n\n" + placed + "\n---\n\nprose after the entries.\n"},
+		"nothing follows": {"# Pending\n\n---\n", "# Pending\n\n---\n\n" + placed},
+	} {
+		p := ParsePending(c.src)
+		if err := p.Place(e, 1); err != nil {
+			t.Fatal(name, err)
+		}
+		if got, _ := p.Render(); got != c.want {
+			t.Errorf("empty queue, %s:\n%q", name, got)
+		}
+	}
+}
+
+// CRC: crc-Pending.md | Seq: seq-pending.md#3.2.1 | R305, R306
+func TestPlaceThenRemoveIsTheIdentity(t *testing.T) {
+	e := EntryText{ID: 20, Title: "New", Status: "Fresh.", SourceDoc: "carves/z.md", SourceKey: "Item 1"}
+	fixture := pendingFixture(t)
+	withRule := fixture + "\n---\n\nprose after the entries.\n"
+	for name, c := range map[string]struct{ src, want string }{
+		"plain":            {fixture, fixture},
+		"rule+commentary":  {withRule, withRule},
+		"no final newline": {strings.TrimRight(fixture, "\n"), fixture},
+	} {
+		p := ParsePending(c.src)
+		if err := p.Place(e, len(p.Entries())+1); err != nil {
+			t.Fatal(name, err)
+		}
+		if err := p.Remove(20); err != nil {
+			t.Fatal(name, err)
+		}
+		if got, _ := p.Render(); got != c.want {
+			t.Errorf("%s: not the identity; tail %q", name, got[len(got)-60:])
+		}
 	}
 }

@@ -1,5 +1,5 @@
 # Sequence: the queue file
-**Requirements:** R259, R260, R261, R263, R287, R288, R289
+**Requirements:** R259, R260, R261, R263, R287, R288, R289, R305, R306
 
 ## 1. Reading
 
@@ -23,7 +23,12 @@
    2.2. Render the canonical entry text, ending in a blank line, in the part or gap form
         by `Kind`
    2.3. Inside a window, `Insert` it as one synthetic text before the entry at `pos`, or
-        at the end; re-read the document and re-derive the entries
+        where the entries end; re-read the document and re-derive the entries
+        2.3.1. When a rule closes the region, split the last entry's tail at the rule and
+               insert before it
+        2.3.2. Else at end of file: open one blank line before it and drop the text's own
+               trailing blank line, so the file ends in one newline
+        2.3.3. With no entries, after the header's rule, one blank line between
 
 ## 3. Removing
 
@@ -31,4 +36,6 @@
    3.1. Find the entry; unknown is an error
    3.2. Inside a window, split the shared tail text at the region's end if the run
         does not end on a node boundary, then `Remove` every node of the run
+        3.2.1. If the file now ends in a blank line, trim it to one newline — the
+               separator placement opened
    3.3. Re-read the document and re-derive the entries
