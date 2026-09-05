@@ -1,5 +1,5 @@
 # BracketContext
-**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154, R193, R194, R195, R196, R197, R198, R222
+**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154, R193, R194, R195, R196, R197, R198, R222, R291
 
 The schema's parse context: a concrete type, not an interface. It carries the
 language through the parse and **outlives** it to own the pairing links.
@@ -7,7 +7,8 @@ language through the parse and **outlives** it to own the pairing links.
 ## Knows
 - the language, during the parse
 - the **`Origin` it minted for this parse**, which every node it produces carries
-- the pairing links, afterwards:
+- the pairing links, afterwards — a closer pairs with an opener when it is the group's
+  literal `Close`, or the opener's own text for a `CloseIsOpen` group:
   - an **opener** knows its closer and its enclosing opener
   - a **closer** knows its opener
   - an **opener** also knows the **separators** belonging to its group

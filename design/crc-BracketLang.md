@@ -1,5 +1,5 @@
 # BracketLang
-**Requirements:** R58, R59, R60, R62, R68, R70, R121, R169, R170, R171, R172, R173, R207, R208, R209
+**Requirements:** R58, R59, R60, R62, R68, R70, R121, R169, R170, R171, R172, R173, R207, R208, R209, R295, R296
 
 A language's whole bracket table, and nothing else. Supporting a new language is
 adding an entry, not writing code.
@@ -10,8 +10,14 @@ adding an entry, not writing code.
   **written**, not how one is recognized
 
 ## Does
-- resolves an opener string back to the group that owns it, which is how
-  `AllowedInner` reaches a nested group
+- resolves a name back to the group that owns it — a string one of its `Open` lists,
+  or its `OpenRegex` — which is how `AllowedInner`, `AllowedParent` and `GroupFor`
+  reach a group; matching then uses that group's own opener, never the name as a
+  prefix
+- is checked when a parser is constructed: a pattern that does not compile, an
+  `OpenRegex` beside a non-empty `Open`, or `CloseIsOpen` beside a `Close` panics
+  naming the group, and a test over every shipped table keeps that panic from a
+  consumer
 - offers its groups in order, which is the precedence the BracketParser parses by
 
 ## Constraints

@@ -294,7 +294,7 @@ func TestIndicesAreCorrectAfterTheWindowCloses(t *testing.T) {
 
 // CRC: crc-MutationWindow.md | R43, R257
 func TestInsertPlacesBeforeOrAtTheEnd(t *testing.T) {
-	d, _ := parse("ab|cd", 0, &BracketLang{Brackets: []BracketGroup{{Open: []string{"|"}, Close: []string{"\n"}}}})
+	d, _ := parse("ab|cd", 0, &BracketLang{Brackets: []BracketGroup{{Open: []string{"|"}, Close: "\n"}}})
 	g0 := d.Generation()
 	var marker Node
 	for _, n := range d.Nodes() {

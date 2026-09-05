@@ -2,6 +2,7 @@ package schema
 
 import (
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -16,7 +17,13 @@ func parseMarkdown(src string) (*sdom.Doc, *MarkdownParser) {
 
 func sample(t *testing.T) string {
 	t.Helper()
-	b, err := os.ReadFile("testdata/trajectory-sample.md")
+	return fixture(t, "trajectory-sample.md")
+}
+
+// fixture reads a testdata file, which every fixture test starts by doing.
+func fixture(t *testing.T, name string) string {
+	t.Helper()
+	b, err := os.ReadFile("testdata/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +54,7 @@ func count(d *sdom.Doc) (c counts) {
 	return
 }
 
-// CRC: crc-MarkdownParser.md | Seq: seq-markdown.md#1.3 | R226, R227, R228, R229, R230
+// CRC: crc-MarkdownParser.md | Seq: seq-markdown.md#1.3 | R226, R298, R228, R229, R230
 func TestTheFixtureRoundTripsAndIsRecognized(t *testing.T) {
 	src := sample(t)
 	d, _ := parseMarkdown(src)
@@ -109,6 +116,56 @@ func TestNoLineHeadMarkerSharesAFirstByteWithAnOpener(t *testing.T) {
 				t.Errorf("opener %q shares a first byte with a line-head marker", o)
 			}
 		}
+		if g.OpenRegex == "" {
+			continue
+		}
+		re := regexp.MustCompile("^(?:" + g.OpenRegex + ")")
+		for _, head := range []string{"# ", "- ", "[ ]"} {
+			if re.MatchString(head) {
+				t.Errorf("pattern %q matches at line-head marker %q", g.OpenRegex, head)
+			}
+		}
+	}
+}
+
+// CRC: crc-MarkdownParser.md | R298
+//
+// The fixture is the shape that lost 41 of 58 done entries: a two-run span holding one
+// backtick, a four-run fence around a three-run fence, a three-run inside a two-run,
+// and a span closing on the file's last byte. Every list item after them must survive.
+func TestBacktickRuns(t *testing.T) {
+	src := fixture(t, "backtick-runs.md")
+	d, p := parseMarkdown(src)
+	if r, _ := d.Render(); r != src {
+		t.Fatalf("render differs from source")
+	}
+	if c := count(d); c.items != 4 {
+		t.Errorf("items %d, want 4", c.items)
+	}
+	ctx := p.Indent().Brackets().Context()
+	spans := 0
+	for _, n := range d.Nodes() {
+		open, ok := n.(*sdom.Opener)
+		if !ok {
+			continue
+		}
+		marker, _ := open.Render()
+		if !strings.HasPrefix(marker, "`") {
+			continue
+		}
+		spans++
+		closer := ctx.Closer(open)
+		if closer == nil {
+			t.Errorf("opener %q at %d has no closer", marker, open.Location().Offset())
+			continue
+		}
+		if got, _ := closer.Render(); got != marker {
+			t.Errorf("opener %q closed by %q", marker, got)
+		}
+	}
+	// Hand count: the two-run, the four-run, the two-run, the one-run.
+	if spans != 4 {
+		t.Errorf("code openers %d, want 4", spans)
 	}
 }
 
@@ -162,7 +219,7 @@ func (r *nodeTypeRecorder) NodeType(st *sdom.ParserState) (string, bool) { retur
 
 func (r *nodeTypeRecorder) Done(d *sdom.Doc) { r.inner.Done(d) }
 
-// CRC: crc-MarkdownParser.md | R227
+// CRC: crc-MarkdownParser.md | R298
 //
 // Found by injecting past the alarm list: with bold admitting no code span, every
 // count in the fixture test stayed the same. The hatches are the part line's shape —

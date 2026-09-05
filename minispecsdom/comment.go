@@ -341,10 +341,8 @@ func markers(lang *sdom.BracketLang) (opener, closer string) {
 				continue
 			}
 			opener, closer = o, ""
-			for _, cl := range g.Close {
-				if strings.HasSuffix(cs.Suffix, cl) && len(cl) > len(closer) {
-					closer = cl
-				}
+			if strings.HasSuffix(cs.Suffix, g.Close) {
+				closer = g.Close
 			}
 		}
 	}

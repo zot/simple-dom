@@ -244,8 +244,8 @@ func TestTheLastNodeIsTheLiveText(t *testing.T) {
 // rule turns on exactly that difference.
 func TestNodeTypeDistinguishesNoNodeFromAnUnlabelledNode(t *testing.T) {
 	lang := &BracketLang{Brackets: []BracketGroup{
-		{Open: []string{"#"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
-		{Open: []string{`"`}, Close: []string{`"`}, AllowedInner: []string{}},
+		{Open: []string{"#"}, Close: "\n", AllowedInner: []string{}, Kind: "comment"},
+		{Open: []string{`"`}, Close: `"`, AllowedInner: []string{}},
 	}}
 	bp := NewBracketParser(lang)
 	st := &ParserState{src: `x"y#z`, origin: &Origin{}, parser: bp}

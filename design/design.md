@@ -379,3 +379,5 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
   structurally.
 
 - T5: R267 retired by R284 (2026-09-04 sdomification Item 4: Unread carries lines)
+- T6: R65 retired by R294 (2026-09-05 backtick-runs Item 1: AllowedInner names groups, not openers)
+- T7: R227 retired by R298 (2026-09-05 backtick-runs Item 1: the fence and the code span are one pattern group)

@@ -17,8 +17,8 @@ func shippedLangs() map[string]*BracketLang {
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#1.2 | R82, R83
 func TestPairingIsRecordedBothWays(t *testing.T) {
 	lang := &BracketLang{Brackets: []BracketGroup{
-		{Open: []string{"{"}, Close: []string{"}"}},
-		{Open: []string{"["}, Close: []string{"]"}},
+		{Open: []string{"{"}, Close: "}"},
+		{Open: []string{"["}, Close: "]"},
 	}}
 	d, ctx := parse("a {b [c] d} e", 0, lang)
 	var opens, closes []Node
@@ -107,7 +107,7 @@ func independentLinks(d *Doc, lang *BracketLang) (closerOf map[Node]*Closer, ope
 			return false
 		}
 		ct, err := closer.Render()
-		return err == nil && slices.Contains(g.Close, ct)
+		return err == nil && (ct == g.Close || g.CloseIsOpen && ct == ot)
 	}
 	for _, n := range d.Nodes() {
 		switch m := n.(type) {

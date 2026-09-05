@@ -258,8 +258,8 @@ func TestDistinctOriginsAreDistinct(t *testing.T) {
 	// stack slots, so they compare distinct even with no field at all — and this
 	// test proved nothing. Measured 2026-08-30 by an injection that made Origin an
 	// empty struct: four tests went red and this one stayed green.
-	a := newBracketContext(codeLang()).Origin()
-	b := newBracketContext(codeLang()).Origin()
+	a := newBracketContext(codeLang(), &patterns{}).Origin()
+	b := newBracketContext(codeLang(), &patterns{}).Origin()
 	if a == b {
 		t.Fatalf("two separately minted origins must not be the same identity")
 	}

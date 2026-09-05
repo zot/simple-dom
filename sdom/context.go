@@ -2,7 +2,6 @@ package sdom
 
 import (
 	"errors"
-	"slices"
 	"strings"
 )
 
@@ -20,6 +19,9 @@ import (
 // it, and a document with no brackets carries none.
 type BracketContext struct {
 	lang *BracketLang
+	// the table's compiled patterns, for resolving a pattern marker; never nil,
+	// because the only context is the one a parser makes after compiling them
+	pats *patterns
 	doc  *Doc
 
 	origin *Origin // minted once per parse, carried by every node it produces
@@ -65,8 +67,8 @@ type BracketInfo struct {
 	declaration []*DeclarationName
 }
 
-func newBracketContext(lang *BracketLang) *BracketContext {
-	return &BracketContext{lang: lang, origin: &Origin{}, info: map[Node]BracketInfo{}}
+func newBracketContext(lang *BracketLang, pats *patterns) *BracketContext {
+	return &BracketContext{lang: lang, pats: pats, origin: &Origin{}, info: map[Node]BracketInfo{}}
 }
 
 // with reads, modifies and writes one node's entry. Map values are structs, so this
@@ -354,7 +356,7 @@ func (bc *BracketContext) closes(opener, closer Node) bool {
 	if err != nil {
 		return false // a node that cannot render cannot be matched against a table
 	}
-	g := bc.lang.groupFor(ot)
+	g := bc.groupOf(ot)
 	if g == nil {
 		return false
 	}
@@ -362,7 +364,28 @@ func (bc *BracketContext) closes(opener, closer Node) bool {
 	if err != nil {
 		return false
 	}
-	return slices.Contains(g.Close, ct)
+	if g.CloseIsOpen {
+		return ct == ot // R291
+	}
+	return ct == g.Close
+}
+
+// CRC: crc-BracketContext.md | R295
+// groupOf resolves an opener's bytes to its group: a literal opener by lookup, a
+// pattern group's marker by matching the whole text against its compiled pattern.
+func (bc *BracketContext) groupOf(text string) *BracketGroup {
+	if g := bc.lang.groupFor(text); g != nil {
+		return g
+	}
+	for i, re := range bc.pats.open {
+		if re == nil {
+			continue
+		}
+		if loc := re.FindStringIndex(text); loc != nil && loc[1] == len(text) {
+			return &bc.lang.Brackets[i]
+		}
+	}
+	return nil
 }
 
 // attach binds the context to the document it was parsed from and stamps it

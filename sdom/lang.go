@@ -17,40 +17,40 @@ package sdom
 // LangGo exercises code brackets, both comment forms, a string with an escape,
 // and a raw string without one.
 var LangGo = BracketLang{Comment: CommentStyle{"// ", "\n", "comment"}, Brackets: []BracketGroup{
-	{Open: []string{"//"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
-	{Open: []string{"/*"}, Close: []string{"*/"}, AllowedInner: []string{}, Kind: "comment"},
-	{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
-	{Open: []string{"'"}, Close: []string{"'"}, Escape: `\`, AllowedInner: []string{}},
-	{Open: []string{"`"}, Close: []string{"`"}, AllowedInner: []string{}},
-	{Open: []string{"{"}, Close: []string{"}"}},
-	{Open: []string{"("}, Close: []string{")"}},
-	{Open: []string{"["}, Close: []string{"]"}},
+	{Open: []string{"//"}, Close: "\n", AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"/*"}, Close: "*/", AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{`"`}, Close: `"`, Escape: `\`, AllowedInner: []string{}},
+	{Open: []string{"'"}, Close: "'", Escape: `\`, AllowedInner: []string{}},
+	{Open: []string{"`"}, Close: "`", AllowedInner: []string{}},
+	{Open: []string{"{"}, Close: "}"},
+	{Open: []string{"("}, Close: ")"},
+	{Open: []string{"["}, Close: "]"},
 }}
 
 // CRC: crc-BracketLang.md | R121, R72
 // LangShell exercises word brackets with separators, which nothing else does.
 var LangShell = BracketLang{Comment: CommentStyle{"# ", "\n", "comment"}, Brackets: []BracketGroup{
-	{Open: []string{"#"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
-	{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
-	{Open: []string{"'"}, Close: []string{"'"}, AllowedInner: []string{}},
-	{Open: []string{"if"}, Separators: []string{"then", "elif", "else"}, Close: []string{"fi"}},
-	{Open: []string{"while", "until"}, Separators: []string{"do"}, Close: []string{"done"}},
-	{Open: []string{"for"}, Separators: []string{"in", "do"}, Close: []string{"done"}},
-	{Open: []string{"case"}, Separators: []string{"in"}, Close: []string{"esac"}},
-	{Open: []string{"{"}, Close: []string{"}"}},
-	{Open: []string{"("}, Close: []string{")"}},
+	{Open: []string{"#"}, Close: "\n", AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{`"`}, Close: `"`, Escape: `\`, AllowedInner: []string{}},
+	{Open: []string{"'"}, Close: "'", AllowedInner: []string{}},
+	{Open: []string{"if"}, Separators: []string{"then", "elif", "else"}, Close: "fi"},
+	{Open: []string{"while", "until"}, Separators: []string{"do"}, Close: "done"},
+	{Open: []string{"for"}, Separators: []string{"in", "do"}, Close: "done"},
+	{Open: []string{"case"}, Separators: []string{"in"}, Close: "esac"},
+	{Open: []string{"{"}, Close: "}"},
+	{Open: []string{"("}, Close: ")"},
 }}
 
 // CRC: crc-BracketLang.md | R121
 // LangPascal exercises the other word-bracket shape, and a language whose "{" is
 // a comment rather than a code bracket.
 var LangPascal = BracketLang{Comment: CommentStyle{"(* ", " *)", "comment"}, Brackets: []BracketGroup{
-	{Open: []string{"(*"}, Close: []string{"*)"}, AllowedInner: []string{}, Kind: "comment"},
-	{Open: []string{"{"}, Close: []string{"}"}, AllowedInner: []string{}, Kind: "comment"},
-	{Open: []string{"'"}, Close: []string{"'"}, AllowedInner: []string{}},
-	{Open: []string{"begin"}, Close: []string{"end"}},
-	{Open: []string{"("}, Close: []string{")"}},
-	{Open: []string{"["}, Close: []string{"]"}},
+	{Open: []string{"(*"}, Close: "*)", AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"{"}, Close: "}", AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"'"}, Close: "'", AllowedInner: []string{}},
+	{Open: []string{"begin"}, Close: "end"},
+	{Open: []string{"("}, Close: ")"},
+	{Open: []string{"["}, Close: "]"},
 }}
 
 // CRC: crc-BracketLang.md | R64, R66, R121
@@ -58,15 +58,15 @@ var LangPascal = BracketLang{Comment: CommentStyle{"(* ", " *)", "comment"}, Bra
 // together: a template literal is parse-restricted with one escape hatch, and the
 // interpolation that hatch opens is recognized nowhere else.
 var LangJavaScript = BracketLang{Comment: CommentStyle{"// ", "\n", "comment"}, Brackets: []BracketGroup{
-	{Open: []string{"//"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
-	{Open: []string{"/*"}, Close: []string{"*/"}, AllowedInner: []string{}, Kind: "comment"},
-	{Open: []string{"${"}, Close: []string{"}"}, AllowedParent: []string{"`"}},
-	{Open: []string{"`"}, Close: []string{"`"}, Escape: `\`, AllowedInner: []string{"${"}},
-	{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
-	{Open: []string{"'"}, Close: []string{"'"}, Escape: `\`, AllowedInner: []string{}},
-	{Open: []string{"{"}, Close: []string{"}"}},
-	{Open: []string{"("}, Close: []string{")"}},
-	{Open: []string{"["}, Close: []string{"]"}},
+	{Open: []string{"//"}, Close: "\n", AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"/*"}, Close: "*/", AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"${"}, Close: "}", AllowedParent: []string{"`"}},
+	{Open: []string{"`"}, Close: "`", Escape: `\`, AllowedInner: []string{"${"}},
+	{Open: []string{`"`}, Close: `"`, Escape: `\`, AllowedInner: []string{}},
+	{Open: []string{"'"}, Close: "'", Escape: `\`, AllowedInner: []string{}},
+	{Open: []string{"{"}, Close: "}"},
+	{Open: []string{"("}, Close: ")"},
+	{Open: []string{"["}, Close: "]"},
 }}
 
 // CRC: crc-BracketLang.md | R121
@@ -91,17 +91,17 @@ var LangTypeScript = LangJavaScript
 // the first match wins; and `elseif` precedes `else` among the separators, since
 // `else` is a prefix of it.
 var LangLua = BracketLang{Comment: CommentStyle{"-- ", "\n", "comment"}, Brackets: []BracketGroup{
-	{Open: []string{"--[["}, Close: []string{"]]"}, AllowedInner: []string{}, Kind: "comment"},
-	{Open: []string{"--"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
-	{Open: []string{"[["}, Close: []string{"]]"}, AllowedInner: []string{}},
-	{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
-	{Open: []string{"'"}, Close: []string{"'"}, Escape: `\`, AllowedInner: []string{}},
-	{Open: []string{"function", "for", "while"}, Separators: []string{"do"}, Close: []string{"end"}},
-	{Open: []string{"if"}, Separators: []string{"elseif", "else", "then"}, Close: []string{"end"}},
-	{Open: []string{"repeat"}, Close: []string{"until"}},
-	{Open: []string{"("}, Close: []string{")"}},
-	{Open: []string{"{"}, Close: []string{"}"}},
-	{Open: []string{"["}, Close: []string{"]"}},
+	{Open: []string{"--[["}, Close: "]]", AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"--"}, Close: "\n", AllowedInner: []string{}, Kind: "comment"},
+	{Open: []string{"[["}, Close: "]]", AllowedInner: []string{}},
+	{Open: []string{`"`}, Close: `"`, Escape: `\`, AllowedInner: []string{}},
+	{Open: []string{"'"}, Close: "'", Escape: `\`, AllowedInner: []string{}},
+	{Open: []string{"function", "for", "while"}, Separators: []string{"do"}, Close: "end"},
+	{Open: []string{"if"}, Separators: []string{"elseif", "else", "then"}, Close: "end"},
+	{Open: []string{"repeat"}, Close: "until"},
+	{Open: []string{"("}, Close: ")"},
+	{Open: []string{"{"}, Close: "}"},
+	{Open: []string{"["}, Close: "]"},
 }}
 
 // CRC: crc-IndentLang.md | R169, R170, R171, R172, R173
@@ -126,25 +126,25 @@ var LangLua = BracketLang{Comment: CommentStyle{"-- ", "\n", "comment"}, Bracket
 // A plain """ never competes — at the f it cannot match at all.
 var LangPython = IndentLang{
 	BracketLang: BracketLang{Comment: CommentStyle{"# ", "\n", "comment"}, Brackets: []BracketGroup{
-		{Open: []string{"#"}, Close: []string{"\n"}, AllowedInner: []string{}, Kind: "comment"},
+		{Open: []string{"#"}, Close: "\n", AllowedInner: []string{}, Kind: "comment"},
 
 		{Open: []string{`f"""`, `F"""`, `fr"""`, `fR"""`, `Fr"""`, `FR"""`, `rf"""`, `rF"""`, `Rf"""`, `RF"""`},
-			Close: []string{`"""`}, Escape: `\`, AllowedInner: []string{"{"}},
+			Close: `"""`, Escape: `\`, AllowedInner: []string{"{"}},
 		{Open: []string{"f'''", "F'''", "fr'''", "fR'''", "Fr'''", "FR'''", "rf'''", "rF'''", "Rf'''", "RF'''"},
-			Close: []string{"'''"}, Escape: `\`, AllowedInner: []string{"{"}},
+			Close: "'''", Escape: `\`, AllowedInner: []string{"{"}},
 		{Open: []string{`f"`, `F"`, `fr"`, `fR"`, `Fr"`, `FR"`, `rf"`, `rF"`, `Rf"`, `RF"`},
-			Close: []string{`"`}, Escape: `\`, AllowedInner: []string{"{"}},
+			Close: `"`, Escape: `\`, AllowedInner: []string{"{"}},
 		{Open: []string{"f'", "F'", "fr'", "fR'", "Fr'", "FR'", "rf'", "rF'", "Rf'", "RF'"},
-			Close: []string{"'"}, Escape: `\`, AllowedInner: []string{"{"}},
+			Close: "'", Escape: `\`, AllowedInner: []string{"{"}},
 
-		{Open: []string{`"""`}, Close: []string{`"""`}, Escape: `\`, AllowedInner: []string{}},
-		{Open: []string{"'''"}, Close: []string{"'''"}, Escape: `\`, AllowedInner: []string{}},
-		{Open: []string{`"`}, Close: []string{`"`}, Escape: `\`, AllowedInner: []string{}},
-		{Open: []string{"'"}, Close: []string{"'"}, Escape: `\`, AllowedInner: []string{}},
+		{Open: []string{`"""`}, Close: `"""`, Escape: `\`, AllowedInner: []string{}},
+		{Open: []string{"'''"}, Close: "'''", Escape: `\`, AllowedInner: []string{}},
+		{Open: []string{`"`}, Close: `"`, Escape: `\`, AllowedInner: []string{}},
+		{Open: []string{"'"}, Close: "'", Escape: `\`, AllowedInner: []string{}},
 
-		{Open: []string{"("}, Close: []string{")"}},
-		{Open: []string{"["}, Close: []string{"]"}},
-		{Open: []string{"{"}, Close: []string{"}"}},
+		{Open: []string{"("}, Close: ")"},
+		{Open: []string{"["}, Close: "]"},
+		{Open: []string{"{"}, Close: "}"},
 	}},
 
 	// CPython expands a tab to the next multiple of eight.

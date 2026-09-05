@@ -11,15 +11,15 @@
 
 ## Test: word markers respect boundaries
 **Purpose:** R71 — the rule that separates a word bracket from a substring
-**Input:** `download do file fi begin_ end` under a word-bracket language
+**Input:** `download do file fi begin_ end` under a word-bracket language of two groups, `do`/`fi` and `begin`/`end`
 **Expected:** `do`, `fi` and `end` are markers; the `do` inside `download`, the
 `fi` inside `file` and the `begin` inside `begin_` are text
 **Refs:** crc-BracketGroup.md
 **Code:** sdom/parser_test.go
 **Alarm:** 1
 **Fire alarm:** Drop both word-boundary tests from `matchAt`, returning as soon as the bytes compare equal. Red: `do` fires inside `download`, `fi` inside `file`, `end` inside `begin_`. The round-trip and the tiling stay green — the bytes are all still there, just cut in the wrong places — so only an assertion about *which* nodes exist can see it.
-**Inject:** sdom/bracket.go:matchAt
-**Pulled:** 2026-08-30 — rang. This test failed, and the recognition count with
+**Inject:** sdom/bracket.go:boundaryOK
+**Pulled:** 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: this test, the recognition count (`shell: recognized 2 of "Sdo", expected 1`), and the new pattern-boundary test. The check moved from `matchAt` into `boundaryOK`, which the `Inject:` now names. Previously 2026-08-30 — rang. This test failed, and the recognition count with
 it (`shell: 4 separators, expected 3` — `do` firing inside `download`). Both
 corpus round-trips stayed green.
 
@@ -40,7 +40,7 @@ corpus round-trips stayed green.
 **Alarm:** 2
 **Fire alarm:** Make `matchAnyClose` always return no match. Red: the unmatched `}` becomes text instead of a `Closer`, **and** `TestWordMarkersRespectBoundaries` fails too — its fixture ends with an `end` that only the fallback recognizes. No byte moves and the array still tiles, which is why a fallback that quietly stops firing needs its own assertion.
 **Inject:** sdom/bracket_parser.go:BracketParser.matchAnyClose
-**Pulled:** 2026-09-01 — re-pulled after the file split and rang again, on the same two tests. The anchor resolved under its new home, `sdom/bracket_parser.go:BracketParser.matchAnyClose`, which is what this pull was taken for. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestWordMarkersRespectBoundaries`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang. This test failed, and so did
+**Pulled:** 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: four tests — this one, the word-boundary fixture, `TestOpenerAndCloserAreTyped` (`a stray closer has an opener`) and the new close-is-open fallback test. Previously 2026-09-01 — re-pulled after the file split and rang again, on the same two tests. The anchor resolved under its new home, `sdom/bracket_parser.go:BracketParser.matchAnyClose`, which is what this pull was taken for. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestWordMarkersRespectBoundaries`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang. This test failed, and so did
 `TestWordMarkersRespectBoundaries`, whose fixture ends with an `end` that only
 the fallback can recognize. **The recognition count did not catch it**, and
 neither corpus round-trip did.
@@ -100,7 +100,7 @@ case must differ, or the escape is doing nothing
 **Alarm:** 4
 **Fire alarm:** In `BracketParser.parseRestricted`, advance past the escape sequence without consuming the byte after it. Red: the escaped quote closes the string, so one string becomes two plus stray text. The round-trip survives intact, because every byte is still emitted somewhere.
 **Inject:** sdom/bracket_parser.go:BracketParser.parseRestricted
-**Pulled:** 2026-09-03 — re-pulled after the self-advances became `Advance` and rang in three places: this test (`disabling the escape changed nothing`), `TestLangGo`, and the declaration count in `sdom/schema` (`found 3 declarations, column-0 keywords say 7`) — an unescaped quote splits a string and the pass reads the halves as code. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang again. The anchor resolved correctly under the new name `parseRestricted`, which is what this pull was taken for. **Wider than the two earlier pulls:** this test, `TestLangGo`, and `TestADeclarationPassIsAdditive` in `sdom/schema` — 4 failures across 2 packages, the third of them not existing when this alarm was first written. The round-trip stayed green throughout, exactly as the prose says. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestLangGo`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, on this test and `TestLangGo`. Both of this
+**Pulled:** 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `TestEscapeConsumesItselfAndTheNextByte`, `TestLangGo` and, across the package line, `TestADeclarationPassIsAdditive`. Previously 2026-09-03 — re-pulled after the self-advances became `Advance` and rang in three places: this test (`disabling the escape changed nothing`), `TestLangGo`, and the declaration count in `sdom/schema` (`found 3 declarations, column-0 keywords say 7`) — an unescaped quote splits a string and the pass reads the halves as code. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang again. The anchor resolved correctly under the new name `parseRestricted`, which is what this pull was taken for. **Wider than the two earlier pulls:** this test, `TestLangGo`, and `TestADeclarationPassIsAdditive` in `sdom/schema` — 4 failures across 2 packages, the third of them not existing when this alarm was first written. The round-trip stayed green throughout, exactly as the prose says. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestLangGo`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, on this test and `TestLangGo`. Both of this
 test's messages fired, including *disabling the escape changed nothing, so the
 escape does nothing* — the second assertion earning its place. The recognition
 count and both corpus round-trips stayed green.
@@ -123,7 +123,7 @@ template it is the interpolation opener
 **Alarm:** 5
 **Fire alarm:** Make `parentAllowed` return true unconditionally. Red: `${` opens an interpolation at top level, where it is really a `$` followed by a `{`. This is the failure the field exists to prevent, and it is invisible to everything except a test that parses `${` *outside* a template.
 **Inject:** sdom/bracket.go:BracketGroup.parentAllowed
-**Pulled:** 2026-08-30 — rang, on this test and `TestLangJavaScript`. `${x}` at
+**Pulled:** 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `TestAllowedParentSuppressesOutsideItsContext` and `TestLangJavaScript` (`${ must not be an interpolation opener at top level`). The site now resolves the parent by `named`, pattern included. Previously 2026-08-30 — rang, on this test and `TestLangJavaScript`. `${x}` at
 top level became an interpolation. Nothing else in 56 tests objected.
 
 ## Test: a recognition count, per language
@@ -143,4 +143,61 @@ byte survives
 **Expected:** the document renders byte-identical to the source, and the array
 tiles it
 **Refs:** crc-BracketParser.md
+**Code:** sdom/parser_test.go
+
+## Test: a run closes only with a run of its own length
+**Purpose:** R291, R292, R293 — CommonMark's rule from one pattern group: opener a run of backticks, `CloseIsOpen`, lookahead refusing a backtick
+**Input:** a two-run holding one backtick then text; a four-run enclosing a three-run; a three-run inside a two-run span; a run as the last bytes of the source
+**Expected:** each span opens and closes on runs of equal length, the interior is one text node whatever shorter or longer runs it holds, and the last-byte closer pairs. The three-run inside the two-span is the leading-edge case: the parse must consume it whole rather than read its last two bytes as the closer
+**Refs:** crc-BracketGroup.md, crc-BracketParser.md, seq-parse.md#1.4
+**Code:** sdom/parser_test.go
+**Fire alarm:** clear the group's `Lookahead`. Red: the two-run reads as a one-span opened and closed at once, and the three-run inside the two-span closes it early — the parity inversion that lost 41 of 58 entries.
+**Inject:** sdom/parser_test.go:runLang
+**Pulled:** 2026-09-05 — rang: `TestARunClosesOnlyWithARunOfItsOwnLength` on the three-run-inside-a-two-span case, only that test. **Past the list, same day:** disabling `skipOtherRun` whole rang here and in `TestBacktickRuns` (`items 3, want 4`; an opener with no closer); dropping `lookOK`'s end-of-input clause rang in three tests, the last-byte closer among them. Both are now named by this alarm's neighbours rather than by luck.
+
+## Test: the closer is the opener's own bytes, not its length class
+**Purpose:** R291 — `CloseIsOpen` compares text
+**Input:** a symmetric literal group written with `CloseIsOpen` and no `Close`, with two openers in one group, over input using both
+**Expected:** each instance closes on the marker that opened it and not on the other opener
+**Refs:** crc-BracketGroup.md, seq-parse.md#1.4
+**Code:** sdom/parser_test.go
+**Fire alarm:** make `closeGroup` accept any of the group's openers as the closer. Red: the second opener closes the first.
+**Inject:** sdom/bracket_parser.go:BracketParser.closeGroup
+**Pulled:** 2026-09-05 — rang: `TestTheCloserIsTheOpenersOwnBytes`, only that test; the injection sits in `matchCloser`, which `closeGroup` calls.
+
+## Test: a pattern opener honours word boundaries and its lookahead
+**Purpose:** R292, R293 — the boundary rule applies to the bytes a pattern matched
+**Input:** a word-run pattern such as `x+` over `xx xxa axx`, and a lookahead group over `{{` where the pattern is one brace
+**Expected:** `xx` alone matches; `xxa` and `axx` are text; the single brace does not open where a second follows
+**Refs:** crc-BracketGroup.md
+**Code:** sdom/parser_test.go
+**Fire alarm:** skip the boundary check for pattern matches. Red: `xx` fires inside `xxa`.
+**Inject:** sdom/bracket_parser.go:BracketParser.matchPattern
+**Pulled:** 2026-09-05 — rang: `TestAPatternOpenerHonoursWordBoundariesAndLookahead` — `xx` fired inside `xxa`, only that test.
+
+## Test: AllowedInner names a group, and matching uses the group's opener
+**Purpose:** R294, R295 — a hatch named by one opener admits the group's whole opener set, pattern included
+**Input:** a restricted group whose `AllowedInner` names the run group by its pattern; inside it a two-run and a one-run
+**Expected:** both open the run group with their own bytes and close on the same
+**Refs:** crc-BracketParser.md, seq-parse.md#2.2.3
+**Code:** sdom/parser_test.go
+**Fire alarm:** match the naming string as a prefix, as `matchInner` did. Red: the two-run opens as a one-run and the interior parses wrong.
+**Inject:** sdom/bracket_parser.go:BracketParser.matchInner
+**Pulled:** 2026-09-05 — rang: `TestAllowedInnerNamesAGroup` and, across the package line, `TestTheEscapeHatchesPair` (`"`": 0 paired groups, want 2`) — the pattern name never prefix-matches, so the hatch never opens.
+
+## Test: a contradictory table panics at construction
+**Purpose:** R296 — the three construction errors are seen by the table test, never a consumer
+**Input:** a group with `Open` and `OpenRegex`; a group with `CloseIsOpen` and a `Close`; a group whose pattern does not compile
+**Expected:** `NewBracketParser` panics for each, and the message names the group
+**Refs:** crc-BracketLang.md
+**Code:** sdom/parser_test.go
+**Fire alarm:** drop the exclusivity check. Red: the first case constructs.
+**Inject:** sdom/bracket.go:BracketLang.check
+**Pulled:** 2026-09-05 — rang: `Open and OpenRegex: constructed without panicking`, only that case of that test.
+
+## Test: the any-close fallback ignores close-is-open groups
+**Purpose:** R297
+**Input:** a code-mode `CloseIsOpen` group beside a brace group, over a stray `}` and a lone symmetric marker
+**Expected:** the stray `}` lands as a `Closer`; the lone marker opens its group and closes at end of input
+**Refs:** crc-BracketParser.md, seq-parse.md#3.1
 **Code:** sdom/parser_test.go

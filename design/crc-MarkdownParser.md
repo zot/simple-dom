@@ -1,5 +1,5 @@
 # MarkdownParser
-**Requirements:** R226, R227, R228, R229, R230, R231, R232, R233, R234, R235
+**Requirements:** R226, R228, R229, R230, R231, R232, R233, R234, R235, R298
 
 The markdown base's parser: one pass, wrapping an `IndentParser`, emitting line-head
 markers where the delegate emitted nothing. With `LangMarkdown` and the three marker
@@ -21,17 +21,23 @@ alone.
 
 ## Constraints
 - **Delegate first, then check.** Sound only because no line-head marker shares a
-  first byte with a bracket opener — `#`, `-`, `[` open nothing. Links are kept out of
-  the table for exactly this reason; a test over the table guards it
+  first byte with a bracket opener — `#`, `-`, `[` open nothing, and the code pattern
+  matches at none of them. Links are kept out of the table for exactly this reason; a
+  test over the table guards it
 - **No post-pass, no `Replace`.** A heading or list item is a line-head marker like
   `Indent`, holding only its bytes. Extents are a consumer's derivation
 - **Line-headness is read from the array**, never kept as state — the live text run
   is what makes that possible
-- **Bold and strike are restricted with escape hatches, never code-mode groups.** A
-  symmetric marker in code mode reopens rather than closes, because openers are tried
-  before the enclosing closer there; restricted groups check the closer first
-- **A fence or code span hides everything inside it structurally**: the bracket parser
-  takes the loop, so this parser is never offered a position there
+- **Bold and strike are restricted with escape hatches, never code-mode groups**, so
+  that only their hatches are recognized inside them; each names the code group by its
+  pattern and so admits every run
+- **Code hides everything inside it structurally**: the bracket parser takes the loop,
+  so this parser is never offered a position there
+- **The fence and the code span are one group**: a pattern opener of one or more
+  backticks, `CloseIsOpen`, and a lookahead refusing a following backtick — CommonMark's
+  run-of-N rule in one entry. Two groups, for three backticks and one, read a two-run as
+  an empty span and flipped every later backtick from open to close, losing most of a
+  file with nothing unread
 
 ## Collaborators
 - IndentParser: the delegate, and through it BracketParser

@@ -144,3 +144,17 @@ func TestEveryCommentStyleConstructsItsOwnKind(t *testing.T) {
 		}
 	}
 }
+
+// CRC: crc-BracketLang.md | R296
+// Every shipped table constructs; the construction check panics for a table that
+// cannot, and this is what keeps a consumer from ever seeing it.
+func TestEveryShippedTableConstructs(t *testing.T) {
+	langs := shippedLangs()
+	langs["typescript"], langs["lua"] = &LangTypeScript, &LangLua
+	langs["python"] = &LangPython.BracketLang
+	for name, lang := range langs {
+		if r := recovered(func() { NewBracketParser(lang) }); r != nil {
+			t.Errorf("%s: %v", name, r)
+		}
+	}
+}

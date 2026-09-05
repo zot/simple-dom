@@ -1,5 +1,5 @@
 # Sequences: the scan
-**Requirements:** R57, R64, R65, R72, R73, R74, R75, R77
+**Requirements:** R57, R64, R72, R73, R74, R75, R77, R291, R293, R294
 
 Three diagrams: a code-mode group, a scan-restricted one, and the rules that keep
 the scan from stalling or losing bytes.
@@ -16,7 +16,9 @@ the scan from stalling or losing bytes.
                a child
         1.3.2. A nested opener recurses; the nesting lives on the call stack
         1.3.3. A separator of this group is appended and the loop continues
-   1.4. This group's closer matches; a `Closer` is appended and the loop returns
+   1.4. This group's closer matches — the literal `Close`, or with `CloseIsOpen` the
+        very bytes that opened it, either under the group's `Lookahead`; a `Closer` is
+        appended and the loop returns
    1.5. Nothing of the nesting survives in the array — opener, contents and closer
         are siblings, and the pairing is a derived index
 
@@ -25,11 +27,11 @@ the scan from stalling or losing bytes.
 2. The parser meets a string, or a comment
    2.1. Its opener is appended exactly as in diagram 1
    2.2. Inside, only three things are recognized
-        2.2.1. This group's own `Close`, which ends it
+        2.2.1. This group's own closer, which ends it — literal, or the opener's text
         2.2.2. Its `Escape`, which consumes itself and the following byte as
                literal
-        2.2.3. An opener named in `AllowedInner`, which recurses into whatever
-               mode that group declares
+        2.2.3. An opener of a group named in `AllowedInner` — by a literal opener or by
+               its pattern — which recurses into whatever mode that group declares
    2.3. Every other byte accumulates as literal `Text` — comments inside strings
         are not comments, and brackets inside comments are not brackets
    2.4. A comment is this case with a newline or a terminator for its closer,
@@ -38,7 +40,7 @@ the scan from stalling or losing bytes.
 ## 3. The scan cannot stall, and cannot lose bytes
 
 3. Nothing recognized matches here
-   3.1. The any-close fallback is tried: any code-mode group's closer is
+   3.1. The any-close fallback is tried: any code-mode group's literal closer is
         recognized, so a stray `}` lands as a `Closer` rather than derailing the
         scan
    3.2. Otherwise a text run begins, and **advances at least one byte** before

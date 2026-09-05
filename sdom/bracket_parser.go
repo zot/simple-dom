@@ -20,12 +20,20 @@ import "strings"
 // carries — and a second copy is a thing that can disagree.
 type BracketParser struct {
 	lang *BracketLang
+	pats *patterns
 	ctx  *BracketContext
 }
 
-// NewBracketParser returns a parser for lang, with the context it will fill.
+// CRC: crc-BracketParser.md | R296
+// NewBracketParser returns a parser for lang, with the context it will fill. It
+// compiles the table's patterns once, and a table that cannot be constructed panics
+// here naming the group — a library invariant, not caller input.
 func NewBracketParser(lang *BracketLang) *BracketParser {
-	return &BracketParser{lang: lang, ctx: newBracketContext(lang)}
+	pats, err := lang.check()
+	if err != nil {
+		panic(err)
+	}
+	return &BracketParser{lang: lang, pats: pats, ctx: newBracketContext(lang, pats)}
 }
 
 // Context returns the pairing links this parser recorded. Concrete, so no caller
@@ -72,28 +80,41 @@ func (bp *BracketParser) Done(d *Doc) { bp.ctx.attach(d) }
 // unexported walk it replaced always did.
 func (bp *BracketParser) bind(st *ParserState) { bp.ctx.origin = st.origin }
 
-// CRC: crc-BracketParser.md | Seq: seq-parse.md#1 | R64, R65
-// parseBody parses until enclosing's closer is found, or to end of input.
-func (bp *BracketParser) parseBody(st *ParserState, enclosing *BracketGroup) {
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1 | R64, R294
+// parseBody parses until enclosing's closer is found, or to end of input. opened is
+// the text that opened enclosing, carried down so a CloseIsOpen group closes on
+// exactly those bytes.
+func (bp *BracketParser) parseBody(st *ParserState, enclosing *BracketGroup, opened string) {
 	if enclosing != nil && enclosing.Restricted() {
-		bp.parseRestricted(st, enclosing)
+		bp.parseRestricted(st, enclosing, opened)
 		return
 	}
-	bp.parseCode(st, enclosing)
+	bp.parseCode(st, enclosing, opened)
 }
 
 // CRC: crc-BracketParser.md | Seq: seq-parse.md#1.3 | R72, R73, R74, R75
 //
 // parseCode parses in code mode: openers of any group allowed here, then the open
 // group's closers, then its separators, then the any-close fallback, then text.
-func (bp *BracketParser) parseCode(st *ParserState, enclosing *BracketGroup) {
+func (bp *BracketParser) parseCode(st *ParserState, enclosing *BracketGroup, opened string) {
 	for st.Pos() < len(st.Src()) {
+		// R291: a group closed by its own text checks its closer before any opener,
+		// or the marker would reopen rather than close; and a run of its pattern
+		// that is not the opener's text is literal, whole (R293).
+		if enclosing != nil && enclosing.CloseIsOpen {
+			if bp.closeGroup(st, enclosing, opened) {
+				return
+			}
+			if bp.skipOtherRun(st, enclosing, opened) {
+				continue
+			}
+		}
 		if g, m := bp.matchOpen(st, enclosing); g != nil {
 			bp.open(st, g, m)
 			continue
 		}
 		if enclosing != nil {
-			if bp.closeGroup(st, enclosing) {
+			if bp.closeGroup(st, enclosing, opened) {
 				return
 			}
 			if m := matchAny(st.Src(), st.Pos(), enclosing.Separators); m != "" {
@@ -115,16 +136,19 @@ func (bp *BracketParser) parseCode(st *ParserState, enclosing *BracketGroup) {
 	// every byte, so nothing drops.
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-parse.md#2 | R65
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#2 | R294
 //
-// parseRestricted parses inside a string or a comment: only this group's Close, its
-// Escape, and the openers named in AllowedInner are recognized. Every other byte is
-// literal — comments inside strings are not comments, and brackets inside comments
-// are not brackets.
-func (bp *BracketParser) parseRestricted(st *ParserState, g *BracketGroup) {
+// parseRestricted parses inside a string or a comment: only this group's closer, its
+// Escape, and the openers of the groups AllowedInner names are recognized. Every
+// other byte is literal — comments inside strings are not comments, and brackets
+// inside comments are not brackets.
+func (bp *BracketParser) parseRestricted(st *ParserState, g *BracketGroup, opened string) {
 	for st.Pos() < len(st.Src()) {
-		if bp.closeGroup(st, g) {
+		if bp.closeGroup(st, g, opened) {
 			return
+		}
+		if bp.skipOtherRun(st, g, opened) {
+			continue
 		}
 		if g.Escape != "" && strings.HasPrefix(st.Src()[st.Pos():], g.Escape) {
 			st.Advance(len(g.Escape))
@@ -145,21 +169,107 @@ func (bp *BracketParser) parseRestricted(st *ParserState, g *BracketGroup) {
 // open emits an opener for g and parses its body.
 func (bp *BracketParser) open(st *ParserState, g *BracketGroup, marker string) {
 	st.Emit(NewOpener(marker, st.At(st.Pos(), len(marker))))
-	bp.parseBody(st, g)
+	bp.parseBody(st, g, marker)
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.4 | R82, R83
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.4 | R82, R83, R291
 //
-// closeGroup ends the open group when one of its closers is at pos, and reports
-// whether it did. Code mode and restricted mode differ in what they recognize but
-// end a group identically, so both call this.
-func (bp *BracketParser) closeGroup(st *ParserState, g *BracketGroup) bool {
-	m := matchAny(st.Src(), st.Pos(), g.Close)
+// closeGroup ends the open group when its closer is at pos, and reports whether it
+// did. Code mode and restricted mode differ in what they recognize but end a group
+// identically, so both call this. opened is the text that opened the group, which is
+// the closer itself when CloseIsOpen.
+func (bp *BracketParser) closeGroup(st *ParserState, g *BracketGroup, opened string) bool {
+	m := bp.matchCloser(st.Src(), st.Pos(), bp.index(g), opened)
 	if m == "" {
 		return false
 	}
 	st.Emit(NewCloser(m, st.At(st.Pos(), len(m))))
 	return true
+}
+
+// index is a group's slot in the table, and so in the parallel pattern slices.
+func (bp *BracketParser) index(g *BracketGroup) int {
+	for i := range bp.lang.Brackets {
+		if &bp.lang.Brackets[i] == g {
+			return i
+		}
+	}
+	return -1
+}
+
+// CRC: crc-BracketParser.md | R292, R293
+//
+// matchGroupOpen reports the opener of group i at pos, or "": a pattern match or a
+// literal opener, honouring the group's Lookahead.
+func (bp *BracketParser) matchGroupOpen(src string, pos, i int) string {
+	var m string
+	if bp.pats.open[i] != nil {
+		m = bp.matchPattern(src, pos, i)
+	} else {
+		m = matchAny(src, pos, bp.lang.Brackets[i].Open)
+	}
+	if m == "" || !lookOK(src, pos+len(m), bp.pats.look[i]) {
+		return ""
+	}
+	return m
+}
+
+// CRC: crc-BracketParser.md | R292
+//
+// matchPattern reports what group i's OpenRegex matches at pos, or "", without the
+// lookahead. It is gated by the pattern's literal prefix so the regexp runs only where
+// it could match, and the bytes it matched honour the word-boundary rule like a
+// literal marker.
+func (bp *BracketParser) matchPattern(src string, pos, i int) string {
+	rest := src[pos:]
+	if !strings.HasPrefix(rest, bp.pats.prefix[i]) {
+		return ""
+	}
+	loc := bp.pats.open[i].FindStringIndex(rest)
+	if loc == nil || loc[1] == 0 || !boundaryOK(src, pos, pos+loc[1]) {
+		return ""
+	}
+	return rest[:loc[1]]
+}
+
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.4 | R293
+//
+// skipOtherRun consumes, as literal text, a match of a close-is-open group's pattern
+// that is not the text that opened it — a longer or shorter run inside a span. Taken
+// whole, so the parse never stands one byte into a run and reads its tail as a
+// marker: this is the leading-edge half of the run rule, which no lookahead can
+// express and which needs no lookbehind said this way.
+func (bp *BracketParser) skipOtherRun(st *ParserState, g *BracketGroup, opened string) bool {
+	if !g.CloseIsOpen {
+		return false
+	}
+	i := bp.index(g)
+	if bp.pats.open[i] == nil {
+		return false
+	}
+	m := bp.matchPattern(st.Src(), st.Pos(), i)
+	if m == "" || m == opened {
+		return false
+	}
+	st.Advance(len(m))
+	return true
+}
+
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.4 | R291, R293
+// matchCloser reports group i's closer at pos, or "": its literal Close, or with
+// CloseIsOpen the very bytes that opened it, under the group's Lookahead. opened is
+// unread for a group that is not CloseIsOpen, which is what lets the any-close
+// fallback ask this question with no group open.
+func (bp *BracketParser) matchCloser(src string, pos, i int, opened string) string {
+	g := &bp.lang.Brackets[i]
+	want := g.Close
+	if g.CloseIsOpen {
+		want = opened
+	}
+	if !matchAt(src, pos, want) || !lookOK(src, pos+len(want), bp.pats.look[i]) {
+		return ""
+	}
+	return want
 }
 
 // CRC: crc-BracketParser.md | R66
@@ -171,37 +281,40 @@ func (bp *BracketParser) matchOpen(st *ParserState, enclosing *BracketGroup) (*B
 		if !g.parentAllowed(enclosing) {
 			continue
 		}
-		if m := matchAny(st.Src(), st.Pos(), g.Open); m != "" {
+		if m := bp.matchGroupOpen(st.Src(), st.Pos(), i); m != "" {
 			return g, m
 		}
 	}
 	return nil, ""
 }
 
-// CRC: crc-BracketParser.md | R65
-// matchInner finds an opener named in g.AllowedInner, and the group owning it.
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#2.2.3 | R294, R295
+// matchInner finds an opener of a group named in g.AllowedInner — by a literal opener
+// or by its pattern — and matches that group's own opener rather than the name.
 func (bp *BracketParser) matchInner(st *ParserState, g *BracketGroup) (*BracketGroup, string) {
-	for _, op := range g.AllowedInner {
-		if !matchAt(st.Src(), st.Pos(), op) {
+	for _, name := range g.AllowedInner {
+		i := bp.lang.indexFor(name)
+		if i < 0 {
 			continue
 		}
-		if owner := bp.lang.groupFor(op); owner != nil {
-			return owner, op
+		if m := bp.matchGroupOpen(st.Src(), st.Pos(), i); m != "" {
+			return &bp.lang.Brackets[i], m
 		}
 	}
 	return nil, ""
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.1 | R73
-// matchAnyClose recognizes any code-mode group's closer, so depth stays consistent
-// even when the document is unbalanced.
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.1 | R73, R297
+// matchAnyClose recognizes any code-mode group's literal closer, so depth stays
+// consistent even when the document is unbalanced. A close-is-open marker outside
+// its group is an opener and has already matched as one.
 func (bp *BracketParser) matchAnyClose(st *ParserState) string {
 	for i := range bp.lang.Brackets {
 		g := &bp.lang.Brackets[i]
-		if g.Restricted() {
+		if g.Restricted() || g.CloseIsOpen {
 			continue
 		}
-		if m := matchAny(st.Src(), st.Pos(), g.Close); m != "" {
+		if m := bp.matchCloser(st.Src(), st.Pos(), i, ""); m != "" {
 			return m
 		}
 	}

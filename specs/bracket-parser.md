@@ -17,10 +17,13 @@ type BracketLang struct {
 
 // BracketGroup is one set of matching markers — code, string, or comment.
 type BracketGroup struct {
-    Open       []string // openers: {"{"}, {"if","while"}, {"\""}, {"//"}
-    Separators []string // mid-group markers: {"else","elif","then"}
-    Close      []string // closers: {"}"}, {"end","done","fi"}, {"\n"}
-    Escape     string   // escape sequence inside the group; "" for none
+    Open        []string // literal openers: {"{"}, {"if","while"}, {"\""}, {"//"}
+    OpenRegex   string   // a pattern opener, anchored where the parse stands; exclusive with Open
+    Separators  []string // mid-group markers: {"else","elif","then"}
+    Close       string   // the one closer: "}", "end", "\n"; "" when CloseIsOpen
+    CloseIsOpen bool     // the closer is the text that opened this instance of the group
+    Lookahead   string   // a pattern the bytes after an opener or closer must satisfy; "" for none
+    Escape      string   // escape sequence inside the group; "" for none
 
     AllowedInner  []string // nil = code mode; non-nil (even empty) = parse-restricted
     AllowedParent []string // nil = anywhere; non-nil = only inside these openers
@@ -28,6 +31,49 @@ type BracketGroup struct {
     Kind string // an uninterpreted label for a layer above; never read here
 }
 ```
+
+**One closer, not a list.** A group has one closer, and nothing about which closer pairs
+with which opener is left to be read out of two lists. A language whose word brackets
+close on different words — `do`/`done` beside `if`/`fi` — is two groups, which is what
+they are.
+
+### Runs, and markers that close themselves
+
+CommonMark's code span is a run of N backticks closed only by a run of exactly N, for any
+N; a template literal, a Python triple quote and a markdown `**` are all markers that
+close with their own text. Three fields say this without a group per length:
+
+- **`OpenRegex`** is a pattern opener, matched anchored at the position the parse has
+  reached and exclusive with `Open`; the marker is whatever the pattern matched, and the
+  node holds those bytes like any other. A run is the pattern *backtick, one or more*.
+- **`CloseIsOpen`** says the closer is the text that opened this instance of the group,
+  and it is checked before any opener in either mode, so the marker closes rather than
+  reopens. For a symmetric literal group it says in one word what repeating the marker
+  said in two; for a pattern group it is the only way to say it, since the closer's
+  length is not known until the opener has matched.
+- **`Lookahead`** is an anchored pattern the bytes after an opener or a closer must
+  satisfy for the marker to match there, satisfied at end of input, since a closer is often
+  a file's last byte. With a lookahead of *anything but a backtick*, a three-run is not an opener where a
+  fourth backtick follows, and a longer run inside a span is literal text — on either edge, and whatever
+  order the table lists anything in. It is additive to the word-boundary rule below, which
+  tests the leading edge too and which no lookahead can express. The leading edge of a
+  *run* needs no lookbehind either: inside a close-is-open pattern group, a match of the
+  pattern that is not the opener's text is literal and consumed whole, so the parse never
+  stands one byte into a longer run and reads its tail as the closer.
+
+Markers stay byte comparisons; only `OpenRegex` and `Lookahead` are patterns, compiled
+once when the parser is constructed. A pattern that does not compile, an `OpenRegex`
+beside a non-empty `Open`, or `CloseIsOpen` beside a non-empty `Close` is a construction
+error: `NewBracketParser` panics naming the group, and every shipped table is checked by
+a test so the panic is never seen by a consumer. The any-close fallback recognizes literal
+closers only — a close-is-open marker outside its group is an opener, and has matched as
+one before the fallback is reached.
+
+**A group is named by any of its openers, or by its pattern.** `AllowedInner`,
+`AllowedParent` and `GroupFor` resolve a string to the group whose `Open` lists it or
+whose `OpenRegex` it is, and then match *that group's* opener — pattern or list — rather
+than the naming string as a prefix. Bold's escape hatch names the backtick group once and
+admits every run; a group with several openers, named by one, admits them all.
 
 **There is no comment configuration.** A line comment is a group opening `//` and
 closing `\n`; a block comment opens `/*` and closes `*/`. Both are
@@ -48,9 +94,9 @@ identical whatever it says, and a language that labels nothing parses the same.
 
 - **nil — code mode.** Full parsing: every other group's openers are recognized.
 - **non-nil, including empty — parse-restricted.** Only three things are
-  recognized: this group's `Close`, its `Escape`, and the openers listed. Every
-  other byte is literal. An empty list is pure raw mode; a non-empty one names the
-  escape hatches back into code.
+  recognized: this group's closer, its `Escape`, and the openers of the groups the
+  list names. Every other byte is literal. An empty list is pure raw mode; a
+  non-empty one names the escape hatches back into code.
 
 **`AllowedParent` is its dual, and it is not optional.** With a flat table, code
 mode recognizes every group's openers — so without it `${` fires at top level,
@@ -163,6 +209,8 @@ position inside a group at all.
   does not understand.
 - **A group left open at end of input closes there.** The bytes are already
   accounted for; nothing is dropped.
+- **A pattern opener honours the word-boundary rule on the bytes it matched**, and
+  every opener and closer honours its group's `Lookahead`.
 
 **Whitespace is not a node of its own.** It folds into text, so a text run is *everything
 between two recognized markers* rather than a run of non-whitespace. A layer that needs

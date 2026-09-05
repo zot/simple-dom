@@ -132,7 +132,7 @@
 - **R62:** There is no comment configuration: a line comment is a group closing on a newline, and a block comment a group closing on its terminator.
 - **R63:** A block comment nests only when its own opener is listed in its `AllowedInner`.
 - **R64:** `AllowedInner` nil means code mode — every group's openers are recognized inside the group.
-- **R65:** `AllowedInner` non-nil, including empty, means parse-restricted — only the group's own `Close`, its `Escape`, and the listed openers are recognized, and every other byte is literal.
+- **~~R65:~~** (Retired T6 — see R294) `AllowedInner` non-nil, including empty, means parse-restricted — only the group's own `Close`, its `Escape`, and the listed openers are recognized, and every other byte is literal.
 - **R66:** `AllowedParent` nil means the group is recognized in any context; non-nil means it is recognized only while parsing inside one of the listed openers.
 - **R67:** nil and an empty slice are semantically distinct in both `AllowedInner` and `AllowedParent`.
 - **R68:** `BracketLang` carries no indent parameters and no flag enabling indentation; a language needing indent scope is described by a type that embeds `BracketLang`, and the type is the flag.
@@ -196,6 +196,31 @@
   `Comment.Kind`; the agreement is guarded by a per-language test, not a runtime check.
 - **R209:** A language with no comment style has an empty `Prefix` and constructs nothing; `sdom`
   compares `Comment.Kind` and never branches on its value.
+
+- **R290:** `Close` is a single string, one closer per group; a language whose brackets close
+  on different words is several groups.
+- **R291:** `CloseIsOpen` makes the closer the text that opened this instance of the group, checked
+  before any opener in either mode so the marker closes rather than reopens; a symmetric literal
+  group may say so instead of repeating its marker, and a pattern group must.
+- **R292:** `OpenRegex` is a pattern opener, matched anchored where the parse stands and
+  exclusive with `Open`; the marker node holds the bytes it matched, which honour the
+  word-boundary rule.
+- **R293:** `Lookahead` is an anchored pattern the bytes after an opener or a closer must
+  satisfy for the marker to match there, satisfied at end of input, applied to literal and
+  close-is-open closers alike, and additive to the word-boundary rule; inside a close-is-open
+  pattern group, a match of the pattern that is not the opener's text is literal, consumed
+  whole, so a run is delimited on its leading edge without a lookbehind.
+- **R294:** `AllowedInner` non-nil, including empty, means parse-restricted — only the group's
+  own closer, its `Escape`, and the openers of the groups its list names are recognized, and
+  every other byte is literal.
+- **R295:** `AllowedInner`, `AllowedParent` and `GroupFor` name a group by any of its literal
+  openers or by its pattern, and matching then uses that group's own opener rather than the
+  naming string.
+- **R296:** A pattern that does not compile, an `OpenRegex` beside a non-empty `Open`, or
+  `CloseIsOpen` beside a non-empty `Close` is a construction error: `NewBracketParser` panics
+  naming the group, and a test over every shipped table keeps the panic from a consumer.
+- **R297:** The any-close fallback recognizes literal closers only; a close-is-open marker
+  outside its group is an opener and has already matched as one.
 
 ## Feature: indent scope
 **Source:** specs/indent-parser.md
@@ -401,7 +426,7 @@
 
 - **R226:** `LangMarkdown` is an `IndentLang` in `sdom/schema`, embedded by the trajectory file
   schemas and never used to parse a file alone; it models only what those schemas bind.
-- **R227:** Its bracket groups are the fence and the code span, both restricted with kind `code`,
+- **~~R227:~~** (Retired T7 — see R298) Its bracket groups are the fence and the code span, both restricted with kind `code`,
   and `**` and `~~` restricted with escape hatches — bold admits code spans, strike admits bold
   and code spans — in that match order; links are not groups. A symmetric marker is never a
   code-mode group, since there it reopens rather than closes.
@@ -412,8 +437,9 @@
 - **R230:** `Heading` holds one to six `#` and the space and derives its level from them; `ListItem`
   holds `- `; `Checkbox` holds `[ ]` or `[x]`, is recognized only immediately after a `ListItem`,
   and derives `Checked` from its bytes with `SetChecked` writing the interior through.
-- **R231:** No line-head marker shares a first byte with any bracket opener in the table, which is
-  what lets the wrapper check after delegating; guarded by a test over the table.
+- **R231:** No line-head marker shares a first byte with any bracket opener in the table, and the
+  code group's pattern matches at none of them, which is what lets the wrapper check after
+  delegating; guarded by a test over the table.
 - **R232:** Inside a fence or a code span the wrapper is never offered a position, so a line-head
   shape there is text with no rule needed.
 - **R233:** `NodeType` answers for the three line-head kinds and otherwise delegates; `Done`
@@ -421,6 +447,12 @@
 - **R234:** A marker holds only the bytes it matched; extents — a heading's line and region, a list
   item's body — are a consumer's derivation from the array, and the base records nothing.
 - **R235:** Each marker kind is its own type embedding `Text`, with its own `Equals`.
+
+- **R298:** Its bracket groups are one code group — a pattern opener of one or more backticks,
+  `CloseIsOpen`, a lookahead refusing a following backtick, restricted, kind `code` — then `**`
+  and `~~` restricted with escape hatches, bold admitting code and strike admitting bold and
+  code; links are not groups. Bold and strike are restricted so that only their hatches are
+  recognized inside them.
 
 ## Feature: part line
 **Source:** specs/part-line.md

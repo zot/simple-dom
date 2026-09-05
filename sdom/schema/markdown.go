@@ -7,17 +7,26 @@ import (
 	"github.com/zot/simple-dom/sdom"
 )
 
-// CRC: crc-MarkdownParser.md | R226, R227
+// codeRun is the code group's pattern, and so its NAME: a pattern group is named by
+// its OpenRegex, which is how the escape hatches in the table below reach it (R295).
+const codeRun = "`+"
+
+// CRC: crc-MarkdownParser.md | R226, R298
 //
 // LangMarkdown is the markdown BASE: the subset mini-spec's own documents use, and
 // only the structure a reader binds. The trajectory file schemas embed it; nothing
 // parses a file with it alone. Depth is a list item's indentation, so it is an
 // IndentLang.
 //
-// Match order matters twice: the fence before the code span, since ``` starts with `;
-// and links are NOT groups — `[` open no group — because a line-head marker may share
-// no first byte with an opener (R231). Both code forms carry one kind, so a consumer
-// that skips code skips one label.
+// The fence and the code span are ONE group: a pattern opener of one or more
+// backticks, closing on its own text, with a lookahead refusing a following backtick
+// — CommonMark's rule that a run of N is closed only by a run of exactly N, for any N.
+// Two literal groups, for three backticks and one, read a two-run as an empty span
+// and flipped every later backtick in the file from open to close (measured
+// 2026-09-05: 41 of 58 done entries lost with nothing unread). Links are NOT groups —
+// `[` opens no group — because a line-head marker may share no first byte with an
+// opener (R231), and the code pattern matches at none of them. One code kind, so a
+// consumer that skips code skips one label.
 //
 // Bold and strike are RESTRICTED with escape hatches — the template-literal shape —
 // and not code-mode groups, because a symmetric marker in code mode reopens rather
@@ -27,10 +36,9 @@ import (
 // what `~~**Item 1 — …**~~` and `**LANDED (`abc`)**` need and nothing more.
 var LangMarkdown = sdom.IndentLang{
 	BracketLang: sdom.BracketLang{Brackets: []sdom.BracketGroup{
-		{Open: []string{"```"}, Close: []string{"```"}, AllowedInner: []string{}, Kind: "code"},
-		{Open: []string{"`"}, Close: []string{"`"}, AllowedInner: []string{}, Kind: "code"},
-		{Open: []string{"**"}, Close: []string{"**"}, AllowedInner: []string{"`"}},
-		{Open: []string{"~~"}, Close: []string{"~~"}, AllowedInner: []string{"**", "`"}},
+		{OpenRegex: codeRun, Lookahead: "[^`]", CloseIsOpen: true, AllowedInner: []string{}, Kind: "code"},
+		{Open: []string{"**"}, Close: "**", AllowedInner: []string{codeRun}},
+		{Open: []string{"~~"}, Close: "~~", AllowedInner: []string{"**", codeRun}},
 	}},
 	Tab: 4,
 }

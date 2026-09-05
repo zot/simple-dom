@@ -21,19 +21,25 @@ Its bracket groups, in match order:
 
 | group | open / close | mode | kind |
 |---|---|---|---|
-| fence | ` ``` ` … ` ``` ` | restricted: nothing inside is recognized | `code` |
-| code span | `` ` `` … `` ` `` | restricted | `code` |
-| bold | `**` … `**` | restricted; admits code spans | |
-| strike | `~~` … `~~` | restricted; admits bold and code spans | |
+| code | a run of backticks, closed by a run of the same length and no other | restricted: nothing inside is recognized | `code` |
+| bold | `**` … `**` | restricted; admits code | |
+| strike | `~~` … `~~` | restricted; admits bold and code | |
+
+**The fence and the code span are one group**, a pattern opener of one or more backticks
+with `CloseIsOpen` and a lookahead refusing a following backtick — CommonMark's rule that a
+run of N is closed only by a run of exactly N, for any N. Before this a two-run read as a
+one-span that opened and closed at once, the lone backtick inside it opened a real span,
+and every later backtick in the file flipped open for close: 41 of 58 done entries vanished
+from one file with nothing listed as unread, because nothing entry-like survived to be
+unread. A four-backtick fence around a fenced sample needs nothing the span does not.
 
 **Bold and strike are restricted with escape hatches** — the template-literal shape —
-rather than code-mode groups. A symmetric marker in code mode *reopens* rather than
-closes: the parser tries openers before the enclosing closer there, so a second `**`
-nests instead of closing and swallows the rest of the file. A restricted group checks
-its closer first. The hatches are exactly what a part line uses — `~~**Item 1 …**~~`
-and `**LANDED (` `` `abc` `` `)**` — and no more.
+rather than code-mode groups, so that only their hatches are recognized inside them. The
+hatches are exactly what a part line uses — `~~**Item 1 …**~~` and a marker span holding
+code — and no more; each names the code group once, by its pattern, and admits every
+run.
 
-Both code forms carry the kind `code`, so a consumer that wants to skip code skips one
+The one code group carries the kind `code`, so a consumer that wants to skip code skips one
 label. **Links are not groups.** `[doc](path)` is text; the stencil that wants the path
 reads it out of the run. Keeping `[` out of the table is also what keeps the checkbox
 recognizable — see the ordering rule below.
@@ -65,7 +71,7 @@ head**, it recognizes a line-head marker and emits it:
 only on a change. That is what the live text run was landed for.
 
 **A line-head marker shares no first byte with any bracket opener.** `#`, `-` and `[`
-open no group. This is the rule that lets the wrapper check *after* delegating: were
+open no group, and the code group's pattern matches at none of them. This is the rule that lets the wrapper check *after* delegating: were
 `[` an opener, the bracket parser would claim a checkbox before the wrapper saw it. It
 is stated here and guarded by a test over the table.
 

@@ -1,4 +1,4 @@
-// CRC: crc-BracketParser.md | R57, R65, R71, R72, R73, R74, R75, R76, R77
+// CRC: crc-BracketParser.md | R57, R294, R71, R72, R73, R74, R75, R76, R77
 package sdom
 
 import (
@@ -45,7 +45,7 @@ func nodeStream(nodes []Node) string {
 
 func codeLang() *BracketLang {
 	return &BracketLang{Brackets: []BracketGroup{
-		{Open: []string{"{"}, Close: []string{"}"}},
+		{Open: []string{"{"}, Close: "}"},
 	}}
 }
 
@@ -97,7 +97,8 @@ func TestOpenerContentsAndCloserAreSiblings(t *testing.T) {
 // The rule that separates a word bracket from a substring.
 func TestWordMarkersRespectBoundaries(t *testing.T) {
 	words := &BracketLang{Brackets: []BracketGroup{
-		{Open: []string{"do", "begin"}, Close: []string{"fi", "end"}},
+		{Open: []string{"do"}, Close: "fi"},
+		{Open: []string{"begin"}, Close: "end"},
 	}}
 	assertStream(t, words, "download do file fi begin_ end",
 		`T"download " O"do" T" file " C"fi" T" begin_ " C"end"`)
@@ -146,7 +147,7 @@ func TestWhitespaceFoldsIntoText(t *testing.T) {
 	assertStream(t, codeLang(), "{ a  b\n  c }", `O"{" T" a  b\n  c " C"}"`)
 }
 
-// CRC: crc-BracketGroup.md | Seq: seq-parse.md#2.2 | R65
+// CRC: crc-BracketGroup.md | Seq: seq-parse.md#2.2 | R294
 // The property that makes strings and comments the same case.
 func TestNothingInsideARestrictedGroupIsRecognized(t *testing.T) {
 	cases := []struct{ src, want string }{
@@ -167,7 +168,7 @@ func TestEscapeConsumesItselfAndTheNextByte(t *testing.T) {
 	// The two tables differ in the escape and in nothing else.
 	stringLang := func(escape string) *BracketLang {
 		return &BracketLang{Brackets: []BracketGroup{
-			{Open: []string{`"`}, Close: []string{`"`}, Escape: escape, AllowedInner: []string{}},
+			{Open: []string{`"`}, Close: `"`, Escape: escape, AllowedInner: []string{}},
 		}}
 	}
 	withEsc := assertStream(t, stringLang(`\`), src, `O"\"" T"a\\\"b" C"\""`)
@@ -263,4 +264,82 @@ func TestByteRoundTripPerLanguageOverTheCorpus(t *testing.T) {
 			checkCovers(t, d, src, fmt.Sprintf("%s under %s", path, name))
 		}
 	}
+}
+
+// runLang is one pattern group: a run of backticks closing on its own text, a marker
+// only where no further backtick follows.
+func runLang() *BracketLang {
+	return &BracketLang{Brackets: []BracketGroup{
+		{OpenRegex: "`+", Lookahead: "[^`]", CloseIsOpen: true, AllowedInner: []string{}},
+	}}
+}
+
+// CRC: crc-BracketGroup.md | Seq: seq-parse.md#1.4 | R291, R292, R293
+func TestARunClosesOnlyWithARunOfItsOwnLength(t *testing.T) {
+	assertStream(t, runLang(), "``a ` b`` x", "O\"``\" T\"a ` b\" C\"``\" T\" x\"")
+	assertStream(t, runLang(), "```` ``` ````", "O\"````\" T\" ``` \" C\"````\"")
+	assertStream(t, runLang(), "``a```b`` c", "O\"``\" T\"a```b\" C\"``\" T\" c\"")
+	assertStream(t, runLang(), "a ``b``", "T\"a \" O\"``\" T\"b\" C\"``\"")
+}
+
+// CRC: crc-BracketGroup.md | Seq: seq-parse.md#1.4 | R291
+func TestTheCloserIsTheOpenersOwnBytes(t *testing.T) {
+	quotes := &BracketLang{Brackets: []BracketGroup{
+		{Open: []string{`"`, "'"}, CloseIsOpen: true, AllowedInner: []string{}},
+	}}
+	assertStream(t, quotes, `"a'b" 'c"d'`, `O"\"" T"a'b" C"\"" T" " O"'" T"c\"d" C"'"`)
+}
+
+// CRC: crc-BracketGroup.md | R292, R293
+func TestAPatternOpenerHonoursWordBoundariesAndLookahead(t *testing.T) {
+	xs := &BracketLang{Brackets: []BracketGroup{{OpenRegex: "x+", CloseIsOpen: true}}}
+	assertStream(t, xs, "xx a xx xxa axx", `O"xx" T" a " C"xx" T" xxa axx"`)
+	braces := &BracketLang{Brackets: []BracketGroup{{Open: []string{"{"}, Close: "}", Lookahead: "[^{]"}}}
+	assertStream(t, braces, "{{a} {b}", `T"{" O"{" T"a" C"}" T" " O"{" T"b" C"}"`)
+}
+
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#2.2.3 | R294, R295
+func TestAllowedInnerNamesAGroup(t *testing.T) {
+	lang := &BracketLang{Brackets: []BracketGroup{
+		{Open: []string{"<"}, Close: ">", AllowedInner: []string{"`+"}},
+		{OpenRegex: "`+", Lookahead: "[^`]", CloseIsOpen: true, AllowedInner: []string{}},
+	}}
+	assertStream(t, lang, "<``a`` `b`>", "O\"<\" O\"``\" T\"a\" C\"``\" T\" \" O\"`\" T\"b\" C\"`\" C\">\"")
+}
+
+// recovered runs f and hands back what it panicked with, or nil. A table that cannot
+// be constructed panics, so the tests of that behaviour read the panic as a value
+// instead of each wrapping a deferred recover of its own.
+func recovered(f func()) (r any) {
+	defer func() { r = recover() }()
+	f()
+	return
+}
+
+// CRC: crc-BracketLang.md | R296
+func TestAContradictoryTablePanicsAtConstruction(t *testing.T) {
+	cases := map[string]BracketGroup{
+		"Open and OpenRegex":      {Open: []string{"a"}, OpenRegex: "a+", Close: "b"},
+		"CloseIsOpen contradicts": {Open: []string{"a"}, Close: "b", CloseIsOpen: true},
+		"OpenRegex":               {OpenRegex: "(", CloseIsOpen: true},
+	}
+	for want, g := range cases {
+		r := recovered(func() { NewBracketParser(&BracketLang{Brackets: []BracketGroup{g}}) })
+		if r == nil {
+			t.Errorf("%s: constructed without panicking", want)
+			continue
+		}
+		if msg := fmt.Sprint(r); !strings.Contains(msg, want) || !strings.Contains(msg, "group 0") {
+			t.Errorf("%s: panic %q does not name the error and the group", want, msg)
+		}
+	}
+}
+
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.1 | R297
+func TestTheAnyCloseFallbackIgnoresCloseIsOpenGroups(t *testing.T) {
+	lang := &BracketLang{Brackets: []BracketGroup{
+		{Open: []string{"|"}, CloseIsOpen: true},
+		{Open: []string{"{"}, Close: "}"},
+	}}
+	assertStream(t, lang, "a } |b", `T"a " C"}" T" " O"|" T"b"`)
 }
