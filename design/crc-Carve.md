@@ -1,5 +1,5 @@
 # Carve
-**Requirements:** R248, R249, R250, R251, R252, R253, R255, R256, R279, R280, R282, R283, R302, R307, R311
+**Requirements:** R248, R249, R250, R251, R252, R253, R255, R256, R279, R280, R282, R283, R302, R307, R311, R316
 
 The carve file schema: embeds the markdown base, owns the document, and adds the
 status block. The first of the four trajectory file schemas.
@@ -21,6 +21,8 @@ status block. The first of the four trajectory file schemas.
   prose
 - `Land(key, …)`: box, strike, and a `LANDED` record, in one act — refused with
   `ErrLanded` when the box is already checked
+- after either write, parses the render afresh and reads the marker back on the keyed
+  part — for `Land` the checked, struck box too — or panics with `ReadBackError`
 
 ## Constraints
 - **Bounded by the region.** Other checkbox lists in a carve track other things

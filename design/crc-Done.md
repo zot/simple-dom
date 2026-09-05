@@ -1,5 +1,5 @@
 # Done
-**Requirements:** R266, R267, R268, R269, R270, R271, R272, R283, R284, R300, R311
+**Requirements:** R266, R267, R268, R269, R270, R271, R272, R283, R284, R300, R311, R315
 
 The done file schema: embeds the markdown base, owns the ledger, and adds the
 completion entry as a view over a list-item region.
@@ -17,7 +17,8 @@ completion entry as a view over a list-item region.
 - `Entries`, `MaxID`, `Unread`, `Render`; `Unread` also carries every group the context
   reports open at end of input, at its opener's line, last
 - `Prepend(header, body)`: one synthetic text just after the rule, before the first
-  entry or at the end; then re-reads the document
+  entry or at the end; then re-reads the document and reads the entry back as the first,
+  or panics with `ReadBackError`
 
 ## Constraints
 - **A view, not a node**: values read from bytes at the format's positions

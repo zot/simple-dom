@@ -94,3 +94,13 @@ marker still agree after a refusal because none of them moved.
 reports as closed by end of input, at its line, with the text *`<marker>` never closed*.
 A carve has no other unread kind yet; this is the first entry of the report sdomification
 Item 1 will grow.
+
+**Every write reads itself back, or panics.** After the re-read, the reader checks that it sees
+the write it was asked for — `SetMarker` and `Land` find the marker on the keyed part in a fresh parse of the render, `Land` its checked, struck box too — and panics with a `ReadBackError` naming the reader, the
+write, the key, what was wanted and what came back. A panic and not an error, because the
+writer producing bytes its own reader cannot read is a library invariant, not caller input; a
+tool recovers it into a refusal naming the file, and the file stays untouched since nothing is
+written until render returns. This proves the tree describes the bytes as the write intended;
+it does not prove the write addressed the right region, which no re-parse can. DECIDED (Bill,
+2026-09-05): read-back, in place of comparing node kinds against a fresh parse, which a
+synthetic placement fails by design.

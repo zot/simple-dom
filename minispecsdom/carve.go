@@ -2,6 +2,7 @@ package minispecsdom
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/zot/simple-dom/sdom"
@@ -195,7 +196,43 @@ func (c *Carve) SetMarker(key, verb, attribution string) error {
 	if p == nil {
 		return ErrNoPart
 	}
-	return p.SetMarker(verb, attribution)
+	if err := p.SetMarker(verb, attribution); err != nil {
+		return err
+	}
+	c.readBack("SetMarker", key, verb, attribution, false) // R316
+	return nil
+}
+
+// CRC: crc-Carve.md | R316
+//
+// readBack parses the rendered carve afresh and checks that the keyed part carries the
+// marker just written — verb and attribution — and, for a landing, its checked, struck
+// box. The carve edits a node's own children and never re-reads, so this is the one
+// place the bytes are read as a reader would read them.
+func (c *Carve) readBack(write, key, verb, attribution string, landed bool) {
+	src, _ := c.Render()
+	p := ParseCarve(src).Part(key)
+	got := "no such part"
+	ok := false
+	if p != nil {
+		var ms []string
+		found := false
+		for _, m := range p.Markers() {
+			v, _ := m.Verb().Render()
+			ms = append(ms, v+" ("+m.Attribution()+")")
+			if strings.EqualFold(v, verb) && m.Attribution() == attribution {
+				found = true
+			}
+		}
+		checked, struck := p.Checkbox().Checked(), p.IsStruck()
+		ok = found && (!landed || (checked && struck))
+		got = fmt.Sprintf("markers %v, checked %v, struck %v", ms, checked, struck)
+	}
+	want := verb + " (" + attribution + ")"
+	if landed {
+		want += ", checked and struck"
+	}
+	mustReadBack("Carve", write, key, ok, want, got)
 }
 
 // CRC: crc-Carve.md | Seq: seq-carve.md#2 | R253, R255, R279, R282
@@ -216,5 +253,9 @@ func (c *Carve) Land(key, attribution string) error {
 	}
 	p.Checkbox().SetChecked(true)
 	p.Strike(true)
-	return p.SetMarker("LANDED", attribution)
+	if err := p.SetMarker("LANDED", attribution); err != nil {
+		return err
+	}
+	c.readBack("Land", key, "LANDED", attribution, true) // R316
+	return nil
 }

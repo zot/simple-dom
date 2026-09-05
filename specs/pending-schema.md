@@ -100,3 +100,13 @@ inside it — `**A title mentioning **OPEN** here**` — comes back whole; the I
 before that run and the skill and status the bytes after it. A regex that matched the first
 `**` lazily read such a title as `A title mentioning `. Measured on mini-spec's live queue
 2026-09-05: 0 of 11 titles carried interior emphasis.
+
+**Every write reads itself back, or panics.** After the re-read, the reader checks that it sees
+the write it was asked for — `Place` finds the entry at its position with every field, `Remove` no longer finds it — and panics with a `ReadBackError` naming the reader, the
+write, the key, what was wanted and what came back. A panic and not an error, because the
+writer producing bytes its own reader cannot read is a library invariant, not caller input; a
+tool recovers it into a refusal naming the file, and the file stays untouched since nothing is
+written until render returns. This proves the tree describes the bytes as the write intended;
+it does not prove the write addressed the right region, which no re-parse can. DECIDED (Bill,
+2026-09-05): read-back, in place of comparing node kinds against a fresh parse, which a
+synthetic placement fails by design.

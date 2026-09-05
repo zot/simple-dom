@@ -138,12 +138,23 @@ func (c *Current) SetActive(body string) error {
 	if c.Occupied() {
 		return ErrOccupied
 	}
-	return c.write(body)
+	if err := c.write(body); err != nil {
+		return err
+	}
+	want, got := strings.TrimSpace(body), c.Active()
+	mustReadBack("Current", "SetActive", "Active", got == want, want, got) // R317
+	return nil
 }
 
 // CRC: crc-Current.md | Seq: seq-current.md#2 | R276, R278
 // Reset writes the placeholder.
-func (c *Current) Reset() error { return c.write(Placeholder) }
+func (c *Current) Reset() error {
+	if err := c.write(Placeholder); err != nil {
+		return err
+	}
+	mustReadBack("Current", "Reset", "Active", !c.Occupied(), "the placeholder", c.Active()) // R317
+	return nil
+}
 
 // CRC: crc-Current.md | Seq: seq-current.md#2.2 | R276
 //

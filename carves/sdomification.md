@@ -37,7 +37,7 @@ brainstormed, not listed ahead of that.
 - [x] ~~**Item 5 — gap sources.**~~ **LANDED (`85fef32`, 2026-09-04 — `#25`.)**
 - [x] ~~**Item 6 — pending writes end at the rule and round-trip.**~~ **LANDED (`f778c07`, 2026-09-05 — `#29`.)**
 - [x] ~~**Item 7 — markers replace every transient and precede prose.**~~ **LANDED (`3ea6bf9`, 2026-09-05 — `#30`.)**
-- [ ] **Item 8 — the title read follows emphasis to its own close.** **OPEN (#31.)**
+- [x] ~~**Item 8 — the title read follows emphasis to its own close.**~~ **LANDED (`8648687`, 2026-09-05 — `#31`.)**
 - [x] ~~**Item 9 — the current file's refusals are sentinels.**~~ **LANDED (`0c606db`, 2026-09-05 — `#28`.)**
 - [ ] **Item 10 — `Mutate` proves the tree describes the bytes.** **OPEN (#32.)**
 - [ ] **Item 11 — one key form: the fragment.** **OPEN (#33.)**
@@ -234,6 +234,8 @@ morning's `Lookahead` the day it landed:
 A deliberate departure from CommonMark, recorded: CommonMark reads block structure first, so a
 line of three backticks interrupts a paragraph and opens a fence even inside an open span; our
 base has no block level, and with `RejectLongerCloses` the same bytes are a rejected closer.
+
+Landed `8648687`: R309 → T11 (R293), R310, R311, R312 → T12 (R298), R313.
 
 ## Item 9
 

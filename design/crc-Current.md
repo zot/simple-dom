@@ -1,5 +1,5 @@
 # Current
-**Requirements:** R273, R274, R275, R276, R277, R278, R303, R304, R311
+**Requirements:** R273, R274, R275, R276, R277, R278, R303, R304, R311, R317
 
 The current file schema: embeds the markdown base, owns the document, and adds the
 `## Active` region — the only region a tool may write.
@@ -17,6 +17,7 @@ The current file schema: embeds the markdown base, owns the document, and adds t
   at end of input, at its opener's line
 - `SetActive(body)`: refuses when occupied; otherwise replaces the region's body
 - `Reset`: replaces the region's body with the placeholder
+- after either write, reads the body or the placeholder back, or panics with `ReadBackError`
 - the replacement: split the heading's text after the title line, remove the body's
   nodes, insert one synthetic text, re-read
 

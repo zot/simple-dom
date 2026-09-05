@@ -272,3 +272,19 @@ func TestATitleWithEmphasisInsideReadsWhole(t *testing.T) {
 		t.Errorf("title %q skill %q status %q", e.Title, e.Skill, e.Status)
 	}
 }
+
+// CRC: crc-Pending.md | R314
+func TestAWriteThatDoesNotReadBackPanics(t *testing.T) {
+	mustReadBack("Pending", "Place", "7", true, "x", "x") // silent
+	defer func() {
+		r := recover()
+		e, ok := r.(*ReadBackError)
+		if !ok {
+			t.Fatalf("panic %v, want a *ReadBackError", r)
+		}
+		if e.Reader != "Pending" || e.Write != "Place" || e.Key != "7" || !strings.Contains(e.Error(), "did not read back: want x, got y") {
+			t.Errorf("error %q", e.Error())
+		}
+	}()
+	mustReadBack("Pending", "Place", "7", false, "x", "y")
+}

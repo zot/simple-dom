@@ -41,5 +41,15 @@
 **Refs:** crc-Done.md
 **Code:** minispecsdom/done_test.go
 **Fire alarm:** make `unclosed` return nil. Red: this test and its three siblings in the pending, carve and current designs — one helper, four readers.
-**Inject:** minispecsdom/unread.go:unclosed
+**Inject:** minispecsdom/unread.go:unbalanced
 **Pulled:** 2026-09-05 — rang in exactly the four sibling tests; re-pulled the same day after the simplifier dropped the helper's `doc` parameter, rang in the same four. **Past the list, same day:** disabling the line sort that first followed this helper rang nothing, and on inspection could not — nothing structured follows a group still open at the end, so the unclosed lines are last in file order by construction. The sort was removed; the requirements say *after*, not *sorted*.
+
+## Test: Prepend reads back
+**Purpose:** R315 — through the guard, by the existing prepend test
+**Input:** the prepend test's writes
+**Expected:** silent
+**Refs:** crc-Done.md
+**Code:** minispecsdom/done_test.go
+**Fire alarm:** write `header + "x"` as the header line. Red: `Done.Prepend … did not read back`.
+**Inject:** minispecsdom/done.go:Done.Prepend
+**Pulled:** 2026-09-05 — pulled again after the simplifier restructured the guards, rang again; first: rang.

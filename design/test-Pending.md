@@ -103,3 +103,13 @@
 **Fire alarm:** read the title with the old lazy regex. Red: title `A `.
 **Inject:** minispecsdom/pending.go:Entry.deriveHead
 **Pulled:** 2026-09-05 — pulled again after the simplifier restructured the site; rang. Earlier the same day: rang: `title "A "`, only that test.
+
+## Test: a write that does not read back panics
+**Purpose:** R314 — the guard, and the shape of what it says
+**Input:** `mustReadBack` with a false verdict; every existing write test, which passes through the guard green
+**Expected:** a `*ReadBackError` naming reader, write, key, want and got; a true verdict is silent
+**Refs:** crc-Pending.md
+**Code:** minispecsdom/pending_test.go
+**Fire alarm:** corrupt `Place`'s bytes — prefix the inserted text with `#`. Red: every `Place` test panics with `Pending.Place … did not read back`. A second: have `Remove` leave the head node in place. Red: `Remove … the entry still reads`.
+**Inject:** minispecsdom/pending.go:Pending.Place, minispecsdom/pending.go:Pending.Remove
+**Pulled:** 2026-09-05 — pulled again after the simplifier restructured the guards, rang again; first: both rang: the corrupted placement and the unremoved head each panicked through the guard in every write test.

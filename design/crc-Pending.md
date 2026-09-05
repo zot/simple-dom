@@ -1,5 +1,5 @@
 # Pending
-**Requirements:** R258, R259, R260, R262, R264, R265, R283, R284, R287, R288, R289, R301, R305, R306, R311, R313
+**Requirements:** R258, R259, R260, R262, R264, R265, R283, R284, R287, R288, R289, R301, R305, R306, R311, R313, R314
 
 The pending file schema: embeds the markdown base, owns the document, and adds the
 queue entry — a view over a heading region, since nothing in an entry is a field a
@@ -26,7 +26,9 @@ tool writes into.
 - `After(id)`: the position following a live entry
 - `Remove(id)`: drops the run, splitting a shared tail text at the region's end, and the
   blank line left at end of file — so `Place` then `Remove` is the identity
-- re-reads the document from its bytes after every write and re-derives the entries
+- re-reads the document from its bytes after every write and re-derives the entries, then
+  reads the write back — the placed entry at its position with every field, the removed one
+  gone — or panics with `ReadBackError`
 
 ## Constraints
 - **A view, not a node.** No re-cutting, no compound: the run is the base's nodes and

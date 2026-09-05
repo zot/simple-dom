@@ -106,3 +106,13 @@
 **Fire alarm:** drop the unpaired closers from `unbalanced`. Red: two items, no `closes nothing`.
 **Inject:** minispecsdom/unread.go:unbalanced
 **Pulled:** 2026-09-05 — rang: two items and no `closes nothing`, only that test.
+
+## Test: SetMarker and Land read back
+**Purpose:** R316 — through the guard, by the existing write tests
+**Input:** the marker and landing tests' writes
+**Expected:** silent
+**Refs:** crc-Carve.md
+**Code:** minispecsdom/carve_test.go
+**Fire alarm:** in `Land`, skip `Strike(true)`. Red: `Carve.Land … want LANDED (…), checked and struck`. A second: in `PartLine.SetMarker`, write the attribution with a trailing `?`. Red: `Carve.SetMarker … did not read back`.
+**Inject:** minispecsdom/carve.go:Carve.Land, minispecsdom/partline.go:PartLine.SetMarker
+**Pulled:** 2026-09-05 — pulled again after the simplifier restructured the guards, rang again; first: both rang: the unstruck landing and the corrupted attribution each panicked through the guard.

@@ -40,3 +40,13 @@
 **Expected:** `Unread` holds one item at the span's line naming the marker; the Active region still reads
 **Refs:** crc-Current.md
 **Code:** minispecsdom/current_test.go
+
+## Test: SetActive and Reset read back
+**Purpose:** R317 — through the guard, by the existing write tests
+**Input:** the region-write test's writes
+**Expected:** silent
+**Refs:** crc-Current.md
+**Code:** minispecsdom/current_test.go
+**Fire alarm:** have `write` append a stray line to the body. Red: `Current.SetActive … did not read back`.
+**Inject:** minispecsdom/current.go:Current.write
+**Pulled:** 2026-09-05 — pulled again after the simplifier restructured the guards, rang again; first: rang.

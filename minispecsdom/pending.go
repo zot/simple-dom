@@ -361,7 +361,26 @@ func (p *Pending) Place(e EntryText, pos int) error {
 		return err
 	}
 	p.reload()
+	// R314: the placed entry reads back, at its position, with every field.
+	got := p.Entry(e.ID)
+	ok := got != nil && e.matches(got) && slices.Index(p.entries, got) == pos-1
+	mustReadBack("Pending", "Place", strconv.Itoa(e.ID), ok, fmt.Sprintf("%+v at %d", e, pos), fmt.Sprintf("%+v", got))
 	return nil
+}
+
+// matches reports whether got is the entry Text wrote: every field as given, with the
+// status shorn of the period Text writes after it, and the source kind Text chose.
+func (e EntryText) matches(got *Entry) bool {
+	return got.Title == e.Title && got.Skill == e.Skill && got.Status == strings.TrimSuffix(e.Status, ".") &&
+		got.SourceDoc == e.SourceDoc && got.SourceKey == e.SourceKey && got.Kind == e.kind() && got.Next == e.Next
+}
+
+// kind is the source kind Text writes: SourceGap for a gap, SourcePart otherwise.
+func (e EntryText) kind() SourceKind {
+	if e.Kind == SourceGap {
+		return SourceGap
+	}
+	return SourcePart
 }
 
 // insert puts text before a node as one synthetic text.
@@ -454,6 +473,7 @@ func (p *Pending) Remove(id int) error {
 		return err
 	}
 	p.reload()
+	mustReadBack("Pending", "Remove", strconv.Itoa(id), p.Entry(id) == nil, "no entry", "the entry still reads") // R314
 	return nil
 }
 

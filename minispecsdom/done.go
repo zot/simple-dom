@@ -216,7 +216,14 @@ func (d *Done) Prepend(header, body string) error {
 	}); err != nil {
 		return err
 	}
+	n := len(d.entries)
 	src, _ := d.doc.Render()
 	d.parse(src)
+	// R315: the prepended entry reads back as the first entry, with its header line.
+	got := "no new first entry"
+	if len(d.entries) > 0 {
+		got = d.lineText(d.entries[0].item.Location().Offset())
+	}
+	mustReadBack("Done", "Prepend", header, len(d.entries) == n+1 && got == header, header, got)
 	return nil
 }

@@ -48,3 +48,13 @@ a fenced `## Active` that never closes is how the region goes missing without a 
 **The two refusals are sentinels.** `ParseCurrent` returns `ErrNoActive` or `ErrManyActive`,
 so a tool that must name the repair — *add the heading beneath the rule, holding
 `_No active item._`* — tells the cases apart with `errors.Is`, never by matching the message.
+
+**Every write reads itself back, or panics.** After the re-read, the reader checks that it sees
+the write it was asked for — `SetActive` reads the body back and `Reset` reads the placeholder — and panics with a `ReadBackError` naming the reader, the
+write, the key, what was wanted and what came back. A panic and not an error, because the
+writer producing bytes its own reader cannot read is a library invariant, not caller input; a
+tool recovers it into a refusal naming the file, and the file stays untouched since nothing is
+written until render returns. This proves the tree describes the bytes as the write intended;
+it does not prove the write addressed the right region, which no re-parse can. DECIDED (Bill,
+2026-09-05): read-back, in place of comparing node kinds against a fresh parse, which a
+synthetic placement fails by design.

@@ -62,3 +62,13 @@ the entry-like lines — which is file order, since nothing structured can follo
 open at the end. A fence or span that runs to end of file takes every later
 entry with it and leaves nothing entry-like to list, which is why the reader must say this
 itself rather than wait to notice.
+
+**Every write reads itself back, or panics.** After the re-read, the reader checks that it sees
+the write it was asked for — `Prepend` finds the new first entry with its header line — and panics with a `ReadBackError` naming the reader, the
+write, the key, what was wanted and what came back. A panic and not an error, because the
+writer producing bytes its own reader cannot read is a library invariant, not caller input; a
+tool recovers it into a refusal naming the file, and the file stays untouched since nothing is
+written until render returns. This proves the tree describes the bytes as the write intended;
+it does not prove the write addressed the right region, which no re-parse can. DECIDED (Bill,
+2026-09-05): read-back, in place of comparing node kinds against a fresh parse, which a
+synthetic placement fails by design.

@@ -540,6 +540,8 @@
 - **R307:** `SetMarker` replaces the first transient marker — verb `OPEN` or `REVERTED` — removes any
   other transient, and when the line carries none inserts the marker after the head and any markers
   and before the trailing prose; it selects by what it replaces.
+- **R316:** After the write, a fresh parse of the render finds the marker on the keyed part — for `Land`
+  its checked, struck box too — or the write panics with a `ReadBackError`.
 
 ## Feature: pending schema
 **Source:** specs/pending-schema.md
@@ -579,6 +581,8 @@
   its placement opened, so that `Place` then `Remove` is byte-identical.
 - **R313:** An entry's title is the interior of the heading's first emphasis run, read to its own
   close, with the ID taken from the bytes before it and the skill and status from the bytes after.
+- **R314:** After the re-read, `Place` finds the entry at its position with every field and `Remove` no
+  longer finds it, or the write panics with a `ReadBackError` naming reader, write, key, want and got.
 
 ## Feature: done schema
 **Source:** specs/done-schema.md
@@ -603,6 +607,8 @@
   structured can follow a group still open at the end.
 - **R311:** Every reader's `Unread` also lists each closer the context reports paired with nothing,
   at its line, with the text *`<marker>` closes nothing*, in line order with the rest.
+- **R315:** After the re-read, `Prepend` finds the new first entry with its header line, or panics
+  with a `ReadBackError`.
 
 ## Feature: current schema
 **Source:** specs/current-schema.md
@@ -622,3 +628,5 @@
   text *`<marker>` never closed*.
 - **R304:** `ParseCurrent`'s two refusals are the sentinels `ErrNoActive` and `ErrManyActive`, told
   apart with `errors.Is`.
+- **R317:** After the re-read, `SetActive` reads its body back and `Reset` the placeholder, or the write
+  panics with a `ReadBackError`.
