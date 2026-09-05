@@ -29,7 +29,7 @@ that.
 - [ ] **Item 2 — cut the tool over.** **OPEN (not queued.)**
 - [x] ~~**Item 3 — write paths refuse.**~~ **LANDED (`44a8955`, 2026-09-04 — `#23`.)**
 - [x] ~~**Item 4 — lines, and flexible input.**~~ **LANDED (`ddcf09f`, 2026-09-04 — `#24`.)**
-- [ ] **Item 5 — gap sources.** **OPEN (#25.)**
+- [x] ~~**Item 5 — gap sources.**~~ **LANDED (`85fef32`, 2026-09-04 — `#25`.)**
 
 ## Decisions
 
@@ -142,3 +142,6 @@ only after `part`, so a gap-sourced entry parses with an empty key and is not li
 **A door kept open, not built** (request item 7): an entry may discharge several parts —
 `Source:` names one, a done entry's body may name more. The old surface was
 `Parts() []PartRef`. Nothing here should make that a breaking change later.
+
+Landed `85fef32`: R287–R289 and `specs/pending-schema.md`. `PartKey` became `SourceKey`, a
+consumer-visible rename taken while mini-spec's adapters were still being written.
