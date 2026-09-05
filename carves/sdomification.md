@@ -35,12 +35,12 @@ brainstormed, not listed ahead of that.
 - [x] ~~**Item 3 — write paths refuse.**~~ **LANDED (`44a8955`, 2026-09-04 — `#23`.)**
 - [x] ~~**Item 4 — lines, and flexible input.**~~ **LANDED (`ddcf09f`, 2026-09-04 — `#24`.)**
 - [x] ~~**Item 5 — gap sources.**~~ **LANDED (`85fef32`, 2026-09-04 — `#25`.)**
-- [ ] **Item 6 — pending writes end at the rule and round-trip.** **OPEN (not queued.)**
-- [ ] **Item 7 — markers replace every transient and precede prose.** **OPEN (not queued.)**
-- [ ] **Item 8 — the title read follows emphasis to its own close.** **OPEN (not queued.)**
-- [ ] **Item 9 — the current file's refusals are sentinels.** **OPEN (not queued.)**
-- [ ] **Item 10 — `Mutate` proves the tree describes the bytes.** **OPEN (not queued.)**
-- [ ] **Item 11 — one key form: the fragment.** **OPEN (not queued.)**
+- [ ] **Item 6 — pending writes end at the rule and round-trip.** **OPEN (#29.)**
+- [ ] **Item 7 — markers replace every transient and precede prose.** **OPEN (#30.)**
+- [ ] **Item 8 — the title read follows emphasis to its own close.** **OPEN (#31.)**
+- [ ] **Item 9 — the current file's refusals are sentinels.** **OPEN (#28.)**
+- [ ] **Item 10 — `Mutate` proves the tree describes the bytes.** **OPEN (#32.)**
+- [ ] **Item 11 — one key form: the fragment.** **OPEN (#33.)**
 
 ## Decisions
 

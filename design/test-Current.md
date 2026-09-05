@@ -24,15 +24,15 @@
 **Pulled:** 2026-09-03 — rang, and it is the incident: `after Reset` shows both standing sections gone; `Active` also read to the end of the file.
 
 ## Test: exactly one Active
-**Purpose:** R273
+**Purpose:** R273, R304
 **Input:** a document with no `## Active`; one with two; one whose only `## Active` is inside a fence
-**Expected:** all three refused by `ParseCurrent`
+**Expected:** all three refused by `ParseCurrent`; the first and third with `ErrNoActive`, the second with `ErrManyActive`, by `errors.Is`
 **Refs:** crc-Current.md, seq-current.md#1.2
 **Code:** minispecsdom/current_test.go
 **Alarm:** 3
-**Fire alarm:** take the first `Active` heading and ignore a second. Red: the two-heading document parses.
+**Fire alarm:** take the first `Active` heading and ignore a second. Red: the two-heading document parses. For R304: return a fresh `errors.New` with the same message in place of `ErrManyActive`. Red: `errors.Is` fails on the two-heading document while the message is unchanged — which is the whole point of a sentinel.
 **Inject:** minispecsdom/current.go:Current.parse
-**Pulled:** 2026-09-05 — re-pulled by a delegated puller after `parse` gained the unclosed report; rang: the two-heading document `parsed`, only `TestExactlyOneActive`. Previously 2026-09-03 — rang: the two-heading document parsed, only that test. Site is `parse`, the helper.
+**Pulled:** 2026-09-05 — the R304 injection rang: `want minispecsdom: more than one …` on the two-heading document, only that case. Same day, earlier: re-pulled by a delegated puller after `parse` gained the unclosed report; rang: the two-heading document `parsed`, only `TestExactlyOneActive`. Previously 2026-09-03 — rang: the two-heading document parsed, only that test. Site is `parse`, the helper.
 
 ## Test: a group open at end of input is unread
 **Purpose:** R303

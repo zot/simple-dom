@@ -8,7 +8,7 @@ nothing else.
 ```go
 type Current struct { /* the document, its contexts, the region */ }
 
-func ParseCurrent(src string) (*Current, error)   // refuses no Active, or more than one
+func ParseCurrent(src string) (*Current, error)   // refuses no Active (ErrNoActive), or more than one (ErrManyActive)
 func (c *Current) Doc() *sdom.Doc
 func (c *Current) Render() (string, error)
 
@@ -44,3 +44,7 @@ else. The document is re-read after each write.
 **A group open at end of input is unread.** `Unread` lists every opener the base's context
 reports as closed by end of input, at its line, with the text *`<marker>` open to end of input*;
 a fenced `## Active` that never closes is how the region goes missing without a refusal.
+
+**The two refusals are sentinels.** `ParseCurrent` returns `ErrNoActive` or `ErrManyActive`,
+so a tool that must name the repair — *add the heading beneath the rule, holding
+`_No active item._`* — tells the cases apart with `errors.Is`, never by matching the message.

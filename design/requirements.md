@@ -591,3 +591,5 @@
 - **R278:** The document is re-read after each write.
 - **R303:** `Current.Unread` lists every group open at end of input at its opener's line, with the
   text *`<marker>` open to end of input*.
+- **R304:** `ParseCurrent`'s two refusals are the sentinels `ErrNoActive` and `ErrManyActive`, told
+  apart with `errors.Is`.

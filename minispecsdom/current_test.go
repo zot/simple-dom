@@ -93,15 +93,20 @@ func TestAWriteReachesTheRegionAndNothingElse(t *testing.T) {
 	}
 }
 
-// CRC: crc-Current.md | Seq: seq-current.md#1.2 | R273
+// CRC: crc-Current.md | Seq: seq-current.md#1.2 | R273, R304
 func TestExactlyOneActive(t *testing.T) {
-	for _, src := range []string{
-		"# Current\n\n---\n\n## Standing\n\ntext\n",
-		"# Current\n\n---\n\n## Active\n\na\n\n## Active\n\nb\n",
-		"# Current\n\n```\n## Active\n```\n",
+	for src, want := range map[string]error{
+		"# Current\n\n---\n\n## Standing\n\ntext\n":              ErrNoActive,
+		"# Current\n\n---\n\n## Active\n\na\n\n## Active\n\nb\n": ErrManyActive,
+		"# Current\n\n```\n## Active\n```\n":                     ErrNoActive,
 	} {
-		if _, err := ParseCurrent(src); err == nil {
+		_, err := ParseCurrent(src)
+		if err == nil {
 			t.Errorf("%q: parsed", src)
+			continue
+		}
+		if !errors.Is(err, want) { // R304
+			t.Errorf("%q: %v, want %v", src, err, want)
 		}
 	}
 }

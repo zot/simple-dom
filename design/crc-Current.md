@@ -1,5 +1,5 @@
 # Current
-**Requirements:** R273, R274, R275, R276, R277, R278, R303
+**Requirements:** R273, R274, R275, R276, R277, R278, R303, R304
 
 The current file schema: embeds the markdown base, owns the document, and adds the
 `## Active` region — the only region a tool may write.
@@ -11,7 +11,8 @@ The current file schema: embeds the markdown base, owns the document, and adds t
 
 ## Does
 - `ParseCurrent`: parses with the base; finds exactly one level-2 `Active` heading or
-  refuses; bounds its region at the next heading of level 2 or higher
+  refuses with `ErrNoActive` / `ErrManyActive`; bounds its region at the next heading of
+  level 2 or higher
 - `Active`, `Occupied`, `Standing`, `Render`; `Unread`: every group the context reports open
   at end of input, at its opener's line
 - `SetActive(body)`: refuses when occupied; otherwise replaces the region's body

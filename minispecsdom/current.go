@@ -15,6 +15,15 @@ const Placeholder = "_No active item._"
 // ErrOccupied reports a SetActive over a held item.
 var ErrOccupied = errors.New("minispecsdom: `## Active` already holds an item; park it in the pending file first")
 
+// R304: the two refusals of ParseCurrent are sentinels, so a caller names the repair by
+// a type switch rather than by matching the message.
+var (
+	// ErrNoActive: no `## Active` heading; the active item cannot be told from the standing context.
+	ErrNoActive = errors.New("minispecsdom: no `## Active` heading; the active item cannot be told from the standing context")
+	// ErrManyActive: more than one `## Active` heading; the region to clear is ambiguous.
+	ErrManyActive = errors.New("minispecsdom: more than one `## Active` heading; the region to clear is ambiguous")
+)
+
 // CRC: crc-Current.md | R273
 //
 // Current is the current file schema: it embeds the markdown base, owns the document,
@@ -61,12 +70,12 @@ func (c *Current) parse(src string) error {
 			continue
 		}
 		if c.active != nil {
-			return errors.New("minispecsdom: more than one `## Active` heading; the region to clear is ambiguous")
+			return ErrManyActive
 		}
 		c.active, c.from = h, i
 	}
 	if c.active == nil {
-		return errors.New("minispecsdom: no `## Active` heading; the active item cannot be told from the standing context")
+		return ErrNoActive
 	}
 	c.to = c.regionEnd(c.from)
 	return nil
