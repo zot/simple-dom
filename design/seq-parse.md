@@ -1,5 +1,5 @@
 # Sequences: the scan
-**Requirements:** R57, R64, R72, R73, R74, R75, R77, R291, R293, R294
+**Requirements:** R57, R64, R72, R73, R74, R75, R77, R291, R294, R309
 
 Three diagrams: a code-mode group, a scan-restricted one, and the rules that keep
 the scan from stalling or losing bytes.
@@ -17,8 +17,10 @@ the scan from stalling or losing bytes.
         1.3.2. A nested opener recurses; the nesting lives on the call stack
         1.3.3. A separator of this group is appended and the loop continues
    1.4. This group's closer matches — the literal `Close`, or with `CloseIsOpen` the
-        very bytes that opened it, either under the group's `Lookahead`; a `Closer` is
-        appended and the loop returns
+        very bytes that opened it, for a pattern group the pattern's match equal to them,
+        under the group's `BeforeClose`; a `Closer` is appended and the loop returns
+        1.4.1. A run of the pattern that is not the opener's text: content, whole — or,
+               longer and rejected, an unbalanced `Closer` that ends the group
    1.5. Nothing of the nesting survives in the array — opener, contents and closer
         are siblings, and the pairing is a derived index
 

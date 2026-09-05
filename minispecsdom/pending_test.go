@@ -203,7 +203,7 @@ func TestAGroupOpenAtEndOfInputIsUnreadInPending(t *testing.T) {
 		t.Errorf("%d entries, want the one before the span", len(p.Entries()))
 	}
 	u := p.Unread()
-	if len(u) != 1 || u[0].Line != 8 || !strings.Contains(u[0].Text, "open to end of input") {
+	if len(u) != 1 || u[0].Line != 8 || !strings.Contains(u[0].Text, "never closed") {
 		t.Errorf("unread %+v, want the span at line 8", u)
 	}
 }
@@ -258,5 +258,17 @@ func TestPlaceThenRemoveIsTheIdentity(t *testing.T) {
 		if got, _ := p.Render(); got != c.want {
 			t.Errorf("%s: not the identity; tail %q", name, got[len(got)-60:])
 		}
+	}
+}
+
+// CRC: crc-Pending.md | Seq: seq-pending.md#1.2 | R313
+func TestATitleWithEmphasisInsideReadsWhole(t *testing.T) {
+	p := ParsePending("# P\n\n---\n\n## 5. **A **b** c** (skill). status here.\n   Source: [x](x.md), part `#Item 1`.\n")
+	e := p.Entry(5)
+	if e == nil {
+		t.Fatal("entry 5 not read")
+	}
+	if e.Title != "A **b** c" || e.Skill != "skill" || e.Status != "status here" {
+		t.Errorf("title %q skill %q status %q", e.Title, e.Skill, e.Status)
 	}
 }

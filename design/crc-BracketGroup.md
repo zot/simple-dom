@@ -1,5 +1,5 @@
 # BracketGroup
-**Requirements:** R61, R63, R64, R66, R67, R71, R168, R290, R291, R292, R293
+**Requirements:** R61, R63, R64, R66, R67, R71, R168, R290, R291, R292, R309
 
 One entry in a language's table: a set of matching markers, and the two fields
 that decide what may be recognized inside it and where it may be recognized at
@@ -12,8 +12,10 @@ all. Code brackets, strings and comments are all this one type.
   the marker is whatever it matched
 - `CloseIsOpen`: the closer is the text that opened this instance — one word for a
   symmetric group, the only way to say it for a pattern group
-- `Lookahead`: an anchored pattern the bytes after an opener or closer must satisfy,
-  satisfied at end of input
+- `AfterOpen`, `BeforeClose`: patterns with one role each — after an opener, against
+  the rune before a closer — both satisfied at the edge of the input
+- `RejectLongerCloses`: a longer run inside this close-is-open pattern group is a
+  rejected closer that ends the group, not content
 - `Escape`: the sequence that consumes itself and the byte after it
 - `AllowedInner`: what is recognized inside — **nil is code mode**, non-nil (even
   empty) is parse-restricted
@@ -26,11 +28,10 @@ all. Code brackets, strings and comments are all this one type.
   marker whose first byte is a word character must be neither preceded nor
   followed by one, so `do` does not fire inside `download` — and a pattern opener
   honours the rule on the bytes it matched
-- matches an opener or closer only where its `Lookahead` holds after it, so a run of
-  backticks is a marker only where no further backtick follows — on either edge, in
-  any table order
-- closes on its literal `Close`, or with `CloseIsOpen` on the opener's own text, both
-  under the lookahead
+- matches an opener only where `AfterOpen` holds after it and a closer only where
+  `BeforeClose` holds before it, which is flanking as a table entry
+- closes on its literal `Close`, or with `CloseIsOpen` on the opener's own text — for a
+  pattern group, the pattern's match here equal to it, so a run's edges need no field
 
 ## Constraints
 - **nil and an empty slice are different**, in both mode fields. nil is "no

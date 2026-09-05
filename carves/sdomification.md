@@ -36,7 +36,7 @@ brainstormed, not listed ahead of that.
 - [x] ~~**Item 4 — lines, and flexible input.**~~ **LANDED (`ddcf09f`, 2026-09-04 — `#24`.)**
 - [x] ~~**Item 5 — gap sources.**~~ **LANDED (`85fef32`, 2026-09-04 — `#25`.)**
 - [x] ~~**Item 6 — pending writes end at the rule and round-trip.**~~ **LANDED (`f778c07`, 2026-09-05 — `#29`.)**
-- [ ] **Item 7 — markers replace every transient and precede prose.** **OPEN (#30.)**
+- [x] ~~**Item 7 — markers replace every transient and precede prose.**~~ **LANDED (`3ea6bf9`, 2026-09-05 — `#30`.)**
 - [ ] **Item 8 — the title read follows emphasis to its own close.** **OPEN (#31.)**
 - [x] ~~**Item 9 — the current file's refusals are sentinels.**~~ **LANDED (`0c606db`, 2026-09-05 — `#28`.)**
 - [ ] **Item 10 — `Mutate` proves the tree describes the bytes.** **OPEN (#32.)**
@@ -195,6 +195,8 @@ marker after the prose.
   prose last, prose the terminator — so the line written is one this reader would list as
   non-conforming if it read the marker as one. Insert before the trailing prose.
 
+Landed `3ea6bf9`: R307 → T10 (R254), R308.
+
 ## Item 8
 
 **The title read is lazy** (request item 3). `entryHeadRe` matches the first emphasis run
@@ -206,6 +208,32 @@ wrong. Measured on mini-spec's live queue: 0 of 11 titles carry interior emphasi
 misreads today, which is why this is a part and not an incident. The write side refuses a
 *wrapped* title and nothing else; whether it should refuse interior emphasis, or the read
 should follow it, is decided when the part is built.
+
+**Widened 2026-09-05, DECIDED (Bill), after the title read exposed that the markdown base
+itself closes bold on the first `**`.** The repair is at the base, and it retires this
+morning's `Lookahead` the day it landed:
+
+- `AfterOpen` and `BeforeClose` replace `Lookahead`: two patterns with one role each, the
+  first matched after an opener, the second against the rune before a closer, both
+  satisfied at the edge of the input. Flanking is then a table entry — non-whitespace on
+  both — not a parser rule.
+- A pattern group's closer is the pattern's match here equal to the opened text. The greedy
+  run match settles both edges, so backticks need neither edge field; the case `Lookahead`
+  was added for falls out of equality.
+- `RejectLongerCloses`: inside a close-is-open pattern group, a match longer than the opened
+  text is by default content (CommonMark), and with the flag it is rejected — ends the group
+  as an unbalanced closer, reported. On for backticks, off for emphasis. A panic was
+  considered and declined: malformed input is the caller's document, not a library
+  invariant, and a reader that crashes on it is the opposite of *say what could not be read*.
+- The context lists unpaired closers the way `Unclosed` lists unpaired openers, and every
+  reader carries them into `Unread`.
+- Emphasis is a run of asterisks, close-is-open, flanking on both edges, naming itself in
+  `AllowedInner`; a bold title with bold inside it nests. Strike stays a literal pair.
+- The pending title is read from the heading's bold node, not by regex.
+
+A deliberate departure from CommonMark, recorded: CommonMark reads block structure first, so a
+line of three backticks interrupts a paragraph and opens a fence even inside an open span; our
+base has no block level, and with `RejectLongerCloses` the same bytes are a rejected closer.
 
 ## Item 9
 

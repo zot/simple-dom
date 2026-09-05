@@ -91,6 +91,6 @@ Refusal is decided before any of `Land`'s three markings, so the box, the strike
 marker still agree after a refusal because none of them moved.
 
 **A group open at end of input is unread.** `Unread` lists every opener the base's context
-reports as closed by end of input, at its line, with the text *`<marker>` open to end of input*.
+reports as closed by end of input, at its line, with the text *`<marker>` never closed*.
 A carve has no other unread kind yet; this is the first entry of the report sdomification
 Item 1 will grow.

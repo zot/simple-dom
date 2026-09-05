@@ -7,11 +7,15 @@ import (
 	"github.com/zot/simple-dom/sdom"
 )
 
-// codeRun is the code group's pattern, and so its NAME: a pattern group is named by
-// its OpenRegex, which is how the escape hatches in the table below reach it (R295).
-const codeRun = "`+"
+// codeRun and emphasis are the two pattern groups' patterns, and so their NAMES: a
+// pattern group is named by its OpenRegex, which is how the escape hatches in the table
+// below reach them (R295).
+const (
+	codeRun  = "`+"
+	emphasis = `\*+`
+)
 
-// CRC: crc-MarkdownParser.md | R226, R298
+// CRC: crc-MarkdownParser.md | R226, R312
 //
 // LangMarkdown is the markdown BASE: the subset mini-spec's own documents use, and
 // only the structure a reader binds. The trajectory file schemas embed it; nothing
@@ -19,26 +23,31 @@ const codeRun = "`+"
 // IndentLang.
 //
 // The fence and the code span are ONE group: a pattern opener of one or more
-// backticks, closing on its own text, with a lookahead refusing a following backtick
-// — CommonMark's rule that a run of N is closed only by a run of exactly N, for any N.
-// Two literal groups, for three backticks and one, read a two-run as an empty span
-// and flipped every later backtick in the file from open to close (measured
-// 2026-09-05: 41 of 58 done entries lost with nothing unread). Links are NOT groups —
-// `[` opens no group — because a line-head marker may share no first byte with an
-// opener (R231), and the code pattern matches at none of them. One code kind, so a
-// consumer that skips code skips one label.
+// backticks, closing on the pattern's match here EQUAL to its own text — CommonMark's
+// rule that a run of N is closed only by a run of exactly N, for any N, in one entry,
+// since a greedy run match settles both edges by itself. A longer run inside is a
+// rejected closer rather than content, so a reader can name it. Two literal groups,
+// for three backticks and one, read a two-run as an empty span and flipped every later
+// backtick in the file from open to close (measured 2026-09-05: 41 of 58 done entries
+// lost with nothing unread). Links are NOT groups — `[` opens no group — because a
+// line-head marker may share no first byte with an opener (R231), and the code pattern
+// matches at none of them. One code kind, so a consumer that skips code skips one
+// label.
 //
-// Bold and strike are RESTRICTED with escape hatches — the template-literal shape —
-// and not code-mode groups, because a symmetric marker in code mode reopens rather
+// Emphasis and strike are RESTRICTED with escape hatches — the template-literal shape
+// — and not code-mode groups, because a symmetric marker in code mode reopens rather
 // than closes: the parser tries openers before the enclosing closer there, and a
 // second `**` would nest forever and swallow the file. A restricted group checks its
-// closer first. Bold admits code spans; strike admits bold and code spans, which is
-// what `~~**Item 1 — …**~~` and `**LANDED (`abc`)**` need and nothing more.
+// closer first and its hatches next, so a run of another length nests instead. Emphasis
+// is a run of asterisks opening only before non-whitespace and closing only after it,
+// and it names ITSELF and code spans, so a bold title with bold inside reads whole;
+// strike admits emphasis and code spans, which is what `~~**Item 1 — …**~~` and
+// `**LANDED (`abc`)**` need and nothing more.
 var LangMarkdown = sdom.IndentLang{
 	BracketLang: sdom.BracketLang{Brackets: []sdom.BracketGroup{
-		{OpenRegex: codeRun, Lookahead: "[^`]", CloseIsOpen: true, AllowedInner: []string{}, Kind: "code"},
-		{Open: []string{"**"}, Close: "**", AllowedInner: []string{codeRun}},
-		{Open: []string{"~~"}, Close: "~~", AllowedInner: []string{"**", codeRun}},
+		{OpenRegex: codeRun, CloseIsOpen: true, RejectLongerCloses: true, AllowedInner: []string{}, Kind: "code"},
+		{OpenRegex: emphasis, CloseIsOpen: true, AfterOpen: `\S`, BeforeClose: `\S`, AllowedInner: []string{emphasis, codeRun}},
+		{Open: []string{"~~"}, Close: "~~", AllowedInner: []string{emphasis, codeRun}},
 	}},
 	Tab: 4,
 }

@@ -1,5 +1,5 @@
 # MarkdownParser
-**Requirements:** R226, R228, R229, R230, R231, R232, R233, R234, R235, R298
+**Requirements:** R226, R228, R229, R230, R231, R232, R233, R234, R235, R312
 
 The markdown base's parser: one pass, wrapping an `IndentParser`, emitting line-head
 markers where the delegate emitted nothing. With `LangMarkdown` and the three marker
@@ -28,14 +28,16 @@ alone.
   `Indent`, holding only its bytes. Extents are a consumer's derivation
 - **Line-headness is read from the array**, never kept as state — the live text run
   is what makes that possible
-- **Bold and strike are restricted with escape hatches, never code-mode groups**, so
+- **Emphasis and strike are restricted with escape hatches, never code-mode groups**, so
   that only their hatches are recognized inside them; each names the code group by its
   pattern and so admits every run
 - **Code hides everything inside it structurally**: the bracket parser takes the loop,
   so this parser is never offered a position there
 - **The fence and the code span are one group**: a pattern opener of one or more
-  backticks, `CloseIsOpen`, and a lookahead refusing a following backtick — CommonMark's
-  run-of-N rule in one entry. Two groups, for three backticks and one, read a two-run as
+  backticks, `CloseIsOpen`, `RejectLongerCloses` — CommonMark's run-of-N rule in one entry,
+  with a longer run inside rejected rather than content, by decision.
+- **Emphasis is a run of asterisks that nests by flanking**: `AfterOpen` and `BeforeClose`
+  non-whitespace, naming itself in its hatches, so a bold title with bold inside reads whole. Two groups, for three backticks and one, read a two-run as
   an empty span and flipped every later backtick from open to close, losing most of a
   file with nothing unread
 

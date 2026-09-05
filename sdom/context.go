@@ -404,6 +404,21 @@ func (bc *BracketContext) Unclosed() []*Opener {
 	return out
 }
 
+// CRC: crc-BracketContext.md | R310
+// Unpaired returns the closers that pair with no opener, in document order: a stray
+// closer the any-close fallback emitted, or a run a group rejected as longer than its
+// opener. The mirror of Unclosed, and reported the same way.
+func (bc *BracketContext) Unpaired() []*Closer {
+	bc.refresh()
+	var out []*Closer
+	for _, n := range bc.doc.Nodes() {
+		if c, ok := n.(*Closer); ok && bc.info[c].opener == nil {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // attach binds the context to the document it was parsed from and stamps it
 // with the generation the parse's own links describe, so the first read of a
 // freshly parsed document rebuilds nothing.

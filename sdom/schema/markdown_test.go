@@ -54,7 +54,7 @@ func count(d *sdom.Doc) (c counts) {
 	return
 }
 
-// CRC: crc-MarkdownParser.md | Seq: seq-markdown.md#1.3 | R226, R298, R228, R229, R230
+// CRC: crc-MarkdownParser.md | Seq: seq-markdown.md#1.3 | R226, R312, R228, R229, R230
 func TestTheFixtureRoundTripsAndIsRecognized(t *testing.T) {
 	src := sample(t)
 	d, _ := parseMarkdown(src)
@@ -128,7 +128,7 @@ func TestNoLineHeadMarkerSharesAFirstByteWithAnOpener(t *testing.T) {
 	}
 }
 
-// CRC: crc-MarkdownParser.md | R298
+// CRC: crc-MarkdownParser.md | R312
 //
 // The fixture is the shape that lost 41 of 58 done entries: a two-run span holding one
 // backtick, a four-run fence around a three-run fence, a three-run inside a two-run,
@@ -163,7 +163,7 @@ func TestBacktickRuns(t *testing.T) {
 			t.Errorf("opener %q closed by %q", marker, got)
 		}
 	}
-	// Hand count: the two-run, the four-run, the two-run, the one-run.
+	// Hand count: the two-run, the four-run, the three-run, the one-run.
 	if spans != 4 {
 		t.Errorf("code openers %d, want 4", spans)
 	}
@@ -219,7 +219,7 @@ func (r *nodeTypeRecorder) NodeType(st *sdom.ParserState) (string, bool) { retur
 
 func (r *nodeTypeRecorder) Done(d *sdom.Doc) { r.inner.Done(d) }
 
-// CRC: crc-MarkdownParser.md | R298
+// CRC: crc-MarkdownParser.md | R312
 //
 // Found by injecting past the alarm list: with bold admitting no code span, every
 // count in the fixture test stayed the same. The hatches are the part line's shape —
@@ -240,5 +240,33 @@ func TestTheEscapeHatchesPair(t *testing.T) {
 		if paired[k] != w {
 			t.Errorf("%q: %d paired groups, want %d", k, paired[k], w)
 		}
+	}
+}
+
+// CRC: crc-MarkdownParser.md | R312
+//
+// Emphasis nests by flanking, so a bold heading with bold inside it reads whole; and a
+// run longer than an open code span is rejected — a closer that closes nothing — rather
+// than content, by decision, so the reader can name it.
+func TestEmphasisNestsAndALongerRunIsRejected(t *testing.T) {
+	d, p := parseMarkdown("## 5. **A **b** c**. s\n")
+	ctx := p.Indent().Brackets().Context()
+	var first *sdom.Opener
+	for _, n := range d.Nodes() {
+		if o, ok := n.(*sdom.Opener); ok {
+			first = o
+			break
+		}
+	}
+	if first == nil {
+		t.Fatal("no opener")
+	}
+	if got := ctx.InnerText(first); got != "A **b** c" {
+		t.Errorf("outer bold reads %q, want the whole title", got)
+	}
+	_, p = parseMarkdown("a ``b```c`` d\n")
+	ctx = p.Indent().Brackets().Context()
+	if u := ctx.Unpaired(); len(u) != 1 {
+		t.Errorf("%d unpaired closers, want the three-run", len(u))
 	}
 }

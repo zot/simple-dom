@@ -37,7 +37,7 @@
 ## Test: a group open at end of input is unread
 **Purpose:** R300 — the failure `Unread` exists to prevent, arriving one layer below it
 **Input:** a done file whose last entry is followed by a fence that never closes
-**Expected:** `Unread` holds one item at the fence's line whose text names the marker and says it is open to end of input; the entries before it still read
+**Expected:** `Unread` holds one item at the fence's line whose text names the marker and says it is never closed; the entries before it still read
 **Refs:** crc-Done.md
 **Code:** minispecsdom/done_test.go
 **Fire alarm:** make `unclosed` return nil. Red: this test and its three siblings in the pending, carve and current designs — one helper, four readers.

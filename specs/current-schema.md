@@ -42,7 +42,7 @@ another would discard it, and the pending file is the stack to park it on first.
 else. The document is re-read after each write.
 
 **A group open at end of input is unread.** `Unread` lists every opener the base's context
-reports as closed by end of input, at its line, with the text *`<marker>` open to end of input*;
+reports as closed by end of input, at its line, with the text *`<marker>` never closed*;
 a fenced `## Active` that never closes is how the region goes missing without a refusal.
 
 **The two refusals are sentinels.** `ParseCurrent` returns `ErrNoActive` or `ErrManyActive`,

@@ -22,7 +22,7 @@ func (p *Pending) Remove(id int) error
 
 type Entry struct {
     ID                int
-    Title, Skill, Status string   // derived from the heading line
+    Title, Skill, Status string   // derived from the heading line — the title from its emphasis node, whole
     SourceDoc, SourceKey string   // derived from the Source: line
     Kind              SourceKind  // SourcePart, SourceGap, or SourceNone when the line did not read
     Next              string      // derived from the Next: line, "" when absent
@@ -91,5 +91,12 @@ A placed entry is one synthetic text until it is parsed, and nothing holds a nod
 document across a write, so re-reading costs nothing a consumer can see.
 
 **A group open at end of input is unread**, listed at the opener's line with the text
-*`<marker>` open to end of input*, after the unread headings — the same rule and reason as the
+*`<marker>` never closed*, after the unread headings — the same rule and reason as the
 done schema's.
+
+**The title is read from the node, not by a regex over the bytes.** The heading's first
+emphasis run is the title, its interior read to its own close, so a title with emphasis
+inside it — `**A title mentioning **OPEN** here**` — comes back whole; the ID is the bytes
+before that run and the skill and status the bytes after it. A regex that matched the first
+`**` lazily read such a title as `A title mentioning `. Measured on mini-spec's live queue
+2026-09-05: 0 of 11 titles carried interior emphasis.

@@ -191,7 +191,18 @@ func TestAGroupOpenAtEndOfInputIsUnreadInCarve(t *testing.T) {
 		t.Errorf("%d parts, want 1", len(c.Parts()))
 	}
 	u := c.Unread()
-	if len(u) != 1 || u[0].Line != 7 || !strings.Contains(u[0].Text, "open to end of input") {
+	if len(u) != 1 || u[0].Line != 7 || !strings.Contains(u[0].Text, "never closed") {
 		t.Errorf("unread %+v, want the span at line 7", u)
+	}
+}
+
+// CRC: crc-Carve.md | R311
+func TestACloserThatClosesNothingIsUnread(t *testing.T) {
+	c := ParseCarve("# C\n\n## Status\n\n- [ ] **Item 1 — t.** **OPEN (not queued.)**\n\nsee ``x```y``\n")
+	u := c.Unread()
+	// Three reports on one line: the span the three-run ended (never closed), the span the
+	// trailing two-run opened (never closed), and the three-run itself (closes nothing).
+	if len(u) != 3 || !strings.Contains(u[0].Text, "never closed") || !strings.Contains(u[1].Text, "never closed") || !strings.Contains(u[2].Text, "```` closes nothing") {
+		t.Errorf("unread %+v, want two never-closed spans and the rejected three-run", u)
 	}
 }

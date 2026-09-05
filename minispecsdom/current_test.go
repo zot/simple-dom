@@ -122,7 +122,7 @@ func TestAGroupOpenAtEndOfInputIsUnreadInCurrent(t *testing.T) {
 		t.Errorf("active %q, want the region left empty", c.Active())
 	}
 	u := c.Unread()
-	if len(u) != 1 || u[0].Line != 9 || !strings.Contains(u[0].Text, "open to end of input") {
+	if len(u) != 1 || u[0].Line != 9 || !strings.Contains(u[0].Text, "never closed") {
 		t.Errorf("unread %+v, want the span at line 9", u)
 	}
 }

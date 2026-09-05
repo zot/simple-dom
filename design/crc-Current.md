@@ -1,5 +1,5 @@
 # Current
-**Requirements:** R273, R274, R275, R276, R277, R278, R303, R304
+**Requirements:** R273, R274, R275, R276, R277, R278, R303, R304, R311
 
 The current file schema: embeds the markdown base, owns the document, and adds the
 `## Active` region — the only region a tool may write.

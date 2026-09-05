@@ -21,23 +21,27 @@ Its bracket groups, in match order:
 
 | group | open / close | mode | kind |
 |---|---|---|---|
-| code | a run of backticks, closed by a run of the same length and no other | restricted: nothing inside is recognized | `code` |
-| bold | `**` … `**` | restricted; admits code | |
-| strike | `~~` … `~~` | restricted; admits bold and code | |
+| code | a run of backticks, closed by a run of the same length; a longer run inside is rejected | restricted: nothing inside is recognized | `code` |
+| emphasis | a run of asterisks, opening before and closing after non-whitespace | restricted; admits emphasis and code | |
+| strike | `~~` … `~~` | restricted; admits emphasis and code | |
 
 **The fence and the code span are one group**, a pattern opener of one or more backticks
-with `CloseIsOpen` and a lookahead refusing a following backtick — CommonMark's rule that a
-run of N is closed only by a run of exactly N, for any N. Before this a two-run read as a
+with `CloseIsOpen` — CommonMark's rule that a run of N is closed only by a run of exactly N,
+for any N — and `RejectLongerCloses`: a shorter run inside is content, a longer one is a
+rejected closer the reader names, by decision (Bill, 2026-09-05) and against CommonMark,
+whose block-first parse would open a fence there. Before this a two-run read as a
 one-span that opened and closed at once, the lone backtick inside it opened a real span,
 and every later backtick in the file flipped open for close: 41 of 58 done entries vanished
 from one file with nothing listed as unread, because nothing entry-like survived to be
 unread. A four-backtick fence around a fenced sample needs nothing the span does not.
 
-**Bold and strike are restricted with escape hatches** — the template-literal shape —
-rather than code-mode groups, so that only their hatches are recognized inside them. The
-hatches are exactly what a part line uses — `~~**Item 1 …**~~` and a marker span holding
-code — and no more; each names the code group once, by its pattern, and admits every
-run.
+**Emphasis is a run of asterisks that nests by flanking.** `AfterOpen` and `BeforeClose`
+are both non-whitespace, so a run opens only before text and closes only after it, and the
+group names itself in its hatches: a bold title with bold inside it reads whole, and `*` inside
+`**` is emphasis within. Emphasis and strike are restricted with escape hatches — the
+template-literal shape — rather than code-mode groups, so that only their hatches are
+recognized inside them; each names the code group once, by its pattern, and admits every run.
+The hatches are what a part line and an entry heading use, and no more.
 
 The one code group carries the kind `code`, so a consumer that wants to skip code skips one
 label. **Links are not groups.** `[doc](path)` is text; the stencil that wants the path

@@ -57,7 +57,7 @@ An entry is a view over its run, as a queue entry is; nothing in it is a field a
 writes into.
 
 **A group open at end of input is unread.** The base's context answers `Unclosed`; every such
-opener is listed by `Unread` at its line, with the text *`<marker>` open to end of input*, after
+opener is listed by `Unread` at its line, with the text *`<marker>` never closed*, after
 the entry-like lines — which is file order, since nothing structured can follow a group still
 open at the end. A fence or span that runs to end of file takes every later
 entry with it and leaves nothing entry-like to list, which is why the reader must say this

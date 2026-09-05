@@ -17,7 +17,8 @@ import (
 // The positions trajectory-format.md names, read from an entry's rendered bytes.
 // A backtick is written \x60, which keeps every pattern a raw string.
 var (
-	entryHeadRe  = regexp.MustCompile(`^## (\d+)\. \*\*(.*?)\*\*(?: \(([^)]*)\))?\.?\s*(.*)$`)
+	entryIDRe    = regexp.MustCompile(`^## (\d+)\. $`)
+	entryRestRe  = regexp.MustCompile(`^(?: \(([^)]*)\))?\.?\s*(.*)$`)
 	sourceLineRe = regexp.MustCompile(`^\s*Source:\s*\[[^\]]*\]\(([^)]*)\)(?:,\s*(part|gap)\s+\x60([^\x60]+)\x60)?`)
 	nextLineRe   = regexp.MustCompile(`^\s*Next:\s*(.*)$`)
 )
@@ -90,6 +91,45 @@ type Entry struct {
 // CRC: crc-Pending.md | R283
 func (e *Entry) Line() int { return e.line }
 
+// CRC: crc-Pending.md | Seq: seq-pending.md#1.2 | R313
+//
+// deriveHead reads the heading line by its nodes rather than by a regex over its bytes:
+// the title is the first emphasis run's interior, read to ITS OWN close — so a title with
+// emphasis inside it comes back whole — and the ID and the skill and status are the bytes
+// either side of that run.
+func (e *Entry) deriveHead(line string, ctx *sdom.BracketContext) {
+	var title *sdom.Opener
+	for _, n := range e.run[1:] {
+		o, ok := n.(*sdom.Opener)
+		if !ok {
+			continue
+		}
+		// The first opener on the line is the title's, or there is no title.
+		if s, _ := o.Render(); strings.HasPrefix(s, "*") {
+			title = o
+		}
+		break
+	}
+	// The bytes either side of the title run, and with no title a heading that must be
+	// the ID and nothing else, however many blanks it trails.
+	head, rest := strings.TrimRight(line, " ")+" ", ""
+	if title != nil {
+		outer := ctx.OuterText(title)
+		at := strings.Index(line, outer)
+		if at < 0 {
+			return
+		}
+		e.Title = ctx.InnerText(title)
+		head, rest = line[:at], line[at+len(outer):]
+	}
+	if m := entryIDRe.FindStringSubmatch(head); m != nil {
+		e.ID, _ = strconv.Atoi(m[1])
+	}
+	if m := entryRestRe.FindStringSubmatch(rest); m != nil {
+		e.Skill, e.Status = m[1], strings.TrimSuffix(m[2], ".")
+	}
+}
+
 // CRC: crc-Pending.md | R261, R289
 // EntryText is what Place writes.
 type EntryText struct {
@@ -144,12 +184,13 @@ func (p *Pending) scan() {
 		if cut >= 0 {
 			e.tail, e.cut = nodes[end-1].(*sdom.Text), cut
 		}
-		if bad := e.derive(); bad != nil {
+		if bad := e.derive(p.ctx); bad != nil {
 			p.unread = append(p.unread, *bad)
 		}
 		p.entries = append(p.entries, e)
 	}
-	p.unread = append(p.unread, unclosed(p.ctx)...) // R301: last, as file order has it
+	p.unread = append(p.unread, unbalanced(p.ctx)...) // R301
+	byLine(p.unread)
 }
 
 // CRC: crc-Pending.md | Seq: seq-pending.md#1.3 | R259
@@ -189,7 +230,7 @@ func ruleAt(s string) int {
 
 // derive reads the values from the run's rendered bytes, and returns the `Source:` line
 // it could not read as either form, or nil.
-func (e *Entry) derive() *Unread {
+func (e *Entry) derive(ctx *sdom.BracketContext) *Unread {
 	var b strings.Builder
 	for i, n := range e.run {
 		s, _ := n.Render()
@@ -199,10 +240,7 @@ func (e *Entry) derive() *Unread {
 		b.WriteString(s)
 	}
 	lines := strings.Split(b.String(), "\n")
-	if m := entryHeadRe.FindStringSubmatch(lines[0]); m != nil {
-		e.ID, _ = strconv.Atoi(m[1])
-		e.Title, e.Skill, e.Status = m[2], m[3], strings.TrimSuffix(m[4], ".")
-	}
+	e.deriveHead(lines[0], ctx)
 	var bad *Unread
 	for i, l := range lines[1:] {
 		if m := sourceLineRe.FindStringSubmatch(l); m != nil && e.SourceDoc == "" {

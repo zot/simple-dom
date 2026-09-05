@@ -55,7 +55,7 @@
 **Alarm:** 5
 **Fire alarm:** make `refuse` return nil unconditionally. Red: both writes succeed and the line gains a canonical marker over the deviating one. A second injection, the past-the-list probe of 2026-09-04: move `SetChecked(true)` in `Land` above the refusals. Red: `Land changed a refused line` — the byte-identical assertion is what guards R279's ordering, and it also broke the older landing test with `already landed`.
 **Inject:** minispecsdom/partline.go:PartLine.refuse
-**Pulled:** 2026-09-04 — rang: `SetMarker over a deviating line: <nil>` and `Land over a deviating line: <nil>`; only that test. The changed-line assertion did not print because the test `continue`s after a wrong error type.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller after Item 7 rewrote the site; rang: `SetMarker over a deviating line: <nil>` and `Land over a deviating line: <nil>`, only that test (first injection only; the second is the older probe). Previously 2026-09-04 — rang: `SetMarker over a deviating line: <nil>` and `Land over a deviating line: <nil>`; only that test. The changed-line assertion did not print because the test `continue`s after a wrong error type.
 
 ## Test: OPEN never reopens a landed part
 **Purpose:** R279, R281
@@ -66,7 +66,7 @@
 **Alarm:** 6
 **Fire alarm:** drop the `ErrReopen` guard from `SetMarker`. Red: `OPEN (not queued.)` is written beside the `LANDED` record on a checked, struck line.
 **Inject:** minispecsdom/partline.go:PartLine.SetMarker
-**Pulled:** 2026-09-04 — rang: `OPEN over a landed part: <nil>`, and the render showed `**LANDED (…)** **OPEN (not queued.)**` on the checked, struck line; only that test.
+**Pulled:** 2026-09-05 — re-pulled by a delegated puller after Item 7 rewrote the site; rang: `OPEN over a landed part: <nil>` and `a refused reopen changed the line`, with `OPEN (not queued.)` written beside the `LANDED` record, only that test. Previously 2026-09-04 — rang: `OPEN over a landed part: <nil>`, and the render showed `**LANDED (…)** **OPEN (not queued.)**` on the checked, struck line; only that test.
 
 ## Test: Land refuses over a landed part
 **Purpose:** R279, R282
@@ -96,3 +96,13 @@
 **Expected:** `Unread` holds one item at the span's line naming the marker; the parts still read
 **Refs:** crc-Carve.md
 **Code:** minispecsdom/carve_test.go
+
+## Test: a closer that closes nothing is unread
+**Purpose:** R311
+**Input:** a carve whose prose holds a two-run span with a three-run inside
+**Expected:** three unread items on that line — the span the three-run ended and the span the trailing two-run opened, both never closed, and the three-run, which closes nothing
+**Refs:** crc-Carve.md
+**Code:** minispecsdom/carve_test.go
+**Fire alarm:** drop the unpaired closers from `unbalanced`. Red: two items, no `closes nothing`.
+**Inject:** minispecsdom/unread.go:unbalanced
+**Pulled:** 2026-09-05 — rang: two items and no `closes nothing`, only that test.

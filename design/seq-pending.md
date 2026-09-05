@@ -1,5 +1,5 @@
 # Sequence: the queue file
-**Requirements:** R259, R260, R261, R263, R287, R288, R289, R305, R306
+**Requirements:** R259, R260, R261, R263, R287, R288, R289, R305, R306, R313
 
 ## 1. Reading
 

@@ -93,3 +93,13 @@
 **Fire alarm:** drop `closeTail` from `Remove`. Red: the plain fixture ends in a blank line after the round trip — the one-line growth mini-spec measured.
 **Inject:** minispecsdom/pending.go:Pending.Remove
 **Pulled:** 2026-09-05 — rang: `plain: not the identity; tail …`.\n\n` and the no-final-newline case, only `TestPlaceThenRemoveIsTheIdentity`.
+
+## Test: a title with emphasis inside reads whole
+**Purpose:** R313 — the title from the node, not a regex
+**Input:** `## 5. **A **b** c** (skill). status here.` with a `Source:` line
+**Expected:** title `A **b** c`, skill `skill`, status `status here`
+**Refs:** crc-Pending.md, seq-pending.md#1.2
+**Code:** minispecsdom/pending_test.go
+**Fire alarm:** read the title with the old lazy regex. Red: title `A `.
+**Inject:** minispecsdom/pending.go:Entry.deriveHead
+**Pulled:** 2026-09-05 — pulled again after the simplifier restructured the site; rang. Earlier the same day: rang: `title "A "`, only that test.

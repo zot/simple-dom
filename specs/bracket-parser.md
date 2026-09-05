@@ -22,7 +22,9 @@ type BracketGroup struct {
     Separators  []string // mid-group markers: {"else","elif","then"}
     Close       string   // the one closer: "}", "end", "\n"; "" when CloseIsOpen
     CloseIsOpen bool     // the closer is the text that opened this instance of the group
-    Lookahead   string   // a pattern the bytes after an opener or closer must satisfy; "" for none
+    AfterOpen   string   // a pattern the bytes after an opener must satisfy; "" for none
+    BeforeClose string   // a pattern the rune before a closer must satisfy; "" for none
+    RejectLongerCloses bool // a longer run inside a close-is-open pattern group is a rejected closer, not content
     Escape      string   // escape sequence inside the group; "" for none
 
     AllowedInner  []string // nil = code mode; non-nil (even empty) = parse-restricted
@@ -41,39 +43,46 @@ they are.
 
 CommonMark's code span is a run of N backticks closed only by a run of exactly N, for any
 N; a template literal, a Python triple quote and a markdown `**` are all markers that
-close with their own text. Three fields say this without a group per length:
+close with their own text; and emphasis opens and closes by what surrounds the marker.
+Four fields say all of this without a group per length or a rule in the parser:
 
 - **`OpenRegex`** is a pattern opener, matched anchored at the position the parse has
   reached and exclusive with `Open`; the marker is whatever the pattern matched, and the
   node holds those bytes like any other. A run is the pattern *backtick, one or more*.
 - **`CloseIsOpen`** says the closer is the text that opened this instance of the group,
   and it is checked before any opener in either mode, so the marker closes rather than
-  reopens. For a symmetric literal group it says in one word what repeating the marker
-  said in two; for a pattern group it is the only way to say it, since the closer's
-  length is not known until the opener has matched.
-- **`Lookahead`** is an anchored pattern the bytes after an opener or a closer must
-  satisfy for the marker to match there, satisfied at end of input, since a closer is often
-  a file's last byte. With a lookahead of *anything but a backtick*, a three-run is not an opener where a
-  fourth backtick follows, and a longer run inside a span is literal text — on either edge, and whatever
-  order the table lists anything in. It is additive to the word-boundary rule below, which
-  tests the leading edge too and which no lookahead can express. The leading edge of a
-  *run* needs no lookbehind either: inside a close-is-open pattern group, a match of the
-  pattern that is not the opener's text is literal and consumed whole, so the parse never
-  stands one byte into a longer run and reads its tail as the closer.
+  reopens. For a pattern group the closer is **the pattern's match here, equal to the
+  opened text**: a greedy run match settles both edges of a run by itself, so a two-run
+  inside a three-run fails equality and is content, and backticks need no edge field.
+- **`AfterOpen`** and **`BeforeClose`** are patterns with one role each — the first must
+  match after an opener, the second against the one rune before a closer, both satisfied
+  at the edge of the input. Flanking is then a table entry: emphasis opens only before
+  non-whitespace and closes only after it. One rune is all a flanking rule needs, so the
+  check is bounded rather than a pattern over the prefix. Both are additive to the
+  word-boundary rule below.
+- **`RejectLongerCloses`** decides what a run *longer* than the opener is, inside a
+  close-is-open pattern group. By default it is content, which is CommonMark's reading;
+  with the flag it is rejected — an unbalanced closer that ends the group, paired with
+  nothing, reported through the context — because a fence or span that swallows a longer
+  run is the malformation the readers most need named. A shorter run is content either
+  way, taken whole, so the parse never stands one byte into a run and reads its tail as a
+  marker. **A deliberate departure from CommonMark** for the tables that set it: CommonMark
+  reads block structure first, so a line of three backticks interrupts a paragraph and
+  opens a fence even inside an open span; this base has no block level.
 
-Markers stay byte comparisons; only `OpenRegex` and `Lookahead` are patterns, compiled
-once when the parser is constructed. A pattern that does not compile, an `OpenRegex`
-beside a non-empty `Open`, or `CloseIsOpen` beside a non-empty `Close` is a construction
-error: `NewBracketParser` panics naming the group, and every shipped table is checked by
-a test so the panic is never seen by a consumer. The any-close fallback recognizes literal
-closers only — a close-is-open marker outside its group is an opener, and has matched as
-one before the fallback is reached.
+Markers stay byte comparisons; only the patterns are compiled, once, when the parser is
+constructed. A pattern that does not compile, an `OpenRegex` beside a non-empty `Open`, or
+`CloseIsOpen` beside a non-empty `Close` is a construction error: `NewBracketParser` panics
+naming the group, and every shipped table is checked by a test so the panic is never seen by
+a consumer. The any-close fallback recognizes literal closers only — a close-is-open marker
+outside its group is an opener, and has matched as one before the fallback is reached.
 
 **A group is named by any of its openers, or by its pattern.** `AllowedInner`,
 `AllowedParent` and `GroupFor` resolve a string to the group whose `Open` lists it or
 whose `OpenRegex` it is, and then match *that group's* opener — pattern or list — rather
-than the naming string as a prefix. Bold's escape hatch names the backtick group once and
-admits every run; a group with several openers, named by one, admits them all.
+than the naming string as a prefix. Inside a restricted group the hatches are tried before
+the run rule, so an inner run of another length can open a nested group: emphasis names
+itself and nests. A group with several openers, named by one, admits them all.
 
 **There is no comment configuration.** A line comment is a group opening `//` and
 closing `\n`; a block comment opens `/*` and closes `*/`. Both are
@@ -209,8 +218,8 @@ position inside a group at all.
   does not understand.
 - **A group left open at end of input closes there.** The bytes are already
   accounted for; nothing is dropped.
-- **A pattern opener honours the word-boundary rule on the bytes it matched**, and
-  every opener and closer honours its group's `Lookahead`.
+- **A pattern opener honours the word-boundary rule on the bytes it matched**; an opener
+  honours its group's `AfterOpen` and a closer its `BeforeClose`.
 
 **Whitespace is not a node of its own.** It folds into text, so a text run is *everything
 between two recognized markers* rather than a run of non-whitespace. A layer that needs
@@ -305,8 +314,10 @@ already knew. Both return nil for an unmatched marker.
 func (bc *BracketContext) InnerText(n Node) string
 // OuterText returns the bytes from a group's opener through its closer.
 func (bc *BracketContext) OuterText(n Node) string
-// Unclosed returns the openers whose group ran to end of input rather than to a closer.
+// Unclosed returns the openers that pair with no closer: never closed.
 func (bc *BracketContext) Unclosed() []*Opener
+// Unpaired returns the closers that pair with no opener: a stray, or a rejected longer run.
+func (bc *BracketContext) Unpaired() []*Closer
 ```
 
 `n` names the group by being its opener or its closer. A group left open at end of
@@ -314,12 +325,14 @@ input runs to the end of the source. These exist because a reader that has found
 comment group wants its interior as one string, and slicing it from the node
 locations by hand is the kind of thing a library owes rather than each consumer.
 
-**`Unclosed()` returns the openers whose group was closed by end of input rather than by a
-closer**, in document order, derived from the pairing like everything else the context
-answers. A fence or span that runs to the end of a file takes every later heading and list
-item with it, and a reader above the base can list nothing as unread, because nothing
-entry-like survived to be unread. This is where that loss is visible, one layer down; the
-readers carry it up.
+**`Unclosed()` returns the openers that pair with no closer**, and **`Unpaired()` the
+closers that pair with no opener**, both in document order, derived from the pairing like
+everything else the context answers. An opener is never closed when its group ran to end
+of input, or when a rejected longer run ended it; a closer pairs with nothing when the
+any-close fallback emitted it stray, or when a group rejected it. A fence or span that runs
+to the end of a file takes every later heading and list item with it, and a reader above
+the base can list nothing as unread, because nothing entry-like survived to be unread. This
+is where that loss is visible, one layer down; the readers carry both lists up.
 
 **`Doc()` returns the document the context is bound to**, nil before the parse's `Done`. A
 reader that has an opener and wants the nodes it encloses needs the array, and the

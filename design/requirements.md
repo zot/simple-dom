@@ -205,7 +205,7 @@
 - **R292:** `OpenRegex` is a pattern opener, matched anchored where the parse stands and
   exclusive with `Open`; the marker node holds the bytes it matched, which honour the
   word-boundary rule.
-- **R293:** `Lookahead` is an anchored pattern the bytes after an opener or a closer must
+- **~~R293:~~** (Retired T11 — see R309) `Lookahead` is an anchored pattern the bytes after an opener or a closer must
   satisfy for the marker to match there, satisfied at end of input, applied to literal and
   close-is-open closers alike, and additive to the word-boundary rule; inside a close-is-open
   pattern group, a match of the pattern that is not the opener's text is literal, consumed
@@ -223,6 +223,14 @@
   outside its group is an opener and has already matched as one.
 - **R299:** `BracketContext.Unclosed` returns the openers whose group ran to end of input rather
   than to a closer, in document order, derived from the pairing.
+- **R309:** `AfterOpen` must match after an opener and `BeforeClose` against the one rune before a
+  closer, both satisfied at the edge of the input and additive to the word-boundary rule; a
+  close-is-open pattern group's closer is the pattern's match here equal to the opened text; inside
+  such a group a shorter match is content taken whole, and a longer match is content unless
+  `RejectLongerCloses`, when it is an unbalanced closer that ends the group; inside a restricted
+  group the hatches are tried before the run rule.
+- **R310:** `BracketContext.Unpaired` returns the closers that pair with no opener, in document
+  order, derived from the pairing; `Unclosed` likewise the openers never closed.
 
 ## Feature: indent scope
 **Source:** specs/indent-parser.md
@@ -450,11 +458,16 @@
   item's body — are a consumer's derivation from the array, and the base records nothing.
 - **R235:** Each marker kind is its own type embedding `Text`, with its own `Equals`.
 
-- **R298:** Its bracket groups are one code group — a pattern opener of one or more backticks,
+- **~~R298:~~** (Retired T12 — see R312) Its bracket groups are one code group — a pattern opener of one or more backticks,
   `CloseIsOpen`, a lookahead refusing a following backtick, restricted, kind `code` — then `**`
   and `~~` restricted with escape hatches, bold admitting code and strike admitting bold and
   code; links are not groups. Bold and strike are restricted so that only their hatches are
   recognized inside them.
+- **R312:** Its bracket groups are one code group — a pattern opener of one or more backticks,
+  `CloseIsOpen`, `RejectLongerCloses`, restricted, kind `code` — then emphasis, a pattern opener of
+  one or more asterisks, `CloseIsOpen`, opening only before and closing only after non-whitespace,
+  restricted, naming itself and code, then `~~` restricted naming emphasis and code; links are not
+  groups.
 
 ## Feature: part line
 **Source:** specs/part-line.md
@@ -523,7 +536,7 @@
 - **R282:** `Land` over a part whose checkbox is checked is refused with `ErrLanded`, not made
   idempotent.
 - **R302:** `Carve.Unread` lists every group open at end of input at its opener's line, with the
-  text *`<marker>` open to end of input*.
+  text *`<marker>` never closed*.
 - **R307:** `SetMarker` replaces the first transient marker — verb `OPEN` or `REVERTED` — removes any
   other transient, and when the line carries none inserts the marker after the head and any markers
   and before the trailing prose; it selects by what it replaces.
@@ -554,7 +567,7 @@
 - **R265:** After each write the document is re-read from its bytes and the entries re-derived, since
   a placed entry is one synthetic text until it is parsed.
 - **R301:** `Pending.Unread` lists every group open at end of input at its opener's line, with the
-  text *`<marker>` open to end of input*, after the unread headings — file order, for the same
+  text *`<marker>` never closed*, after the unread headings — file order, for the same
   reason as the done schema's.
 - **R305:** `Place(e, pos)` inserts the canonical entry text as one synthetic node before the entry
   at `pos`; at one past the last it lands where the entries end — before the rule that closes the
@@ -564,6 +577,8 @@
 - **R306:** `Remove(id)` drops the entry's run inside one mutation window, splitting a shared tail
   text at the region's end, and when the entry was the last thing in the file drops the blank line
   its placement opened, so that `Place` then `Remove` is byte-identical.
+- **R313:** An entry's title is the interior of the heading's first emphasis run, read to its own
+  close, with the ID taken from the bytes before it and the skill and status from the bytes after.
 
 ## Feature: done schema
 **Source:** specs/done-schema.md
@@ -584,8 +599,10 @@
 - **R272:** `MaxID` is the largest queue ID in any identifier slot; values are derived from the run's
   rendered bytes and never stored.
 - **R300:** `Done.Unread` lists every group open at end of input at its opener's line, with the
-  text *`<marker>` open to end of input*, after the entry-like lines — file order, since nothing
+  text *`<marker>` never closed*, after the entry-like lines — file order, since nothing
   structured can follow a group still open at the end.
+- **R311:** Every reader's `Unread` also lists each closer the context reports paired with nothing,
+  at its line, with the text *`<marker>` closes nothing*, in line order with the rest.
 
 ## Feature: current schema
 **Source:** specs/current-schema.md
@@ -602,6 +619,6 @@
 - **R277:** `SetActive` refuses when the region is occupied.
 - **R278:** The document is re-read after each write.
 - **R303:** `Current.Unread` lists every group open at end of input at its opener's line, with the
-  text *`<marker>` open to end of input*.
+  text *`<marker>` never closed*.
 - **R304:** `ParseCurrent`'s two refusals are the sentinels `ErrNoActive` and `ErrManyActive`, told
   apart with `errors.Is`.

@@ -32,7 +32,7 @@
 **Alarm:** 3
 **Fire alarm:** give the fence `AllowedInner: nil` (code mode) instead of the empty slice. Red: `**` inside the fence opens a group, and the fence interior is no longer one text node. The line-head markers stay hidden even then, since the wrapper is still not offered positions inside — which is why this test asserts the interior's node count, not only the markers.
 **Inject:** sdom/schema/markdown.go:LangMarkdown
-**Pulled:** 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `bolds:2` inside code and `a code interior is not a single text node` twice, only `TestCodeHidesStructure`; the fence is now the one code group, and the injection is its `AllowedInner`. Previously 2026-09-03 — rang: `bolds:1` inside the fence and `a code interior is not a single text node`, and the fixture lost a heading to the fence's swallowed close — three tests.
+**Pulled:** 2026-09-05 — re-pulled by hand after Item 8 rewrote the site; rang: `TestCodeHidesStructure` alone — the code group in code mode recognized `**` inside a fence. Previously 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `bolds:2` inside code and `a code interior is not a single text node` twice, only `TestCodeHidesStructure`; the fence is now the one code group, and the injection is its `AllowedInner`. Previously 2026-09-03 — rang: `bolds:1` inside the fence and `a code interior is not a single text node`, and the fixture lost a heading to the fence's swallowed close — three tests.
 
 ## Test: no line-head marker shares a first byte with an opener
 **Purpose:** R231 — the rule that makes delegate-then-check sound
@@ -43,7 +43,7 @@
 **Alarm:** 4
 **Fire alarm:** add a link group `{Open: ["["], Close: ["]"]}` to the table. Red: this test, and the checkbox test — `[x]` opens a group before the wrapper sees it.
 **Inject:** sdom/schema/markdown.go:LangMarkdown
-**Pulled:** 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: four tests — this one (`opener "[" shares a first byte`), both checkbox counts at zero, and NodeType. Previously 2026-09-03 — rang in four tests: this one (`opener "[" shares a first byte`), both checkbox counts at zero, and NodeType seeing two markers where three were.
+**Pulled:** 2026-09-05 — re-pulled by hand after Item 8 rewrote the site; rang: six carve tests and the markdown ones — a `[` group claims every checkbox. Previously 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: four tests — this one (`opener "[" shares a first byte`), both checkbox counts at zero, and NodeType. Previously 2026-09-03 — rang in four tests: this one (`opener "[" shares a first byte`), both checkbox counts at zero, and NodeType seeing two markers where three were.
 
 ## Test: NodeType agrees with Parse
 **Purpose:** R233
@@ -65,14 +65,24 @@
 **Alarm:** 6
 **Fire alarm:** remove the code group's pattern from bold's `AllowedInner`. Red: the code spans inside the marker span are text, so `` ` `` pairs zero times. The fixture test stayed green under this injection on 2026-09-03 because it counts line-head markers, not what pairs inside a span.
 **Inject:** sdom/schema/markdown.go:LangMarkdown
-**Pulled:** 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `"`": 0 paired groups, want 2`, only this test. Previously 2026-09-03 — rang: `` "`": 0 paired groups, want 2 ``, only this test; pulled by hand on the uncommitted test with a targeted reverse edit.
+**Pulled:** 2026-09-05 — re-pulled by hand after Item 8 rewrote the site; rang: `TestTheEscapeHatchesPair` alone, with the code group gone from emphasis's hatches. Previously 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `"`": 0 paired groups, want 2`, only this test. Previously 2026-09-03 — rang: `` "`": 0 paired groups, want 2 ``, only this test; pulled by hand on the uncommitted test with a targeted reverse edit.
 
 ## Test: backtick runs
 **Purpose:** R298 — the one code group reads CommonMark's runs, and entry-like lines after them survive
-**Input:** `testdata/backtick-runs.md`: a two-run span holding one backtick followed by a list item; a four-run fence enclosing a three-run fence followed by a list item; a three-run inside a two-run span; a span closing on the file's last byte
+**Input:** `testdata/backtick-runs.md`: a two-run span holding one backtick followed by a list item; a four-run fence enclosing a three-run fence followed by a list item; a two-run inside a three-run span; a span closing on the file's last byte
 **Expected:** `render == src`; the `ListItem` count matches the hand count; every code opener pairs with a closer of the same length
 **Refs:** crc-MarkdownParser.md
 **Code:** sdom/schema/markdown_test.go
 **Fire alarm:** restore the two literal groups, three backticks and one, in place of the pattern group. Red: the list-item count falls, since the two-run flips parity and the items after it land inside spans.
 **Inject:** sdom/schema/markdown.go:LangMarkdown
-**Pulled:** 2026-09-05 — rang: `items 3, want 4` and `code openers 10, want 4` — every backtick became its own opener — only `TestBacktickRuns`.
+**Pulled:** 2026-09-05 — re-pulled by hand after Item 8 rewrote the site; rang: four tests across both packages with the two literal groups restored — this one, the hatch test, the emphasis test and the carve's closes-nothing test. Previously 2026-09-05 — rang: `items 3, want 4` and `code openers 10, want 4` — every backtick became its own opener — only `TestBacktickRuns`.
+
+## Test: emphasis nests and a longer run is rejected
+**Purpose:** R312 — the two decisions of 2026-09-05 at the table
+**Input:** a heading `## 5. **A **b** c**. s`; a line holding a two-run span with a three-run inside
+**Expected:** the first opener's `InnerText` is the whole title `A **b** c`; the three-run is the one unpaired closer
+**Refs:** crc-MarkdownParser.md
+**Code:** sdom/schema/markdown_test.go
+**Fire alarm:** clear emphasis's `BeforeClose`. Red: the inner `**` before `b` closes the outer bold and the title reads `A `.
+**Inject:** sdom/schema/markdown.go:LangMarkdown
+**Pulled:** 2026-09-05 — rang: this test and the pending title test — without `BeforeClose` the inner `**` closed the outer bold.

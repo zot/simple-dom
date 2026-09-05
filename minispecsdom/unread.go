@@ -1,26 +1,40 @@
 package minispecsdom
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 
 	"github.com/zot/simple-dom/sdom"
 )
 
-// CRC: crc-Done.md | R300, R301, R302, R303
+// CRC: crc-Done.md | R300, R301, R302, R303, R311
 //
-// unclosed lists every group the base's context reports open at end of input, at its
-// opener's line, as an Unread naming the marker. One helper for four readers: a fence
-// or span that runs to end of file takes every later entry with it and leaves nothing
-// entry-like to list, so each reader must say this itself rather than wait to notice.
-// Appended after a reader's other unread lines, which is file order: nothing structured
-// can follow a group that is still open at the end.
-func unclosed(ctx *sdom.BracketContext) []Unread {
+// unbalanced lists what the base's context reports as paired with nothing, each as an
+// Unread naming the marker at its line: every opener never closed — at end of input, or
+// because a rejected run ended its group — and every closer that closes nothing — a stray
+// one, or that rejected run.
+//
+// One helper for four readers: a fence or span that runs to end of file takes every later
+// entry with it and leaves nothing entry-like to list, so each reader must say this itself
+// rather than wait to notice.
+func unbalanced(ctx *sdom.BracketContext) []Unread {
 	doc := ctx.Doc()
 	var out []Unread
 	for _, o := range ctx.Unclosed() {
 		marker, _ := o.Render()
-		line := doc.Line(o.Location().Offset())
-		out = append(out, Unread{line, fmt.Sprintf("`%s` open to end of input", marker)})
+		out = append(out, Unread{doc.Line(o.Location().Offset()), fmt.Sprintf("`%s` never closed", marker)})
+	}
+	for _, c := range ctx.Unpaired() {
+		marker, _ := c.Render()
+		out = append(out, Unread{doc.Line(c.Location().Offset()), fmt.Sprintf("`%s` closes nothing", marker)})
 	}
 	return out
+}
+
+// CRC: crc-Done.md | R300, R301
+// byLine orders an unread list by line, stably: a closer that closes nothing can sit
+// anywhere in a file, so the kinds interleave.
+func byLine(u []Unread) {
+	slices.SortStableFunc(u, func(a, b Unread) int { return cmp.Compare(a.Line, b.Line) })
 }

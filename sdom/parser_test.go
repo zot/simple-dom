@@ -266,15 +266,42 @@ func TestByteRoundTripPerLanguageOverTheCorpus(t *testing.T) {
 	}
 }
 
-// runLang is one pattern group: a run of backticks closing on its own text, a marker
-// only where no further backtick follows.
+// runLang is one pattern group: a run of backticks closing on a run of its own length;
+// runs of other lengths inside are content.
 func runLang() *BracketLang {
 	return &BracketLang{Brackets: []BracketGroup{
-		{OpenRegex: "`+", Lookahead: "[^`]", CloseIsOpen: true, AllowedInner: []string{}},
+		{OpenRegex: "`+", CloseIsOpen: true, AllowedInner: []string{}},
 	}}
 }
 
-// CRC: crc-BracketGroup.md | Seq: seq-parse.md#1.4 | R291, R292, R293
+// rejectLang is runLang with longer runs rejected: a run longer than the opener is an
+// unbalanced closer that ends the span, not content.
+func rejectLang() *BracketLang {
+	return &BracketLang{Brackets: []BracketGroup{
+		{OpenRegex: "`+", CloseIsOpen: true, RejectLongerCloses: true, AllowedInner: []string{}},
+	}}
+}
+
+// CRC: crc-BracketGroup.md | Seq: seq-parse.md#1.4 | R309, R310
+func TestRejectLongerClosesEndsTheGroupOnALongerRun(t *testing.T) {
+	// Shorter runs inside are content either way; a longer one is a closer that pairs
+	// with nothing, and what follows opens afresh.
+	assertStream(t, rejectLang(), "```` ` `` ````", "O\"````\" T\" ` `` \" C\"````\"")
+	assertStream(t, rejectLang(), "``a```b`` c", "O\"``\" T\"a\" C\"```\" T\"b\" O\"``\" T\" c\"")
+	_, ctx := parse("``a```b`` c", 0, rejectLang())
+	if u := ctx.Unpaired(); len(u) != 1 {
+		t.Errorf("%d unpaired closers, want the three-run alone", len(u))
+	} else if s, _ := u[0].Render(); s != "```" {
+		t.Errorf("unpaired %q, want the three-run", s)
+	}
+	// The rejected span's opener has no closer either — never closed — so two openers
+	// are listed: the one the three-run ended, and the trailing one.
+	if u := ctx.Unclosed(); len(u) != 2 {
+		t.Errorf("%d unclosed openers, want the rejected span's and the trailing one", len(u))
+	}
+}
+
+// CRC: crc-BracketGroup.md | Seq: seq-parse.md#1.4 | R291, R292, R309
 func TestARunClosesOnlyWithARunOfItsOwnLength(t *testing.T) {
 	assertStream(t, runLang(), "``a ` b`` x", "O\"``\" T\"a ` b\" C\"``\" T\" x\"")
 	assertStream(t, runLang(), "```` ``` ````", "O\"````\" T\" ``` \" C\"````\"")
@@ -290,19 +317,24 @@ func TestTheCloserIsTheOpenersOwnBytes(t *testing.T) {
 	assertStream(t, quotes, `"a'b" 'c"d'`, `O"\"" T"a'b" C"\"" T" " O"'" T"c\"d" C"'"`)
 }
 
-// CRC: crc-BracketGroup.md | R292, R293
-func TestAPatternOpenerHonoursWordBoundariesAndLookahead(t *testing.T) {
+// CRC: crc-BracketGroup.md | R292, R309
+func TestAPatternOpenerHonoursWordBoundariesAndItsEdges(t *testing.T) {
 	xs := &BracketLang{Brackets: []BracketGroup{{OpenRegex: "x+", CloseIsOpen: true}}}
 	assertStream(t, xs, "xx a xx xxa axx", `O"xx" T" a " C"xx" T" xxa axx"`)
-	braces := &BracketLang{Brackets: []BracketGroup{{Open: []string{"{"}, Close: "}", Lookahead: "[^{]"}}}
-	assertStream(t, braces, "{{a} {b}", `T"{" O"{" T"a" C"}" T" " O"{" T"b" C"}"`)
+	// Flanking as a table entry: a run of asterisks opens only before non-whitespace and
+	// closes only after it, and the group names itself so emphasis nests.
+	em := &BracketLang{Brackets: []BracketGroup{
+		{OpenRegex: `\*+`, CloseIsOpen: true, AfterOpen: `\S`, BeforeClose: `\S`, AllowedInner: []string{`\*+`}},
+	}}
+	assertStream(t, em, "**a **b** c** 2 * 3", `O"**" T"a " O"**" T"b" C"**" T" c" C"**" T" 2 * 3"`)
+	assertStream(t, em, "**a *b* c**", `O"**" T"a " O"*" T"b" C"*" T" c" C"**"`)
 }
 
 // CRC: crc-BracketParser.md | Seq: seq-parse.md#2.2.3 | R294, R295
 func TestAllowedInnerNamesAGroup(t *testing.T) {
 	lang := &BracketLang{Brackets: []BracketGroup{
 		{Open: []string{"<"}, Close: ">", AllowedInner: []string{"`+"}},
-		{OpenRegex: "`+", Lookahead: "[^`]", CloseIsOpen: true, AllowedInner: []string{}},
+		{OpenRegex: "`+", CloseIsOpen: true, AllowedInner: []string{}},
 	}}
 	assertStream(t, lang, "<``a`` `b`>", "O\"<\" O\"``\" T\"a\" C\"``\" T\" \" O\"`\" T\"b\" C\"`\" C\">\"")
 }

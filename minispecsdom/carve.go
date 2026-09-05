@@ -84,7 +84,7 @@ func ParseCarve(src string) *Carve {
 	c := &Carve{parser: schema.NewMarkdownParser()}
 	c.doc = sdom.Parse(src, 0, c.parser)
 	c.ctx = c.parser.Indent().Brackets().Context()
-	c.unread = unclosed(c.ctx) // R302
+	c.unread = unbalanced(c.ctx) // R302
 
 	from, to, ok := c.statusRegion()
 	if !ok {

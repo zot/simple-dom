@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"unicode/utf8"
 )
 
 // CRC: crc-BracketLang.md | R58, R59, R60, R62, R68, R70
@@ -45,7 +46,7 @@ type CommentStyle struct {
 	Prefix, Suffix, Kind string
 }
 
-// CRC: crc-BracketGroup.md | R61, R63, R64, R66, R67, R290, R291, R292, R293
+// CRC: crc-BracketGroup.md | R61, R63, R64, R66, R67, R290, R291, R292, R309
 //
 // BracketGroup is one set of matching markers: a code bracket, a string, or a
 // comment. Separators are mid-group markers, such as "else" between "if" and
@@ -54,38 +55,39 @@ type CommentStyle struct {
 // Open lists literal openers; OpenRegex is a pattern opener instead, anchored where
 // the parse stands, and the two are exclusive. Close is the ONE closer — a language
 // whose brackets close on different words is several groups. CloseIsOpen makes the
-// closer the text that opened this instance, which is one word for a symmetric group
-// and the only way to say it for a pattern group, since the closer's length is not
-// known until the opener has matched. Lookahead is an anchored pattern the bytes after
-// an opener or closer must satisfy, satisfied at end of input: with "[^`]" a run of
-// backticks is a marker only where no further backtick follows, on either edge, in
-// any table order. Markers stay byte comparisons; only the two pattern fields cost a
-// regexp, compiled once when a parser is constructed.
+// closer the text that opened this instance: for a pattern group that is the pattern's
+// match here EQUAL to the opened text, so a greedy run match settles both edges of a run
+// by itself. AfterOpen and BeforeClose are patterns with one role each — the first must
+// match after an opener, the second against the rune before a closer, both satisfied at
+// the edge of the input — which is how flanking becomes a table entry rather than a
+// parser rule. RejectLongerCloses makes a pattern match longer than the opened text,
+// inside a close-is-open group, an unbalanced closer that ends the group instead of
+// content; shorter matches are content either way. Markers stay byte comparisons; only
+// the patterns cost a regexp, compiled once when a parser is constructed.
 //
-// AllowedInner decides what is recognized inside the group:
-//
-//	nil            code mode — every group's openers are recognized inside
-//	non-nil        parse-restricted — only this group's Close, its Escape, and the
-//	               listed openers are recognized; every other byte is literal.
-//	               An empty (but non-nil) slice is pure raw mode.
-//
-// AllowedParent is the dual, and it is not optional: with a flat table, code mode
-// recognizes every group's openers, so without it "${" fires at top level where
-// it is really a "$" followed by a "{".
-//
-//	nil            recognized in any context
-//	non-nil        recognized only while parsing inside one of the listed openers
-//
-// A block comment nests only when its own opener appears in its AllowedInner.
-// Nesting is not a field.
+// AllowedInner decides what is recognized inside the group: nil is code mode, where
+// every group's openers are recognized; non-nil is parse-restricted, where only this
+// group's Close, its Escape and the openers it lists are, and every other byte is
+// literal — an empty (but non-nil) slice is pure raw mode. AllowedParent is the dual,
+// and it is not optional: with a flat table, code mode recognizes every group's
+// openers, so without it "${" fires at top level where it is really a "$" followed by
+// a "{". nil is recognized in any context; non-nil, only while parsing inside one of
+// the listed openers. A block comment nests only when its own opener appears in its
+// AllowedInner. Nesting is not a field.
 type BracketGroup struct {
 	Open        []string
 	OpenRegex   string
 	Separators  []string
 	Close       string
 	CloseIsOpen bool
-	Lookahead   string
+	AfterOpen   string
+	BeforeClose string
 	Escape      string
+
+	// R309: inside a close-is-open pattern group, a match longer than the opened text
+	// is rejected as content — an unbalanced closer that ends the group — rather than
+	// literal, which is CommonMark's reading and the default.
+	RejectLongerCloses bool
 
 	AllowedInner  []string
 	AllowedParent []string
@@ -170,12 +172,12 @@ func (l *BracketLang) label(i int) string {
 
 // CRC: crc-BracketLang.md | R296
 //
-// patterns holds a table's compiled OpenRegex and Lookahead, one slot per group and
-// nil where a group has none, plus each pattern opener's literal prefix as a cheap
-// gate before the regexp runs. A parser and its context each hold one.
+// patterns holds a table's compiled OpenRegex, AfterOpen and BeforeClose, one slot per
+// group and nil where a group has none, plus each pattern opener's literal prefix as a
+// cheap gate before the regexp runs. A parser and its context each hold one.
 type patterns struct {
-	open, look []*regexp.Regexp
-	prefix     []string
+	open, after, before []*regexp.Regexp
+	prefix              []string
 }
 
 // CRC: crc-BracketLang.md | R296
@@ -188,7 +190,8 @@ func (l *BracketLang) check() (*patterns, error) {
 	n := len(l.Brackets)
 	p := &patterns{
 		open:   make([]*regexp.Regexp, n),
-		look:   make([]*regexp.Regexp, n),
+		after:  make([]*regexp.Regexp, n),
+		before: make([]*regexp.Regexp, n),
 		prefix: make([]string, n),
 	}
 	for i := range l.Brackets {
@@ -210,12 +213,19 @@ func (l *BracketLang) check() (*patterns, error) {
 			bare, _ := regexp.Compile(g.OpenRegex)
 			p.prefix[i], _ = bare.LiteralPrefix()
 		}
-		if g.Lookahead != "" {
-			re, err := l.anchored(i, "Lookahead", g.Lookahead)
+		if g.AfterOpen != "" {
+			re, err := l.anchored(i, "AfterOpen", g.AfterOpen)
 			if err != nil {
 				return nil, err
 			}
-			p.look[i] = re
+			p.after[i] = re
+		}
+		if g.BeforeClose != "" {
+			re, err := l.anchoredEnd(i, "BeforeClose", g.BeforeClose)
+			if err != nil {
+				return nil, err
+			}
+			p.before[i] = re
 		}
 	}
 	return p, nil
@@ -231,12 +241,34 @@ func (l *BracketLang) anchored(i int, field, pat string) (*regexp.Regexp, error)
 	return re, nil
 }
 
-// CRC: crc-BracketGroup.md | R293
-// lookOK reports whether a group's Lookahead holds at end, the position just past a
-// marker — trivially when the group has none, and at end of input, since a closer is
-// often a file's last byte.
-func lookOK(src string, end int, look *regexp.Regexp) bool {
-	return look == nil || end >= len(src) || look.MatchString(src[end:])
+// anchoredEnd compiles pat to match only at the END of the text handed to it — the form
+// BeforeClose takes, since it reads the rune before a marker rather than the bytes after
+// one — naming the group and the field it came from in the error.
+func (l *BracketLang) anchoredEnd(i int, field, pat string) (*regexp.Regexp, error) {
+	re, err := regexp.Compile(`(?:` + pat + `)$`)
+	if err != nil {
+		return nil, fmt.Errorf("sdom: %s: %s: %w", l.label(i), field, err)
+	}
+	return re, nil
+}
+
+// CRC: crc-BracketGroup.md | R309
+// afterOK reports whether a group's AfterOpen holds at end, the position just past an
+// opener — trivially when the group has none, and at end of input.
+func afterOK(src string, end int, after *regexp.Regexp) bool {
+	return after == nil || end >= len(src) || after.MatchString(src[end:])
+}
+
+// CRC: crc-BracketGroup.md | R309
+// beforeOK reports whether a group's BeforeClose holds against the one rune before pos —
+// trivially when the group has none, and at the start of input. One rune is all a
+// flanking rule needs, so this is a bounded check rather than a regexp over the prefix.
+func beforeOK(src string, pos int, before *regexp.Regexp) bool {
+	if before == nil || pos == 0 {
+		return true
+	}
+	_, w := utf8.DecodeLastRuneInString(src[:pos])
+	return before.MatchString(src[pos-w : pos])
 }
 
 // CRC: crc-BracketGroup.md | R66

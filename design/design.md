@@ -384,3 +384,5 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - T8: R261 retired by R305 (2026-09-05 sdomification Item 6: Place lands where the entries end)
 - T9: R263 retired by R306 (2026-09-05 sdomification Item 6: Remove closes the tail; Place then Remove is the identity)
 - T10: R254 retired by R307 (2026-09-05 sdomification Item 7: REVERTED is a transient; a marker inserts before trailing prose)
+- T11: R293 retired by R309 (2026-09-05 sdomification Item 8: AfterOpen/BeforeClose replace Lookahead; the closer is the pattern match equal to the opener)
+- T12: R298 retired by R312 (2026-09-05 sdomification Item 8: emphasis is a run that nests by flanking; the code group rejects longer closes)

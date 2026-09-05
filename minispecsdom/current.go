@@ -56,7 +56,7 @@ func (c *Current) parse(src string) error {
 	c.parser = schema.NewMarkdownParser()
 	c.doc = sdom.Parse(src, 0, c.parser)
 	c.ctx = c.parser.Indent().Brackets().Context()
-	c.unread = unclosed(c.ctx) // R303
+	c.unread = unbalanced(c.ctx) // R303
 	c.active, c.standing = nil, nil
 	nodes := c.doc.Nodes()
 	for i, n := range nodes {

@@ -1,5 +1,5 @@
 # BracketParser
-**Requirements:** R57, R72, R73, R74, R75, R76, R77, R78, R165, R166, R192, R293, R294, R297
+**Requirements:** R57, R72, R73, R74, R75, R76, R77, R78, R165, R166, R192, R294, R297, R309
 
 The parser. It walks a source once and appends nodes to the document in the
 order it meets them.
@@ -20,11 +20,13 @@ The source and the position belong to `ParserState`, which it is handed.
   byte accumulates as literal text
 - **carries the opener's text down to the closer check**, so a `CloseIsOpen` group
   closes on exactly the bytes that opened it — checked before any opener in either
-  mode — and every opener and closer is matched under its group's `Lookahead`
-- **consumes a run that is not the opener's text whole**, as literal, inside a
-  close-is-open pattern group: the leading-edge half of the run rule, with no lookbehind
-- compiles each group's `OpenRegex` and `Lookahead` once, at construction; markers
-  stay byte comparisons
+  mode — and every opener is matched under its group's `AfterOpen`, every closer under
+  its `BeforeClose`
+- **takes a run that is not the opener's text whole**, inside a close-is-open pattern
+  group: shorter as content, longer as content or — with `RejectLongerCloses` — as an
+  unbalanced closer that ends the group; the hatches are tried first, so emphasis nests
+- compiles each group's `OpenRegex`, `AfterOpen` and `BeforeClose` once, at construction;
+  markers stay byte comparisons
 - emits `Opener`, `Closer`, `Separator` and `Text`, appending each to the
   document's flat array
 

@@ -88,7 +88,7 @@ func TestAGroupOpenAtEndOfInputIsUnreadInDone(t *testing.T) {
 		t.Errorf("%d entries, want the one before the fence", len(d.Entries()))
 	}
 	u := d.Unread()
-	if len(u) != 1 || u[0].Line != 7 || !strings.Contains(u[0].Text, "open to end of input") || !strings.Contains(u[0].Text, "```") {
+	if len(u) != 1 || u[0].Line != 7 || !strings.Contains(u[0].Text, "never closed") || !strings.Contains(u[0].Text, "```") {
 		t.Errorf("unread %+v, want the fence at line 7", u)
 	}
 }

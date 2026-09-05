@@ -1,5 +1,5 @@
 # Pending
-**Requirements:** R258, R259, R260, R262, R264, R265, R283, R284, R287, R288, R289, R301, R305, R306
+**Requirements:** R258, R259, R260, R262, R264, R265, R283, R284, R287, R288, R289, R301, R305, R306, R311, R313
 
 The pending file schema: embeds the markdown base, owns the document, and adds the
 queue entry — a view over a heading region, since nothing in an entry is a field a
@@ -13,7 +13,8 @@ tool writes into.
 
 ## Does
 - `ParsePending`: parses with the base, walks level-2 headings, and for each whose
-  text opens `N.` collects the run to the region's end and derives the values
+  text opens `N.` collects the run to the region's end and derives the values — the
+  title from the heading's first emphasis node, read to its own close
 - `Entries`, `Entry(id)`, `MaxID`, `Unread`, `Render`; `Unread` also carries every group the
   context reports open at end of input, at its opener's line, last
 - reads a `Source:` line as a part or a gap by the word and shape; `Kind` says which,

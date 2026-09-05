@@ -1,5 +1,5 @@
 # Done
-**Requirements:** R266, R267, R268, R269, R270, R271, R272, R283, R284, R300
+**Requirements:** R266, R267, R268, R269, R270, R271, R272, R283, R284, R300, R311
 
 The done file schema: embeds the markdown base, owns the ledger, and adds the
 completion entry as a view over a list-item region.
