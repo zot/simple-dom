@@ -44,6 +44,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] crc-PartLine.md → `minispecsdom/partline.go`
 - [x] crc-MarkerSpan.md → `minispecsdom/partline.go`
 - [x] crc-TraceabilityComment.md → `minispecsdom/comment.go`
+- [x] crc-TestDoc.md → `minispecsdom/testdoc.go`
 - [x] crc-Declaration.md → `sdom/declaration.go`
 - [x] crc-DeclSchema.md → `sdom/schema/schema.go`
 - [x] crc-GoSchema.md → `sdom/schema/golang.go`
@@ -68,6 +69,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] seq-carve.md → `minispecsdom/carve.go`
 - [x] seq-partline.md → `minispecsdom/partline.go`
 - [x] seq-anchor.md → `sdom/list.go`, `minispecsdom/comment.go`
+- [x] seq-testdoc.md → `minispecsdom/testdoc.go`
 
 ### Test Designs
 - [x] test-Node.md → `sdom/node_test.go`
@@ -91,6 +93,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] test-Carve.md → `minispecsdom/carve_test.go`
 - [x] test-PartLine.md → `minispecsdom/partline_test.go`
 - [x] test-TraceabilityComment.md → `minispecsdom/comment_test.go`
+- [x] test-TestDoc.md → `minispecsdom/testdoc_test.go`
 
 ## Gaps
 
@@ -386,3 +389,4 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - T10: R254 retired by R307 (2026-09-05 sdomification Item 7: REVERTED is a transient; a marker inserts before trailing prose)
 - T11: R293 retired by R309 (2026-09-05 sdomification Item 8: AfterOpen/BeforeClose replace Lookahead; the closer is the pattern match equal to the opener)
 - T12: R298 retired by R312 (2026-09-05 sdomification Item 8: emphasis is a run that nests by flanking; the code group rejects longer closes)
+- [ ] O28: Pending.Place accepts entry text that opens a bracket group never closed (a lone asterisk in a status, measured 2026-09-06 on this queue): the entry itself reads back, so the check passes, and every later entry falls inside the unclosed run and is not read. A write path should refuse text whose placement grows Unread, since the file it produces is one its own reader cannot fully read.

@@ -633,3 +633,46 @@
   apart with `errors.Is`.
 - **R317:** After the re-read, `SetActive` reads its body back and `Reset` the placeholder, or the write
   panics with a `ReadBackError`.
+
+## Feature: test-design schema
+**Source:** specs/testdoc-schema.md
+
+- **R319:** `ParseTestDoc` parses with the markdown base; an entry is a level-2 heading whose text
+  begins `Test:` together with its region, which runs to the next heading of level 2 or higher or
+  the end of the file; the title is the text after `Test:`. `Tests` lists entries in order.
+- **R320:** A level-2 heading that is not a test is listed in `Unread` rather than guessed at; a
+  fenced heading is no heading to the base, so it neither opens an entry nor ends one.
+- **R321:** A field is `**Name:**` at the head of a line inside the entry and outside any code
+  group. Five names are read — `Fire alarm`, `Inject`, `Pulled`, `Code`, `Alarm`; any other name at
+  a line head is body but still ends the field above it. The two prose fields, `Fire alarm` and
+  `Pulled`, fold across continuation lines to the next field line or the end of the entry; the
+  three list fields, `Inject`, `Code` and `Alarm`, are one line each, and a line following one is body.
+- **R322:** A line the base's context places inside a code group is body on the read side and
+  unreachable on the write side: a fenced `**Alarm:** 1` names nothing.
+- **R323:** `Fire alarm` is prose and its presence is `HasAlarm`; `Inject` splits on commas into
+  `file:symbol` sites, trimmed; `Pulled` is a leading `YYYY-MM-DD` date and everything after it as
+  the body, and a `**Pulled:**` line with no leading date is a deviation; no commit is read after the
+  date; `Code` is a comma-separated list as written; `Alarm` is an integer, and a non-integer is a
+  deviation; an `**Alarm:**` on an entry with no `**Fire alarm:**` is a deviation.
+- **R324:** A field written twice in one entry is a deviation naming the field: the first occurrence
+  is read, and every write to that entry refuses with a `DeviationError`.
+- **R325:** Every entry reports its 1-based line at parse time; `Unread` is ordered by line and
+  lists the non-test headings, each entry carrying a deviation, and every group open at end of input
+  or closer that closes nothing.
+- **R326:** Every write addresses an entry by alarm number — `Alarm(n)` returns it or nil, and a
+  write to an absent number is `ErrNoAlarm` — edits inside that entry's region only, decides its
+  refusal before any byte moves, and after the re-read reads its own write back or panics with a
+  `ReadBackError`.
+- **R327:** `SetPulled(n, date, body)` writes `**Pulled:** <date> — <body>`; over an existing line
+  the old content is folded after the body as ` *Earlier —* <old>` so the leading date moves and the
+  history is kept; with none, the line is inserted after the `**Inject:**` field's last line, or
+  after the `**Fire alarm:**` field's last line when there is no `**Inject:**`.
+- **R328:** `SetInject(n, sites, void)` rewrites the `**Inject:**` line with the sites joined by
+  `, `; no line is `ErrNoInject` and no sites is `ErrEmptyInject`. With `void` set, an existing
+  `**Pulled:**` line is demoted in the same write to *`Pulled at `<old sites>` — <old content> — and
+  the site has since moved, so this is history rather than a record.`*; with `void` unset it stands.
+- **R329:** `NumberAlarms` inserts `**Alarm:** <n>` directly above the `**Fire alarm:**` line of
+  every alarm entry lacking one, numbering from one above the highest number in the document;
+  append-only, idempotent, no number for an entry with no `**Fire alarm:**`, refused whole with a
+  `DeviationError` when an unnumbered alarm entry carries deviations, and it returns the numbers
+  assigned in document order.

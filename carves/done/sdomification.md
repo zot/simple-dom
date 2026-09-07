@@ -1,6 +1,6 @@
 # Carve: sdom-ifying the mini-spec tool
 
-> **DRAFT (2026-09-03).** Opened when `carves/done/trajectory.md` closed, to hold the two
+> **CLOSED (2026-09-05).** Nine parts landed, one discharged, one sent. Originally Opened when `carves/done/trajectory.md` closed, to hold the two
 > parts that carve did not finish and whatever the same direction spawns next. The parts
 > below are settled scope; the forks in their elaborations are open.
 
@@ -30,8 +30,8 @@ brainstormed, not listed ahead of that.
 
 ## Status
 
-- [ ] **Item 1 — say what could not be read.** **OPEN (not queued.)**
-- [ ] **Item 2 — cut the tool over.** **OPEN (not queued.)**
+- [x] ~~**Item 1 — say what could not be read.**~~ **DISCHARGED (`8648687`, 2026-09-05.)**
+- [x] ~~**Item 2 — cut the tool over.**~~ **SENT (mini-spec, 2026-09-05.)**
 - [x] ~~**Item 3 — write paths refuse.**~~ **LANDED (`44a8955`, 2026-09-04 — `#23`.)**
 - [x] ~~**Item 4 — lines, and flexible input.**~~ **LANDED (`ddcf09f`, 2026-09-04 — `#24`.)**
 - [x] ~~**Item 5 — gap sources.**~~ **LANDED (`85fef32`, 2026-09-04 — `#25`.)**
@@ -40,7 +40,7 @@ brainstormed, not listed ahead of that.
 - [x] ~~**Item 8 — the title read follows emphasis to its own close.**~~ **LANDED (`8648687`, 2026-09-05 — `#31`.)**
 - [x] ~~**Item 9 — the current file's refusals are sentinels.**~~ **LANDED (`0c606db`, 2026-09-05 — `#28`.)**
 - [x] ~~**Item 10 — `Mutate` proves the tree describes the bytes.**~~ **LANDED (`7b28619`, 2026-09-05 — `#32`.)**
-- [ ] **Item 11 — one key form: the fragment.** **OPEN (#33.)**
+- [x] ~~**Item 11 — one key form: the fragment.**~~ **LANDED (`8819819`, 2026-09-05 — `#33`.)**
 
 ## Decisions
 
@@ -71,6 +71,12 @@ pending, done, current — rather than a feature; it is a part so that it is sch
 rather than assumed. The done schema already produces the first input: entry-like lines
 (`- ` at column 0) that did not read as entries.
 
+Discharged 2026-09-05 by the landings that did it rather than by a part of its own: `Unread` on
+all four readers, each entry with its line (Item 4, `ddcf09f`); a pending `Source:` the reader
+could not follow (Item 5, `85fef32`); every opener never closed (`f3c947e`) and every closer that
+closes nothing (`8648687`). What a reader could not read is listed, with its line, on every
+schema; nothing here was left for a part.
+
 ## Item 2
 
 Cutting the tool over: `parser/trajectory.go`, `parser/carve.go` and `partline` in
@@ -83,6 +89,11 @@ reader is a useful instrument while the readers are being built and stops being 
 moment the tool is switched, so every comparison is throwaway and the acceptance behind
 the cut is this repository's own tests. The cutover is then a consumer change with those
 tests already green behind it.
+
+Sent 2026-09-05: mini-spec's `sdom-reclaim.md` Items 3 and 4 (its `#69`, `#70`) ported the
+`pending` verbs and `validate trajectory` onto these readers, and its tool builds against this
+tree through a replace directive, so both backtick halves and the key form were live there the
+afternoon they landed. The cutover is theirs and is happening; this carve records that it left.
 
 ## Item 3
 
@@ -297,6 +308,8 @@ be compared by the next consumer, and two forms is the defect. Consumer-visible,
 `SourceKey` rename in Item 5: mini-spec's `Source:` lines and its `SetPartLanded` calls change
 shape with it, and `trajectory-format.md`'s *one key form* sentence is rewritten to say which one.
 Daneel's recommendation; Bill decides.
+
+Landed `8819819`: R318. The request to mini-spec is `requests/sdomification-key-fragment.md`.
 
 **Not a reader defect, recorded here so it is not re-investigated:** the same run reports
 `#4 #5 #6` as item numbers in no readable entry. They are absent from both trajectory files;

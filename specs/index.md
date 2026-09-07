@@ -56,6 +56,9 @@ enforced by the compiler rather than by discipline.
   and key, marker spans, strike behind an accessor, deviations as the contract.
 - [carve-schema.md](carve-schema.md) — the first file schema: owns a carve's DOM,
   reads the `## Status` region into parts with depth, writes markers and landings.
+- [testdoc-schema.md](testdoc-schema.md) — the first design-document reader: a test
+  design's `## Test:` entries, the five alarm fields, and the three alarm writes
+  (pulled, inject, number-alarms) through node references.
 - [pending-schema.md](pending-schema.md) — the queue file: entries as views over
   heading regions, placement by position never by splice, removal, and what could
   not be read.
