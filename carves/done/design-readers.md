@@ -1,9 +1,10 @@
 # Carve: the design-document readers
 
-> Opened 2026-09-06 to hold the readers over mini-spec's design documents that
-> `carves/done/sdomification.md` said were "not carved yet": test designs, requirements,
-> and the gaps section of `design.md`. The parts below are settled scope; the forks in
-> their elaborations are open.
+> **CLOSED (2026-09-07).** Three parts landed in three commits (`478875e`, `50f104d`,
+> `2a9921c`); the decisions live in `specs/testdoc-schema.md`, `specs/gaps-schema.md` and
+> `specs/requirements-schema.md`, and R319–R345. Originally opened 2026-09-06 to hold the
+> readers over mini-spec's design documents that `carves/done/sdomification.md` said were
+> "not carved yet": test designs, requirements, and the gaps section of `design.md`.
 
 `carves/done/sdomification.md` carried the trajectory readers — carve, pending, done,
 current — from `sdom` schemas into the mini-spec tool's readers, and closed with the
@@ -23,7 +24,7 @@ copy. The requirement numbers quoted are `old-sdom`'s.
 ## Status
 
 - [x] ~~**Item 1 — the test-document reader.**~~ **LANDED (`478875e`, 2026-09-06 — `#35`.)**
-- [ ] **Item 2 — the requirements reader.** **OPEN (#36.)**
+- [x] ~~**Item 2 — the requirements reader.**~~ **LANDED (`2a9921c`, 2026-09-07 — `#36`.)**
 - [x] ~~**Item 3 — the gaps reader.**~~ **LANDED (`50f104d`, 2026-09-07 — `#34`.)**
 
 ## Decisions
