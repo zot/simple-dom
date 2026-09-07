@@ -59,6 +59,9 @@ enforced by the compiler rather than by discipline.
 - [testdoc-schema.md](testdoc-schema.md) — the first design-document reader: a test
   design's `## Test:` entries, the five alarm fields, and the three alarm writes
   (pulled, inject, number-alarms) through node references.
+- [gaps-schema.md](gaps-schema.md) — the `## Gaps` section of a design document: typed,
+  numbered entries with checkbox or permanence, nesting, and the add, resolve and
+  approve writes.
 - [pending-schema.md](pending-schema.md) — the queue file: entries as views over
   heading regions, placement by position never by splice, removal, and what could
   not be read.

@@ -22,7 +22,7 @@ copy. The requirement numbers quoted are `old-sdom`'s.
 
 ## Status
 
-- [ ] **Item 1 — the test-document reader.** **OPEN (#35.)**
+- [x] ~~**Item 1 — the test-document reader.**~~ **LANDED (`478875e`, 2026-09-06 — `#35`.)**
 - [ ] **Item 2 — the requirements reader.** **OPEN (#36.)**
 - [ ] **Item 3 — the gaps reader.** **OPEN (#34.)**
 

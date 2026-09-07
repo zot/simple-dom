@@ -676,3 +676,33 @@
   append-only, idempotent, no number for an entry with no `**Fire alarm:**`, refused whole with a
   `DeviationError` when an unnumbered alarm entry carries deviations, and it returns the numbers
   assigned in document order.
+
+## Feature: gaps schema
+**Source:** specs/gaps-schema.md
+
+- **R330:** `ParseGaps` parses with the markdown base; the section is the region from the level-2
+  heading `Gaps` to the next heading of level 2 or higher or the end of the file; `HasGaps` is false
+  without one, and a fenced heading opens nothing.
+- **R331:** A gap is a bullet inside the region, at any depth, whose head is a type letter from
+  `S R D C I O A T`, a number and a colon, with or without a checkbox; depth is the bullet's leading
+  whitespace and `Parent` the nearest preceding gap with a smaller depth; a column-0 bullet of any
+  other shape is listed in `Unread`; a line inside a code group is body.
+- **R332:** A gap's text is its head text with following lines folded on single spaces to the next
+  bullet, a blank line, or the region's end; an indented un-keyed bullet beneath it is one of its
+  `Sub` lines, folded the same way.
+- **R333:** A permanent gap (`A`, `T`) with a checkbox, a tracked gap without one, and an ID the
+  section already carries are each a deviation on that entry, listed in `Unread` with the rule;
+  `Gap(id)` returns the first entry with that ID; every write to a deviant entry refuses with a
+  `DeviationError`; every gap reports its 1-based line at parse time, and `Unread` is ordered by line
+  and carries every group open at end of input or closer that closes nothing.
+- **R334:** `Add(id, text)` appends one line — `- [ ] <id>: <text>` for a tracked letter, `- <id>: <text>`
+  for a permanent one — directly after the last gap's span or after the heading's line when the
+  section is empty; an ID not of the shape `X<n>` is `ErrBadGapID`, one already present is
+  `ErrGapExists`, no section is `ErrNoSection`; the text is written unwrapped.
+- **R335:** `Resolve(id)` turns the head line's `[ ]` into `[x]` and touches nothing else; a permanent
+  gap is `ErrPermanent` and a checked one `ErrResolved`.
+- **R336:** `Approve(id, newID)` rewrites the head line as `- <newID>: <head text>` at the entry's
+  depth with no checkbox and leaves every line beneath it as written; `newID` must be an unused
+  `A<n>` (`ErrBadGapID`, `ErrGapExists`) and a permanent target is `ErrPermanent`.
+- **R337:** Every write edits inside the region only, decides its refusal before any byte moves, and
+  after the re-read reads its own write back or panics with a `ReadBackError`.
