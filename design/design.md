@@ -46,6 +46,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] crc-TraceabilityComment.md → `minispecsdom/comment.go`
 - [x] crc-TestDoc.md → `minispecsdom/testdoc.go`, `minispecsdom/mdbase.go`
 - [x] crc-Gaps.md → `minispecsdom/gaps.go`
+- [x] crc-Requirements.md → `minispecsdom/requirements.go`
 - [x] crc-Declaration.md → `sdom/declaration.go`
 - [x] crc-DeclSchema.md → `sdom/schema/schema.go`
 - [x] crc-GoSchema.md → `sdom/schema/golang.go`
@@ -72,6 +73,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] seq-anchor.md → `sdom/list.go`, `minispecsdom/comment.go`
 - [x] seq-testdoc.md → `minispecsdom/testdoc.go`
 - [x] seq-gaps.md → `minispecsdom/gaps.go`
+- [x] seq-requirements.md → `minispecsdom/requirements.go`
 
 ### Test Designs
 - [x] test-Node.md → `sdom/node_test.go`
@@ -97,6 +99,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] test-TraceabilityComment.md → `minispecsdom/comment_test.go`
 - [x] test-TestDoc.md → `minispecsdom/testdoc_test.go`
 - [x] test-Gaps.md → `minispecsdom/gaps_test.go`
+- [x] test-Requirements.md → `minispecsdom/requirements_test.go`
 
 ## Gaps
 

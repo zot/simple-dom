@@ -706,3 +706,34 @@
   `A<n>` (`ErrBadGapID`, `ErrGapExists`) and a permanent target is `ErrPermanent`.
 - **R337:** Every write edits inside the region only, decides its refusal before any byte moves, and
   after the re-read reads its own write back or panics with a `ReadBackError`.
+
+## Feature: requirements schema
+**Source:** specs/requirements-schema.md
+
+- **R338:** `ParseRequirements` parses with the markdown base; a section is a heading at any level
+  with its own content running to the next heading of any level or the end of the file, its `Parent`
+  the nearest preceding section with a smaller level; a fenced heading opens nothing; `Section(title)`
+  returns every section with that exact title.
+- **R339:** A requirement is a column-0 bullet inside a section whose head is `**Rn:**` or the retired
+  `**~~Rn:~~**`; its text folds following lines on single spaces to the next bullet, blank line,
+  heading or section end; a column-0 bullet of any other shape is listed in `Unread`; a line inside a
+  code group is body.
+- **R340:** A retired entry's clause `(Retired Tn — see Rm)` or `(Retired Tn — no replacement)` is read
+  into `RetiredBy` and `Replacement` and removed from `Text`; a struck head with no clause is a
+  deviation.
+- **R341:** `**Source:**` at column 0 inside a section is the section's source, the first when there
+  are several, with later ones listed in `Unread`.
+- **R342:** A repeated ID is a deviation on the later entry and `Requirement(id)` returns the first;
+  a deviant entry is listed in `Unread` with its rule and refuses every write with a `DeviationError`;
+  every section and entry reports its 1-based line at parse time; `Unread` is ordered by line and
+  carries every group open at end of input or closer that closes nothing.
+- **R343:** `Add(title, id, text)` appends `- **<id>:** <text>` on one line after the named section's
+  last non-blank line of own content, before any blank lines and before its first sub-heading; an ID
+  not of the shape `R<n>` is `ErrBadReqID`, one present is `ErrReqExists`, a title no section carries
+  is `ErrNoSection`, one several carry is `ErrManySections`.
+- **R344:** `Retire(id, tn, clause)` rewrites a live entry's head line as
+  `- **~~<id>:~~** (Retired <tn> — <clause>) <head text>` and leaves every continuation line as
+  written; `clause` is `see R<m>` or `no replacement` and `tn` is `T<n>`, else `ErrBadClause`; an
+  absent ID is `ErrNoRequirement` and a retired one `ErrRetired`.
+- **R345:** Every write edits inside one section's own content only, decides its refusal before any
+  byte moves, and after the re-read reads its own write back or panics with a `ReadBackError`.

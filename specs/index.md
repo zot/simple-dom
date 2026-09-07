@@ -62,6 +62,9 @@ enforced by the compiler rather than by discipline.
 - [gaps-schema.md](gaps-schema.md) — the `## Gaps` section of a design document: typed,
   numbered entries with checkbox or permanence, nesting, and the add, resolve and
   approve writes.
+- [requirements-schema.md](requirements-schema.md) — `requirements.md`: sections at any
+  level with their own content and source, live and retired entries, and the add and
+  retire writes.
 - [pending-schema.md](pending-schema.md) — the queue file: entries as views over
   heading regions, placement by position never by splice, removal, and what could
   not be read.

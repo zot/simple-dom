@@ -24,7 +24,7 @@ copy. The requirement numbers quoted are `old-sdom`'s.
 
 - [x] ~~**Item 1 — the test-document reader.**~~ **LANDED (`478875e`, 2026-09-06 — `#35`.)**
 - [ ] **Item 2 — the requirements reader.** **OPEN (#36.)**
-- [ ] **Item 3 — the gaps reader.** **OPEN (#34.)**
+- [x] ~~**Item 3 — the gaps reader.**~~ **LANDED (`50f104d`, 2026-09-07 — `#34`.)**
 
 ## Decisions
 

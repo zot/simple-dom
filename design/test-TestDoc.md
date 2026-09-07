@@ -10,7 +10,7 @@
 **Alarm:** 1
 **Fire alarm:** drop the code-group test so every `**Name:**` at a line head is a field. Red: alarm 99 appears, and the fourth entry's `Alarm` reads 99 or is doubled.
 **Inject:** minispecsdom/testdoc.go:TestDoc.readFields
-**Pulled:** 2026-09-06 — rang, by hand: `the fenced fields were read as fields: alarm=99`, `Alarm(n) does not resolve as expected`, the fenced `**Fire alarm:**` listed as a doubled field, and `NumberAlarms` assigned `[100]`; restore byte-clean
+**Pulled:** 2026-09-07 — re-pulled by hand after the code-group test moved into `markdownDoc`; rang with the same signature. *Earlier —* 2026-09-06 — rang, by hand: `the fenced fields were read as fields: alarm=99`, `Alarm(n) does not resolve as expected`, the fenced `**Fire alarm:**` listed as a doubled field, and `NumberAlarms` assigned `[100]`; restore byte-clean
 
 ## Test: doubled and malformed fields are deviations
 **Purpose:** R323, R324, R325
