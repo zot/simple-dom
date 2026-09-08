@@ -1,0 +1,158 @@
+# Carve: an opener never closed is text
+
+> **DRAFT (2026-09-07).** Opened the evening mini-spec's second opinion — an independent line
+> scan its `validate` now runs over every document our readers own — reported on three
+> repositories that an inline marker with no closer takes the rest of the file with it, and
+> that a `## Test:` heading's title stops at its first code span. Every instance was
+> reproduced here against `2a9921c` before the scope below was written.
+
+`carves/done/backtick-runs.md` gave the markdown base CommonMark's run rule and made the
+parser *say* when a group is still open at end of input. Saying so was the right first half:
+the reader lists the opener and its line, and the second opinion is what found the rest.
+What it found is that the report is the whole remedy today — a run that never closes still
+swallows every heading and list item after it, so the base reads ark's requirements as 1419
+of about 2800 and five of ark's test designs short by up to thirteen entries each. The
+reader is honest and the document is still unread.
+
+CommonMark resolves this by construction: a backtick string with no matching string is not a
+code span, and an emphasis delimiter run with no closer is literal text, because inline
+delimiters are resolved after the paragraph is read. This carve is that rule for the base,
+and one reader defect of the same shape a level up.
+
+**Provenance.** Both parts are mini-spec's, 2026-09-07:
+`~/work/mini-spec/requests/unmatched-run-swallows.md` and
+`~/work/mini-spec/requests/testdoc-title-stops-at-code-span.md`. Our acknowledgements are in
+`requests/`.
+
+**What the report got wrong, measured 2026-09-07.** The request names two base defects. The
+first — *an emphasis marker inside a code span opens a group* — does not exist: an asterisk
+inside a code span is literal here, probed on `` a `*Read` b `` and on line 110 of
+`design/test-Pending.md` in isolation, both clean. The two lines it cites are the *second*
+defect wearing a different face. mini-spec's requirements line 157 quotes `specs/*.md` bare,
+no code span around it, so the asterisk opens emphasis before `.md` and nothing closes it.
+Our test-Pending line 110 is a symptom three paragraphs downstream: line 95 carries an odd
+count of lone backticks, the last one pairs with the first backtick of line 99, and from
+there every backtick in the file is flipped from open to close until the asterisk on line
+110 stands outside a span. One defect, four instances, and the same repair for all of them.
+
+## Status
+
+- [ ] **Item 1 — an opener with no closer is demoted to text.** **OPEN (#37.)**
+- [ ] **Item 2 — the test-entry title reads to the end of its line.** **OPEN (#38.)**
+
+## Decisions
+
+**DECIDED (inherited from `carves/done/sdomification.md`, Bill, 2026-09-03): committed tests
+rely only on code in this repository.** The three repositories' documents are the throwaway
+comparison that says whether Item 1 is done; the committed fixtures are synthetic and live in
+`sdom/schema/testdata`, with expectations written by hand from CommonMark's rule and the byte
+round-trip over every one of them.
+
+**DECIDED (inherited from `carves/done/backtick-runs.md`, Bill, 2026-09-05): a longer run
+inside a code group is a rejected closer, against CommonMark.** Unchanged by this carve. A
+rejected closer ends its group and is listed by `Unpaired()`; demotion is about an opener
+whose group *never* ends, and the two do not meet.
+
+**DECIDED (Bill, 2026-09-07): demotion is a per-group flag, not a parser rule.** An unclosed `{` at the end of a Go file is a real error and a reader should keep
+seeing it in `Unclosed()`; an unclosed asterisk in a markdown paragraph is a typographer's
+asterisk. The table says which, one field on `BracketGroup`, set by markdown's three groups
+and by nothing in Go, Lua, Shell or Python. `Unclosed()` keeps its meaning for the groups
+that do not set it, which is why R299–R303 stay as they are.
+
+**DECIDED (Bill, 2026-09-07): an inline group does not cross a blank line.** CommonMark's inline delimiters live inside one paragraph, and that bound is what
+makes its resolution cheap: an unclosed opener is settled at the paragraph's end, not the
+file's. Without it, demotion is correct but its cost is a re-parse from the opener to end of
+input, nested once per unclosed opener inside — ark's test-Matcher line 29 opens two. With
+it, the re-parse is bounded by the paragraph and the flag can double as the bound: a group
+that demotes at end of input demotes at a blank line too. The fork this leaves is the fence.
+CommonMark says a fence at a line head that never closes runs to the end of the document,
+and the base's one code group cannot tell a fence from a span without a line-head test it
+does not have. Either the code group takes the bound like the others — a fence must be
+closed, which every fence in our three repositories is — or the flag learns a line-head
+exemption. The first is one field; the second is the seam for it if a document ever needs
+it. **The first, decided with the bound (Bill, 2026-09-07, on Daneel's recommendation):**
+the code group takes the bound, and a fence is closed or it is text. **And every demoted opener is reported (Bill,
+2026-09-07):** the opener becomes text and the document also says so — first said for the
+fence, then widened to anything unclosed, since the reader cannot tell a typographer's
+asterisk from a forgotten marker and should not guess. The base has no log; the report is the
+readers' `Unread` line, the surface R300–R303 already gave the unclosed case, and the context
+keeps the record because the rewind has dropped the node. An `Unread` line is document-level
+and gates no write (measured 2026-09-07: only an entry's own deviations refuse), so mini-spec's
+documents with a glob in prose read whole and stay writable, and are listed.
+
+## Item 1
+
+**The rule.** When a group whose flag is set reaches end of input or a blank line without
+its closer, its opener was never an opener. The parse
+rewinds to the byte after the opener's text, drops every node emitted since the opener
+including the opener itself, folds the opener's bytes into the live text run that preceded
+it, and continues in the *enclosing* group's mode from there. Every marker the failed group
+had swallowed is offered to the parser again, so a heading or list item inside it is read
+as one, and a later opener of the same group opens afresh.
+
+**Why a rewind and not a post-pass.** The base is one pass by decision (`specs/markdown.md`,
+*One pass, no post-pass*), and the nesting lives on the call stack: `parseBody` recurses and
+the emitted array is flat because nothing flattens it. A demoted group is one frame
+returning *unclosed* to `open`, which then rewinds and returns to its caller's loop; the
+caller was already standing in the right mode. Nothing above the bracket parser needs to
+know it happened — the indent parser and the markdown wrapper are never offered a position
+inside a group (R174, R232), so their state at the opener is their state after the rewind,
+with no bookkeeping. **This is the structural fact that makes the part small**, and the
+build should state it in a test rather than trust it: a heading inside a demoted span at a
+changed indentation must read as a heading at the right depth.
+
+**What the parser state needs.** `ParserState` can move its position (`SetPos`) but cannot
+shorten its array or restore its live text run, and R225 is stated over the promise that no
+parser backs up. A rewind is a new verb on the state — to a node count and a position — that
+truncates the array and points the live run at the last node again when that node is a
+`Text`, so the opener's bytes and every byte after them extend it as declined bytes do. R225
+is restated rather than retired: no parser emits over bytes in the live run, and the one
+parser that backs up does so through the verb that keeps the run true. Whether a dropped
+node leaves anything behind in the origin's location minting is a question for the build; if
+it does, the rewind is where it is returned.
+
+**What it costs.** A re-parse from the opener, once per demoted group, nested for openers
+demoted inside a demoted group. With the blank-line bound the worst case is one paragraph.
+Measured on the same corpus `backtick-runs.md` timed — 20 parses of mini-spec's done file —
+before landing, as that part was.
+
+**What changes in the reports.** Nothing is *unclosed* in a markdown document any more,
+since every group that could be is demoted. `Unclosed()` still answers for languages whose
+groups do not set the flag, and `Unpaired()` still lists a rejected longer run. The context
+gains a third list beside them, the **demoted** openers — their text and location, recorded
+at the rewind because the opener node no longer exists — and the readers' `unbalanced` lines
+(R300–R303) read it as they read the other two: every demoted opener is listed as never
+closed and read as text. The tests that pin the unclosed lines move to a demoted fixture and
+gain the assertion that the entries after the opener are read.
+
+**Acceptance.** Committed fixtures, each with its expected node stream written by hand and
+the byte round-trip: a lone backtick before a heading, the heading read; a three-run in
+prose before a list item, the item read; a bare asterisk in a glob before a `- ` line; two
+nested emphasis openers that neither close, both demoted innermost first; a span that *does*
+close after a demoted asterisk inside it, so a demotion does not cost the enclosing group
+its closer; a span open across a blank line before a heading, the heading read; and a
+three-run at a line head with no closer, the lines after it read and the run listed.
+Then the throwaway: ark's requirements read whole by `grep -c` against `Entries()`, and
+every test design in the three repositories reads the count its second opinion counts. Fire
+alarms: the rewind made to keep the opener node, which must lose the heading after it; and
+the rewind made to skip the enclosing mode, so a closer of the enclosing group inside the
+demoted one is missed; and the demoted list left unfilled at the rewind, which must lose
+every never-closed line.
+
+## Item 2
+
+`TestDoc.scan` reads an entry's title from the single text node after its heading marker
+(`headingText`, shared with the carve reader's head lines), so a code span in the heading
+ends the title at the span's opener: *the pre-`track` refusal asks the intent and stops*
+reads as *the pre-*. Twenty-five of mini-spec's test headings carry a code span. The part
+line's title already follows emphasis to its own close (`carves/done/sdomification.md`,
+Item 8); this is the same read one level down — the title is every byte from after `Test:`
+to the end of the heading's line, across whatever markers the line carries, rendered as
+source. The entry's `Title` field keeps its type; only its extent changes.
+
+**Acceptance.** A fixture entry whose heading holds a code span and one whose heading holds
+bold; both titles read whole; the `Test:` prefix and the trim as before. Fire alarm: the
+read cut back to the first text node, which must truncate the code-span title.
+
+This part is display only — the census names alarms by number — and mini-spec said so. It
+sits second for that reason and lands in one small item.
