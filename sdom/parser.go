@@ -172,3 +172,20 @@ func (st *ParserState) Emit(n Node) {
 }
 
 func (st *ParserState) append(n Node) { st.out = append(st.out, n) }
+
+// CRC: crc-ParserState.md | Seq: seq-parse.md#3.4.2 | R350
+//
+// Rewind drops the nodes past count, moves the position back to pos, and makes the
+// last remaining node the live text run again when it is a Text — so the bytes re-read
+// from there extend it as declined bytes do. After a rewind to a marker there is no
+// live run and the next declined byte starts one. This is the one way back, and it is
+// what keeps R225 true for the one parser that backs up: the bracket parser demoting
+// an opener never closed.
+func (st *ParserState) Rewind(count, pos int) {
+	st.out = st.out[:count]
+	st.pos = pos
+	st.text = nil
+	if count > 0 {
+		st.text, _ = st.out[count-1].(*Text) // nil unless what remains ends in a run
+	}
+}

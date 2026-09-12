@@ -1,5 +1,5 @@
 # BracketContext
-**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154, R193, R194, R195, R196, R197, R198, R222, R291, R299, R310
+**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154, R193, R194, R195, R196, R197, R198, R222, R291, R299, R310, R349
 
 The schema's parse context: a concrete type, not an interface. It carries the
 language through the parse and **outlives** it to own the pairing links.
@@ -33,6 +33,10 @@ language through the parse and **outlives** it to own the pairing links.
 - answers **`Unclosed`** and **`Unpaired`**: the openers with no closer and the closers
   with no opener, in document order — where a document's lost tail, a stray closer and a
   rejected longer run are visible
+- answers **`Demoted`**: every opener the parse demoted to text — marker, the `Text` run
+  it was folded into, its offset there — recorded at the rewind rather than derived, since
+  the node no longer exists, and anchored to the run so a mutation elsewhere does not move
+  it
 
 ## Constraints
 - **`Doc` does not own these links.** Not every document has brackets, and a

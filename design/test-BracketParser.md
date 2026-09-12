@@ -100,7 +100,7 @@ case must differ, or the escape is doing nothing
 **Alarm:** 4
 **Fire alarm:** In `BracketParser.parseRestricted`, advance past the escape sequence without consuming the byte after it. Red: the escaped quote closes the string, so one string becomes two plus stray text. The round-trip survives intact, because every byte is still emitted somewhere.
 **Inject:** sdom/bracket_parser.go:BracketParser.parseRestricted
-**Pulled:** 2026-09-05 — pulled again after the simplifier restructured the site; rang. Earlier the same day: re-pulled by hand after Item 8 rewrote the site; rang: `TestEscapeConsumesItselfAndTheNextByte`, `TestLangGo` and the declaration pass — the restricted loop was reordered so the hatches precede the run rule. Previously 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `TestEscapeConsumesItselfAndTheNextByte`, `TestLangGo` and, across the package line, `TestADeclarationPassIsAdditive`. Previously 2026-09-03 — re-pulled after the self-advances became `Advance` and rang in three places: this test (`disabling the escape changed nothing`), `TestLangGo`, and the declaration count in `sdom/schema` (`found 3 declarations, column-0 keywords say 7`) — an unescaped quote splits a string and the pass reads the halves as code. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang again. The anchor resolved correctly under the new name `parseRestricted`, which is what this pull was taken for. **Wider than the two earlier pulls:** this test, `TestLangGo`, and `TestADeclarationPassIsAdditive` in `sdom/schema` — 4 failures across 2 packages, the third of them not existing when this alarm was first written. The round-trip stayed green throughout, exactly as the prose says. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestLangGo`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, on this test and `TestLangGo`. Both of this
+**Pulled:** 2026-09-12 — rang: `TestEscapeConsumesItselfAndTheNextByte` — one string became two — with `TestLangGo` and the declaration census downstream. Previously 2026-09-05 — pulled again after the simplifier restructured the site; rang. Earlier the same day: re-pulled by hand after Item 8 rewrote the site; rang: `TestEscapeConsumesItselfAndTheNextByte`, `TestLangGo` and the declaration pass — the restricted loop was reordered so the hatches precede the run rule. Previously 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `TestEscapeConsumesItselfAndTheNextByte`, `TestLangGo` and, across the package line, `TestADeclarationPassIsAdditive`. Previously 2026-09-03 — re-pulled after the self-advances became `Advance` and rang in three places: this test (`disabling the escape changed nothing`), `TestLangGo`, and the declaration count in `sdom/schema` (`found 3 declarations, column-0 keywords say 7`) — an unescaped quote splits a string and the pass reads the halves as code. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang again. The anchor resolved correctly under the new name `parseRestricted`, which is what this pull was taken for. **Wider than the two earlier pulls:** this test, `TestLangGo`, and `TestADeclarationPassIsAdditive` in `sdom/schema` — 4 failures across 2 packages, the third of them not existing when this alarm was first written. The round-trip stayed green throughout, exactly as the prose says. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestLangGo`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, on this test and `TestLangGo`. Both of this
 test's messages fired, including *disabling the escape changed nothing, so the
 escape does nothing* — the second assertion earning its place. The recognition
 count and both corpus round-trips stayed green.
@@ -211,3 +211,69 @@ tiles it
 **Fire alarm:** ignore the flag — treat the longer run as content. Red: the three-run is inside one text node and nothing is unpaired.
 **Inject:** sdom/bracket_parser.go:BracketParser.otherRun
 **Pulled:** 2026-09-05 — rang: this test, the emphasis test and the carve's closes-nothing test — the three-run became content and nothing was unpaired.
+
+## Test: an opener never closed is demoted to text
+**Purpose:** R346, R349 — a `DemoteUnclosed` group reaching end of input rewinds, the markers it enclosed are read, and the demotion is recorded
+**Input:** a table with one demoting code-mode group `<` … `>` and one plain group `{` … `}`; the source `a <b {c} d` and the source `a {b <c> d`
+**Expected:** in the first, the `<` is text, `{c}` pairs, `Unclosed` is empty and `Demoted` holds one record whose marker is `<`, whose run renders `a <b ` and whose offset is 2; in the second, `<c>` pairs and `{` is in `Unclosed`, since it does not demote; both round-trip byte-exact
+**Refs:** crc-BracketParser.md, crc-BracketContext.md, seq-parse.md#3.4
+**Code:** sdom/parser_test.go
+**Fire alarm:** keep the opener node at the rewind — truncate to one past the count. Red: `Unclosed` lists `<` and the run does not contain it.
+**Inject:** sdom/bracket_parser.go:BracketParser.open
+**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test (`unclosed 1, want none`), the four other demotion tests, the markdown fixture test and the five reader tests. Previously 2026-09-07 — rang: this test and every other demotion test in the package, the fixture test, and the five reader tests — the opener survived the rewind everywhere.
+**Alarm:** 6
+
+## Test: a demoted group's enclosure is re-read in the enclosing mode
+**Purpose:** R346 — the rewind returns to the enclosing loop, so a closer of the enclosing group inside the demoted one is found
+**Input:** the same table; the source `{a <b} c`
+**Expected:** `{` pairs with `}`, `<` is demoted, and `Unclosed` is empty
+**Refs:** crc-BracketParser.md, seq-parse.md#3.4.3
+**Code:** sdom/parser_test.go
+**Fire alarm:** after the rewind, continue in the demoted group's own mode rather than returning. Red: `}` is not paired.
+**Inject:** sdom/bracket_parser.go:BracketParser.open
+**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; the second `parseBody` rang the markdown fixture test (items 4 want 5, demoted 7 want 8), the depth test, and the done and pending reader tests — not this test, whose `}` still pairs, as on the first pull. Previously 2026-09-07 — the injection is a second `parseBody` after the rewind; rang in the fixture test, the depth test, and the done and pending reader tests — not in this one, whose `}` is a code-mode any-close and lands either way. The assertion here is weaker than the property; the fixture test carries it.
+**Alarm:** 7
+
+## Test: a blank line bounds a demoting group
+**Purpose:** R347, R353 — a `BlankLineBound` group ends unclosed at a blank line and is demoted there; without the flag the group runs on; with `LineHeadUnbound` an opener at a line head runs on and one mid-line does not
+**Input:** the `<` group with and without `BlankLineBound`, over `a <b`, a blank line, `c> d`; the bounded group over the same with a bare newline instead of the blank line; with `LineHeadUnbound` too, over the blank-line source and over the same with the opener indented at a line head
+**Expected:** with the bound, `<` is demoted, and `>` lands through the any-close fallback unpaired; a bare newline is no bound and the group pairs across it; without the flag, `<` … `>` pair across the blank line; with the exemption the mid-line opener is demoted and the indented line-head one pairs
+**Refs:** crc-BracketGroup.md, seq-parse.md#3.4.1
+**Code:** sdom/parser_test.go
+**Fire alarm:** test for a bare newline rather than a blank line. Red: the bare-newline case is demoted and its `>` is unpaired.
+**Inject:** sdom/bracket_parser.go:blankLineAt
+**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test (`bare newline: 1 demoted, 1 unpaired, want a pair`) and the gaps fixture test. Previously 2026-09-07 — rang: this test and the gaps fixture test. Before the bare-newline case was added the same injection left this test green and only the gaps fixture rang (found by the simplifier's re-pull, same day).
+**Alarm:** 8
+
+## Test: a demotion inside a demoted group is recorded once
+**Purpose:** R349 — the inner record made inside a group later demoted itself is dropped with the inner nodes, and the outer re-parse records it again
+**Input:** the demoting `<` group with `AllowedInner` naming itself; the source `a <b <c d`
+**Expected:** `Demoted` holds exactly two records, in document order, with offsets 2 and 5 in the one run
+**Refs:** crc-BracketContext.md, seq-parse.md#3.4.2
+**Code:** sdom/parser_test.go
+**Fire alarm:** do not truncate the demoted list at the rewind — append to the whole list, with `_ = recorded` so it builds. Red: three records.
+**Inject:** sdom/bracket_parser.go:BracketParser.open
+**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test (three records, want two) and the markdown fixture test (demoted 9, want 8). Previously 2026-09-07 — rang: this test and the markdown fixture test.
+**Alarm:** 9
+
+## Test: the rewind keeps the live run true
+**Purpose:** R350 — after a rewind to a `Text`, re-read bytes extend that run; after a rewind to a marker, they start a new one
+**Input:** the demoting `<` group; the source `ab <cd` and the source `{}<cd`
+**Expected:** the first parses to one `Text` rendering the whole source; the second to `{`, `}` and one `Text` rendering `<cd`
+**Refs:** crc-ParserState.md
+**Code:** sdom/parser_test.go
+**Fire alarm:** leave the live run nil after every rewind. Red: the first source renders as two `Text` nodes.
+**Inject:** sdom/parser.go:ParserState.Rewind
+**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test (`want one run`) and the four other demotion tests, every stream split at the marker. Previously 2026-09-07 — rang: this test and the four other demotion tests in the package, every stream split at the demoted marker.
+**Alarm:** 10
+
+## Test: BlankLineBound without DemoteUnclosed panics at construction
+**Purpose:** R348 — either contradictory pair is a construction error naming the group
+**Input:** a table whose one group sets `BlankLineBound` alone; one whose group sets `LineHeadUnbound` with `DemoteUnclosed` but not `BlankLineBound`
+**Expected:** `NewBracketParser` panics with a message naming the flag, both times
+**Refs:** crc-BracketGroup.md
+**Code:** sdom/parser_test.go
+**Fire alarm:** drop the check. Red: no panic.
+**Inject:** sdom/bracket.go:BracketLang.check
+**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test alone, `panic <nil>, want one naming BlankLineBound`. Previously 2026-09-07 — rang: this test alone, with the `BlankLineBound` check dropped.
+**Alarm:** 11

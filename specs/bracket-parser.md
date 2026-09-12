@@ -25,6 +25,9 @@ type BracketGroup struct {
     AfterOpen   string   // a pattern the bytes after an opener must satisfy; "" for none
     BeforeClose string   // a pattern the rune before a closer must satisfy; "" for none
     RejectLongerCloses bool // a longer run inside a close-is-open pattern group is a rejected closer, not content
+    DemoteUnclosed bool  // an opener whose closer is never found was text: rewind and re-parse
+    BlankLineBound bool  // the group also ends, unclosed, at a blank line; needs DemoteUnclosed
+    LineHeadUnbound bool // an opener with only whitespace before it on its line takes no blank-line bound; needs BlankLineBound
     Escape      string   // escape sequence inside the group; "" for none
 
     AllowedInner  []string // nil = code mode; non-nil (even empty) = parse-restricted
@@ -70,9 +73,51 @@ Four fields say all of this without a group per length or a rule in the parser:
   reads block structure first, so a line of three backticks interrupts a paragraph and
   opens a fence even inside an open span; this base has no block level.
 
+### An opener never closed was text
+
+A code bracket left open at the end of a Go file is an error a reader should keep seeing.
+An asterisk in a markdown paragraph that nothing closes was never a marker — a glob, a
+pointer type, a typographer's star — and CommonMark reads it as literal text, resolving
+its inline delimiters after the paragraph is read. Which of the two a group is, the table
+says:
+
+- **`DemoteUnclosed`** says an opener of this group whose closer is never found was text.
+  When the group reaches end of input without its closer, the parse **rewinds** to the
+  byte after the opener, drops every node emitted since the opener and the opener itself,
+  folds the opener's bytes into the text run that preceded it, and continues in the
+  enclosing group's mode from there — so every marker the failed group had swallowed is
+  offered to the parser again, a heading inside it is read as a heading, and a later
+  opener of the same group opens afresh. A group demoted inside a group that is then
+  demoted itself is re-parsed again on the outside, so the cost is one re-parse of the
+  span's extent per demotion, nested; a group without the flag closes at end of input as
+  before, and no rewind touches it.
+- **`BlankLineBound`** says the group also ends, unclosed, at a blank line — a newline
+  followed by a line holding only spaces or tabs — and is demoted there, which bounds the
+  re-parse to one paragraph. It is CommonMark's inline rule, and it is a rule about blank
+  lines rather than newlines: a span wrapped at the column limit stays a span (measured
+  2026-09-07 across three repositories: 264 inline spans cross one line break, 17 cross a
+  blank line, and the 17 are all wrong pairings). The flag without `DemoteUnclosed` is a
+  construction error.
+- **`LineHeadUnbound`** exempts an opener standing at a line head — only spaces or tabs
+  between the previous newline and it — from the blank-line bound. That is CommonMark's
+  fence: a fenced block routinely holds a blank line (133 of 739 fences, same measurement),
+  and it fails to terminate in exactly two ways — end of input, which demotes it, and a
+  longer run inside it, which `RejectLongerCloses` ends it on. A run anywhere else on its
+  line is a span and takes the bound. The flag without `BlankLineBound` is a construction
+  error.
+
+**A demoted opener is still reported.** The reader cannot tell a typographer's asterisk
+from a forgotten marker and does not guess: the context records every demotion — the
+marker, the text run its bytes were folded into, and the marker's offset within that run —
+and answers `Demoted()` beside `Unclosed()` and `Unpaired()`. A demotion inside a group
+that is then demoted itself is recorded once, from the outer re-parse; the inner record is
+dropped with the inner nodes. The record is anchored to a node rather than a byte offset so
+that a mutation elsewhere in the document does not move it.
+
 Markers stay byte comparisons; only the patterns are compiled, once, when the parser is
-constructed. A pattern that does not compile, an `OpenRegex` beside a non-empty `Open`, or
-`CloseIsOpen` beside a non-empty `Close` is a construction error: `NewBracketParser` panics
+constructed. A pattern that does not compile, an `OpenRegex` beside a non-empty `Open`,
+`CloseIsOpen` beside a non-empty `Close`, `BlankLineBound` without `DemoteUnclosed`, or
+`LineHeadUnbound` without `BlankLineBound` is a construction error: `NewBracketParser` panics
 naming the group, and every shipped table is checked by a test so the panic is never seen by
 a consumer. The any-close fallback recognizes literal closers only — a close-is-open marker
 outside its group is an opener, and has matched as one before the fallback is reached.
@@ -216,8 +261,10 @@ position inside a group at all.
   the parse.
 - **The parse always consumes at least one byte**, so nothing stalls on input it
   does not understand.
-- **A group left open at end of input closes there.** The bytes are already
-  accounted for; nothing is dropped.
+- **A group left open at end of input closes there** — unless its group demotes, in
+  which case the opener was text and the parse rewinds to re-read what it enclosed (see
+  *An opener never closed was text*). Either way the bytes are already accounted for;
+  nothing is dropped.
 - **A pattern opener honours the word-boundary rule on the bytes it matched**; an opener
   honours its group's `AfterOpen` and a closer its `BeforeClose`.
 
@@ -318,6 +365,15 @@ func (bc *BracketContext) OuterText(n Node) string
 func (bc *BracketContext) Unclosed() []*Opener
 // Unpaired returns the closers that pair with no opener: a stray, or a rejected longer run.
 func (bc *BracketContext) Unpaired() []*Closer
+// Demoted returns the openers the parse demoted to text: the marker, the text run it
+// was folded into, and its offset within that run, in document order.
+func (bc *BracketContext) Demoted() []DemotedOpener
+
+type DemotedOpener struct {
+    Marker string // the bytes that opened, and are now text
+    Run    *Text  // the text run they were folded into
+    Offset int    // the marker's offset within Run
+}
 ```
 
 `n` names the group by being its opener or its closer. A group left open at end of
@@ -332,7 +388,10 @@ of input, or when a rejected longer run ended it; a closer pairs with nothing wh
 any-close fallback emitted it stray, or when a group rejected it. A fence or span that runs
 to the end of a file takes every later heading and list item with it, and a reader above
 the base can list nothing as unread, because nothing entry-like survived to be unread. This
-is where that loss is visible, one layer down; the readers carry both lists up.
+is where that loss is visible, one layer down, for a group that does not demote; **for one
+that does, `Demoted()` is the record** — recorded at the rewind, since the opener node no
+longer exists — and the readers carry all three lists up. A demoted opener's line is the
+line of its run's start plus the marker's offset within the run.
 
 **`Doc()` returns the document the context is bound to**, nil before the parse's `Done`. A
 reader that has an opener and wants the nodes it encloses needs the array, and the

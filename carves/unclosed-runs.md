@@ -21,8 +21,9 @@ and one reader defect of the same shape a level up.
 
 **Provenance.** Both parts are mini-spec's, 2026-09-07:
 `~/work/mini-spec/requests/unmatched-run-swallows.md` and
-`~/work/mini-spec/requests/testdoc-title-stops-at-code-span.md`. Our acknowledgements are in
-`requests/`.
+`~/work/mini-spec/requests/testdoc-title-stops-at-code-span.md`. Item 3 is mini-spec's too,
+2026-09-12: `~/work/mini-spec/requests/pending-rule-inside-code-span.md`, folded in the same
+day (Bill). Our acknowledgements are in `requests/`.
 
 **What the report got wrong, measured 2026-09-07.** The request names two base defects. The
 first — *an emphasis marker inside a code span opens a group* — does not exist: an asterisk
@@ -39,6 +40,7 @@ there every backtick in the file is flipped from open to close until the asteris
 
 - [ ] **Item 1 — an opener with no closer is demoted to text.** **OPEN (#37.)**
 - [ ] **Item 2 — the test-entry title reads to the end of its line.** **OPEN (#38.)**
+- [ ] **Item 3 — a rule is a line of its own, never a code span's interior.** **OPEN (#39.)**
 
 ## Decisions
 
@@ -71,7 +73,28 @@ does not have. Either the code group takes the bound like the others — a fence
 closed, which every fence in our three repositories is — or the flag learns a line-head
 exemption. The first is one field; the second is the seam for it if a document ever needs
 it. **The first, decided with the bound (Bill, 2026-09-07, on Daneel's recommendation):**
-the code group takes the bound, and a fence is closed or it is text. **And every demoted opener is reported (Bill,
+the code group takes the bound, and a fence is closed or it is text. **SUPERSEDED the same
+evening (Bill, 2026-09-07), before any code was written.** Measured across the three
+repositories' design, spec and carve files: 739 fences, 133 with a blank line inside. A code
+group bounded by a blank line would demote every one of them and read the list items and
+headings inside as structure — the failure *code hides structure* exists to prevent. So a
+fenced block must be allowed to contain blank lines, and **the code group demotes at end of
+input only**; emphasis and strike take the blank-line bound. A backtick run then fails to
+terminate in exactly two ways: end of input, which demotes it; and bad nesting — a longer
+run inside it — which the rejected-closer rule already ends it on, the trailing run opening
+afresh and demoting at end of input in turn. An unclosed inline span costs one re-parse of
+the file's tail, once per such defect; one measured in ark, one in each of our two test
+designs. No line-head test is needed. **AMENDED again the same evening (Bill, 2026-09-07),
+after the build measured it:** with no bound on the code group, one odd backtick makes every
+later lone backtick pair with the next one across blank lines and across the headings between
+them — nothing is unclosed, nothing demotes, and the span is simply wrong. Our
+test-BracketParser read 17 of 26 and test-Pending 9 of 11 with demotion in place; ark's
+test-Secretary 2 of 6. Measured over the three repositories: 33,195 inline spans, 264 wrapped
+across one line break, 17 across a blank line — the 17 are exactly the wrong pairings. So the
+code group takes the blank-line bound **except when its opener stands at a line head**, with
+only whitespace before it on its line: that is a fence, bounded by end of input alone, and
+CommonMark's own distinction. Blank lines, not newlines — a span wrapped at the column limit
+stays a span, and the 264 stay read. One more field on the group says it. **And every demoted opener is reported (Bill,
 2026-09-07):** the opener becomes text and the document also says so — first said for the
 fence, then widened to anything unclosed, since the reader cannot tell a typographer's
 asterisk from a forgotten marker and should not guess. The base has no log; the report is the
@@ -82,8 +105,8 @@ documents with a glob in prose read whole and stay writable, and are listed.
 
 ## Item 1
 
-**The rule.** When a group whose flag is set reaches end of input or a blank line without
-its closer, its opener was never an opener. The parse
+**The rule.** When a group whose flag is set reaches end of input — or, for emphasis and
+strike, a blank line — without its closer, its opener was never an opener. The parse
 rewinds to the byte after the opener's text, drops every node emitted since the opener
 including the opener itself, folds the opener's bytes into the live text run that preceded
 it, and continues in the *enclosing* group's mode from there. Every marker the failed group
@@ -111,10 +134,19 @@ parser that backs up does so through the verb that keeps the run true. Whether a
 node leaves anything behind in the origin's location minting is a question for the build; if
 it does, the rewind is where it is returned.
 
-**What it costs.** A re-parse from the opener, once per demoted group, nested for openers
-demoted inside a demoted group. With the blank-line bound the worst case is one paragraph.
-Measured on the same corpus `backtick-runs.md` timed — 20 parses of mini-spec's done file —
-before landing, as that part was.
+**What it costs, measured 2026-09-07 before landing.** Over 20 parses: mini-spec's done file
+789 ms at `ceafd0c`, 413 ms with demotion; ark's requirements 1.24 s against 2.07 s — and the
+whole of that increase is the 630 KB of ark's file, 77 percent of its bytes, that the old
+parse never read because it sat inside one code span opened at line 2157. On the 190 KB
+before that line, which both parses read in full, the new build takes 370–400 ms against
+410–420 ms. Reading the tail costs what reading it costs; the demotions themselves are
+bounded by a paragraph and cost nothing visible.
+
+**What it reads, measured the same day.** ark's requirements 3402 of 3402 by grep (was 1419);
+ark's 69 test designs all at their grep count (six were short); mini-spec's requirements and
+16 test designs whole; ours, 353 requirements and 24 test designs whole (test-BracketParser
+and test-Pending were short). Every remaining `Unread` line in those files names a real
+defect in the document — an odd backtick, a bare glob — read as text and listed.
 
 **What changes in the reports.** Nothing is *unclosed* in a markdown document any more,
 since every group that could be is demoted. `Unclosed()` still answers for languages whose
@@ -156,3 +188,34 @@ read cut back to the first text node, which must truncate the code-span title.
 
 This part is display only — the census names alarms by number — and mini-spec said so. It
 sits second for that reason and lands in one small item.
+
+## Item 3
+
+`Pending.regionEnd` ends an entry's region at a `---` rule by testing each flat text node
+for a line that is exactly three dashes. A code span's interior is its own text node, so a
+code span holding three dashes in the middle of a prose line is a node whose whole text is
+three dashes, and the region ends there. `Remove` then takes the entry's head and leaves its tail — from the closing
+backtick to the entry's end — standing in the file, well-formed enough that `validate
+trajectory` lists it as one unread line and nothing else objects. Measured 2026-09-12 by
+mini-spec on `pending finish 55` at `2a9921c`, and reproduced here the same day on a
+two-entry document: the render after `Remove` begins with the three dashes, the span's closing
+backtick, and the rest of that sentence.
+
+The spec already says what a rule is (R259: a `---` *line* outside a fence); the reader
+tests a node where it should test a line. The repair is the test's subject, not a new rule:
+a candidate `---` counts only when it is the whole of its document line — the node's text
+starts at a line head, or the bytes before it on the line are blank, and the bytes after it
+on the line are blank. A code span's interior fails the first half, since a backtick
+precedes it on the line. `Place` shares `ruleAt` for the header's rule and gets the same
+fix for free; the sibling in `Done` (`prependDoneEntry`) is checked in the build and fixed
+if it tests the same way.
+
+Same family as Items 1 and 2 — the reader's view of a markdown fact stops at a node boundary
+where CommonMark's fact is a line — and the same shape mini-spec keeps naming: a write that
+stops early and leaves a file nothing reads as wrong.
+
+**Acceptance.** A fixture entry whose body carries a three-dash code span mid-line and a second entry
+after it; the first reads whole and `Remove` of it leaves the second untouched and no tail;
+a `---` line in a fence does not end a region (already true by construction, pinned); and
+the existing rule-ends-region test still passes. Fire alarm: the line-head test removed from
+`ruleAt`, which must leave the tail after `Remove`.

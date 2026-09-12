@@ -98,7 +98,12 @@
   every further byte consumed as text extends it, so the last node is always current; `Advance`
   consumes and extends, `SetPos` only moves.
 - **R225:** `Emit` ends the live text run and does not shrink it; a parser never emits a node over
-  bytes already in the run — stated, not guarded.
+  bytes already in the run — stated, not guarded; the one parser that backs up does so through
+  `Rewind` (R350), which keeps the run true.
+- **R350:** `Rewind(count, pos)` truncates the array to `count` nodes, moves the position back to
+  `pos`, and makes the last remaining node the live text run when it is a `Text`, so bytes re-read
+  from there extend it as declined bytes do; after a rewind to a marker the next declined byte
+  starts a new run.
 - **R159:** A `Parser` either recognizes something at the head of the input and emits it, or does
   nothing at all.
 - **R160:** `Parser.NodeType` reports the kind of the node `Parse` would emit at this position
@@ -142,7 +147,8 @@
 - **R72:** A group's separators are recognized only while that group is the one currently open.
 - **R73:** When no other marker matches, any code-mode group's closer is recognized, so a stray closer lands as a bracket rather than derailing the parse.
 - **R74:** The parse always consumes at least one byte.
-- **R75:** A group left open at end of input closes there, and no bytes are dropped.
+- **R75:** A group left open at end of input closes there unless its group demotes (R346), and no
+  bytes are dropped either way.
 - **R76:** Whitespace is not a node of its own: it folds into text, so a text run is everything between two recognized markers.
 - **R77:** The emitted stream is flat and in document order — an opener, everything between it and its closer, and the closer are siblings in the array.
 - **R78:** The parser adds the node kinds `Opener`, `Closer` and `Separator`; every other byte becomes `Text`.
@@ -231,6 +237,22 @@
   group the hatches are tried before the run rule.
 - **R310:** `BracketContext.Unpaired` returns the closers that pair with no opener, in document
   order, derived from the pairing; `Unclosed` likewise the openers never closed.
+- **R346:** With `DemoteUnclosed`, a group that reaches end of input without its closer is demoted:
+  the parse rewinds to the byte after the opener, drops the opener and every node emitted since,
+  folds the opener's bytes into the preceding text run, and continues in the enclosing group's
+  mode, so every marker the group had enclosed is offered again and a later opener of the same
+  group opens afresh; a group without the flag closes at end of input as before.
+- **R347:** With `BlankLineBound`, the group also ends unclosed, and is demoted, at a blank line — a
+  newline followed by a line of only spaces or tabs — bounding the re-parse to one paragraph.
+- **R348:** `BlankLineBound` without `DemoteUnclosed`, or `LineHeadUnbound` without `BlankLineBound`,
+  is a construction error, reported as R296's are.
+- **R353:** With `LineHeadUnbound`, an opener with only spaces or tabs between the previous newline
+  and it takes no blank-line bound and demotes at end of input only — a fence; an opener elsewhere on
+  its line takes the bound.
+- **R349:** `BracketContext.Demoted` returns every demotion the parse recorded, in document order —
+  the marker, the `Text` run it was folded into, and the marker's offset within that run — anchored
+  to the node rather than a byte offset; a demotion inside a group later demoted itself is recorded
+  once, from the outer re-parse.
 
 ## Feature: indent scope
 **Source:** specs/indent-parser.md
@@ -469,6 +491,10 @@
   restricted, naming itself and code, then `~~` restricted naming emphasis and code; links are not
   groups.
 
+- **R352:** All three groups set `DemoteUnclosed` and `BlankLineBound`; the code group alone sets
+  `LineHeadUnbound`, so a fence holds blank lines and is demoted at end of input only, while a span
+  ends at a blank line.
+
 ## Feature: part line
 **Source:** specs/part-line.md
 
@@ -610,6 +636,8 @@
   structured can follow a group still open at the end.
 - **R311:** Every reader's `Unread` also lists each closer the context reports paired with nothing,
   at its line, with the text *`<marker>` closes nothing*, in line order with the rest.
+- **R351:** Every reader's `Unread` also lists each opener the context reports demoted, at the line
+  of its marker, with the text *`<marker>` never closed, read as text*, in line order with the rest.
 - **R315:** After the re-read, `Prepend` finds the new first entry with its header line, or panics
   with a `ReadBackError`.
 

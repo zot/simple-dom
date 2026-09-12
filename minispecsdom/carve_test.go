@@ -200,10 +200,11 @@ func TestAGroupOpenAtEndOfInputIsUnreadInCarve(t *testing.T) {
 func TestACloserThatClosesNothingIsUnread(t *testing.T) {
 	c := ParseCarve("# C\n\n## Status\n\n- [ ] **Item 1 — t.** **OPEN (not queued.)**\n\nsee ``x```y``\n")
 	u := c.Unread()
-	// Three reports on one line: the span the three-run ended (never closed), the span the
-	// trailing two-run opened (never closed), and the three-run itself (closes nothing).
-	if len(u) != 3 || !strings.Contains(u[0].Text, "never closed") || !strings.Contains(u[1].Text, "never closed") || !strings.Contains(u[2].Text, "```` closes nothing") {
-		t.Errorf("unread %+v, want two never-closed spans and the rejected three-run", u)
+	// Three reports on one line: the span the three-run ended (never closed), the three-run
+	// itself (closes nothing), and the span the trailing two-run opened, demoted at end of
+	// input (never closed, read as text) — R351.
+	if len(u) != 3 || !strings.HasSuffix(u[0].Text, "never closed") || !strings.Contains(u[1].Text, "```` closes nothing") || !strings.HasSuffix(u[2].Text, "read as text") {
+		t.Errorf("unread %+v, want the ended span, the rejected three-run and the demoted span", u)
 	}
 }
 

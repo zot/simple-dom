@@ -8,7 +8,7 @@ import (
 	"github.com/zot/simple-dom/sdom"
 )
 
-// CRC: crc-Done.md | R300, R301, R302, R303, R311
+// CRC: crc-Done.md | R300, R301, R302, R303, R311, R351
 //
 // unbalanced lists what the base's context reports as paired with nothing, each as an
 // Unread naming the marker at its line: every opener never closed — at end of input, or
@@ -28,6 +28,9 @@ func unbalanced(ctx *sdom.BracketContext) []Unread {
 	for _, c := range ctx.Unpaired() {
 		marker, _ := c.Render()
 		out = append(out, Unread{doc.Line(c.Location().Offset()), fmt.Sprintf("`%s` closes nothing", marker)})
+	}
+	for _, m := range ctx.Demoted() { // R351
+		out = append(out, Unread{doc.Line(m.Run.Location().Offset() + m.Offset), fmt.Sprintf("`%s` never closed, read as text", m.Marker)})
 	}
 	return out
 }

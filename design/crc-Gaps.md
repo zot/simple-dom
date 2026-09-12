@@ -1,5 +1,5 @@
 # Gaps
-**Requirements:** R330, R331, R332, R333, R334, R335, R336, R337
+**Requirements:** R330, R331, R332, R333, R334, R335, R336, R337, R351
 
 The gaps schema: embeds the markdown base, owns the document, and reads the `## Gaps`
 region of a design document as typed, numbered entries. The second design-document reader,

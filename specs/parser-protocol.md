@@ -23,6 +23,7 @@ func (st *ParserState) SetPos(n int)         // move it WITHOUT consuming — a 
 func (st *ParserState) Advance(n int)        // consume n bytes as text, extending the live run
 func (st *ParserState) At(pos, length int) Loc  // a location in this pass
 func (st *ParserState) Emit(n Node)          // append n, advance past it, end the live run
+func (st *ParserState) Rewind(count, pos int) // drop the nodes past count, move back to pos, and make the last node live again
 func (st *ParserState) NodeCount() int       // how many nodes have been emitted
 func (st *ParserState) Last() Node           // the most recent node, nil before any
 ```
@@ -44,8 +45,13 @@ restricted group — advances; a parser peeking at what a later position would p
 sets the position and restores it.
 
 **One rule a parser honours, stated rather than guarded:** it never emits a node over
-bytes already in the live run. No parser does — each is offered every position and
-never backs up — and the walk relies on it, since `Emit` does not shrink the run.
+bytes already in the live run. The walk relies on it, since `Emit` does not shrink the
+run. The one parser that backs up — the bracket parser demoting an opener never closed —
+does so through **`Rewind`**, which truncates the array to a node count, moves the position
+back, and points the live run at the last remaining node when that node is a `Text`, so the
+bytes re-read from there extend it as declined bytes do; a rewind to a marker leaves no
+live run, and the next declined byte starts one. The rule holds because the only way back
+is the verb that keeps the run true.
 
 **`Emit`, `NodeCount` and `Last` rather than an exported node slice.** A parser needs
 to append, to know how many nodes exist, and to see the one before it; it never needs

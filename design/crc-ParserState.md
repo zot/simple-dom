@@ -1,5 +1,5 @@
 # ParserState
-**Requirements:** R155, R156, R157, R158, R161, R162, R163, R164, R167, R224, R225
+**Requirements:** R155, R156, R157, R158, R161, R162, R163, R164, R167, R224, R225, R350
 
 One pass over one source. It owns the walk and the loop; it knows nothing about
 any language.
@@ -20,6 +20,9 @@ any language.
 - distinguishes **`Advance`**, which consumes bytes as text, from **`SetPos`**, which
   only moves — a lookahead goes forward and back and changes nothing
 - ends the live run at `Emit`; the next declined byte starts a new one
+- **rewinds** on request to a node count and a position, truncating the array and making
+  the last remaining node live again when it is a `Text` — the one way back, and it keeps
+  the run true
 - builds the document from what was emitted, and returns it alone
 
 ## Constraints
@@ -27,7 +30,8 @@ any language.
   many, and looks at the node before the position; it never needs the array, and
   handing out the live one is the aliasing shape two gaps already record
 - **A parser never emits over bytes already in the live run** — stated at `Emit`,
-  not guarded. None does, and the run is not shrunk there
+  not guarded. The run is not shrunk there, and the one parser that backs up does so
+  through `Rewind`
 - **One parse, one `Origin`.** With several parsers collaborating there is still
   one pass. A per-context origin would mint two for a single document, and merging
   a location from one with a location from the other is defined to panic

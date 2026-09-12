@@ -21,9 +21,9 @@ Its bracket groups, in match order:
 
 | group | open / close | mode | kind |
 |---|---|---|---|
-| code | a run of backticks, closed by a run of the same length; a longer run inside is rejected | restricted: nothing inside is recognized | `code` |
-| emphasis | a run of asterisks, opening before and closing after non-whitespace | restricted; admits emphasis and code | |
-| strike | `~~` … `~~` | restricted; admits emphasis and code | |
+| code | a run of backticks, closed by a run of the same length; a longer run inside is rejected; unclosed at a blank line — or, at a line head, at end of input — it was text | restricted: nothing inside is recognized | `code` |
+| emphasis | a run of asterisks, opening before and closing after non-whitespace; unclosed at a blank line or end of input, it was text | restricted; admits emphasis and code | |
+| strike | `~~` … `~~`; unclosed at a blank line or end of input, it was text | restricted; admits emphasis and code | |
 
 **The fence and the code span are one group**, a pattern opener of one or more backticks
 with `CloseIsOpen` — CommonMark's rule that a run of N is closed only by a run of exactly N,
@@ -34,6 +34,19 @@ one-span that opened and closed at once, the lone backtick inside it opened a re
 and every later backtick in the file flipped open for close: 41 of 58 done entries vanished
 from one file with nothing listed as unread, because nothing entry-like survived to be
 unread. A four-backtick fence around a fenced sample needs nothing the span does not.
+
+**An opener never closed was text, in all three groups.** A lone backtick, a three-run
+quoted in prose, an asterisk in a glob: each opened a group that swallowed every heading
+and list item to the end of the file, and the reader listed the opener and read nothing
+after it (measured 2026-09-07: ark's requirements read 1419 of about 2800). All three groups
+set `DemoteUnclosed`, so the parse rewinds and re-reads what the failed group enclosed, and
+the context lists the demotion. All three set `BlankLineBound`, CommonMark's inline rule,
+and the code group alone sets `LineHeadUnbound`: a run at a line head is a fence, holds
+blank lines, and is demoted at end of input only — or ended by a longer run inside it,
+which is a rejected closer. A run elsewhere on its line is a span and ends at a blank line,
+which is what stops one odd backtick from pairing every later one across the headings
+between them (measured 2026-09-07: three test designs read short that way with demotion
+alone).
 
 **Emphasis is a run of asterisks that nests by flanking.** `AfterOpen` and `BeforeClose`
 are both non-whitespace, so a run opens only before text and closes only after it, and the

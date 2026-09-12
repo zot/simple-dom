@@ -375,3 +375,131 @@ func TestTheAnyCloseFallbackIgnoresCloseIsOpenGroups(t *testing.T) {
 	}}
 	assertStream(t, lang, "a } |b", `T"a " C"}" T" " O"|" T"b"`)
 }
+
+// demoteLang is a table with one demoting code-mode group and one plain group, for
+// the demotion tests: `<` … `>` demotes, `{` … `}` does not.
+func demoteLang(bound bool) *BracketLang {
+	return &BracketLang{Brackets: []BracketGroup{
+		{Open: []string{"<"}, Close: ">", DemoteUnclosed: true, BlankLineBound: bound},
+		{Open: []string{"{"}, Close: "}"},
+	}}
+}
+
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.4 | R346, R349
+// An opener never closed is demoted to text, the markers it enclosed are read, and the
+// demotion is recorded; a group without the flag stays unclosed.
+func TestAnOpenerNeverClosedIsDemotedToText(t *testing.T) {
+	d, ctx := parse("a <b {c} d", 0, demoteLang(false))
+	if got := stream(d); got != `T"a <b " O"{" T"c" C"}" T" d"` {
+		t.Errorf("stream %s", got)
+	}
+	if len(ctx.Unclosed()) != 0 {
+		t.Errorf("unclosed %d, want none", len(ctx.Unclosed()))
+	}
+	dm := ctx.Demoted()
+	if len(dm) != 1 || dm[0].Marker != "<" || dm[0].Offset != 2 {
+		t.Fatalf("demoted %+v, want `<` at offset 2", dm)
+	}
+	if s, _ := dm[0].Run.Render(); s != "a <b " {
+		t.Errorf("run %q, want the run the marker was folded into", s)
+	}
+	d, ctx = parse("a {b <c> d", 0, demoteLang(false))
+	if got := stream(d); got != `T"a " O"{" T"b " O"<" T"c" C">" T" d"` {
+		t.Errorf("stream %s", got)
+	}
+	if u := ctx.Unclosed(); len(u) != 1 || len(ctx.Demoted()) != 0 {
+		t.Errorf("want `{` unclosed and nothing demoted: %d unclosed, %d demoted", len(u), len(ctx.Demoted()))
+	}
+}
+
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.4.3 | R346
+// The rewind returns to the enclosing loop, so the enclosing group's closer inside the
+// demoted one is found.
+func TestADemotedGroupIsReReadInTheEnclosingMode(t *testing.T) {
+	d, ctx := parse("{a <b} c", 0, demoteLang(false))
+	if got := stream(d); got != `O"{" T"a <b" C"}" T" c"` {
+		t.Errorf("stream %s", got)
+	}
+	if len(ctx.Unclosed()) != 0 || len(ctx.Unpaired()) != 0 {
+		t.Errorf("want everything paired: %d unclosed, %d unpaired", len(ctx.Unclosed()), len(ctx.Unpaired()))
+	}
+}
+
+// CRC: crc-BracketGroup.md | Seq: seq-parse.md#3.4.1 | R347
+// A BlankLineBound group ends unclosed at a blank line; without the flag it runs on.
+func TestABlankLineBoundsADemotingGroup(t *testing.T) {
+	src := "a <b\n\nc> d"
+	d, ctx := parse(src, 0, demoteLang(true))
+	if got := stream(d); got != `T"a <b\n\nc" C">" T" d"` {
+		t.Errorf("bounded stream %s", got)
+	}
+	if len(ctx.Demoted()) != 1 || len(ctx.Unpaired()) != 1 {
+		t.Errorf("want `<` demoted and `>` stray: %d demoted, %d unpaired", len(ctx.Demoted()), len(ctx.Unpaired()))
+	}
+	// A bare newline is not a bound: the group pairs across it.
+	if _, ctx = parse("a <b\nc> d", 0, demoteLang(true)); len(ctx.Demoted()) != 0 || len(ctx.Unpaired()) != 0 {
+		t.Errorf("bare newline: %d demoted, %d unpaired, want a pair", len(ctx.Demoted()), len(ctx.Unpaired()))
+	}
+	d, ctx = parse(src, 0, demoteLang(false))
+	if got := stream(d); got != `T"a " O"<" T"b\n\nc" C">" T" d"` {
+		t.Errorf("unbounded stream %s", got)
+	}
+	if len(ctx.Demoted()) != 0 {
+		t.Errorf("unbounded: %d demoted, want none", len(ctx.Demoted()))
+	}
+	// R353: with the line-head exemption the mid-line opener is a span and demotes; the
+	// indented line-head one is a fence and pairs across the blank line.
+	fence := demoteLang(true)
+	fence.Brackets[0].LineHeadUnbound = true
+	if _, ctx = parse(src, 0, fence); len(ctx.Demoted()) != 1 {
+		t.Errorf("exempt, mid-line: %d demoted, want the span", len(ctx.Demoted()))
+	}
+	d, ctx = parse("  <b\n\nc> d", 0, fence)
+	if got := stream(d); got != `T"  " O"<" T"b\n\nc" C">" T" d"` || len(ctx.Demoted()) != 0 {
+		t.Errorf("exempt, line head: stream %s, %d demoted, want a fence", got, len(ctx.Demoted()))
+	}
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-parse.md#3.4.2 | R349
+// A demotion inside a group later demoted itself is recorded once, by the outer re-parse.
+func TestADemotionInsideADemotedGroupIsRecordedOnce(t *testing.T) {
+	lang := &BracketLang{Brackets: []BracketGroup{
+		{Open: []string{"<"}, Close: ">", DemoteUnclosed: true, AllowedInner: []string{"<"}},
+	}}
+	d, ctx := parse("a <b <c d", 0, lang)
+	if got := stream(d); got != `T"a <b <c d"` {
+		t.Errorf("stream %s", got)
+	}
+	dm := ctx.Demoted()
+	if len(dm) != 2 || dm[0].Offset != 2 || dm[1].Offset != 5 || dm[0].Run != dm[1].Run {
+		t.Errorf("demoted %+v, want two records at offsets 2 and 5 in one run", dm)
+	}
+}
+
+// CRC: crc-ParserState.md | R350
+// After a rewind to a Text the re-read bytes extend it; after a rewind to a marker they
+// start a new run.
+func TestTheRewindKeepsTheLiveRunTrue(t *testing.T) {
+	d, _ := parse("ab <cd", 0, demoteLang(false))
+	if got := stream(d); got != `T"ab <cd"` {
+		t.Errorf("stream %s, want one run", got)
+	}
+	d, _ = parse("{}<cd", 0, demoteLang(false))
+	if got := stream(d); got != `O"{" C"}" T"<cd"` {
+		t.Errorf("stream %s, want a fresh run after the marker", got)
+	}
+}
+
+// CRC: crc-BracketGroup.md | R348
+func TestBlankLineBoundWithoutDemoteUnclosedPanics(t *testing.T) {
+	cases := map[string]BracketGroup{
+		"BlankLineBound":  {Open: []string{"<"}, Close: ">", BlankLineBound: true},
+		"LineHeadUnbound": {Open: []string{"<"}, Close: ">", DemoteUnclosed: true, LineHeadUnbound: true},
+	}
+	for want, g := range cases {
+		r := recovered(func() { NewBracketParser(&BracketLang{Brackets: []BracketGroup{g}}) })
+		if r == nil || !strings.Contains(fmt.Sprint(r), want) {
+			t.Errorf("panic %v, want one naming %s", r, want)
+		}
+	}
+}

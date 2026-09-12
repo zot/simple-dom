@@ -33,6 +33,11 @@ type BracketContext struct {
 
 	built bool // has rebuild ever run? see refresh
 
+	// R349: every demotion the parse recorded, in document order. Recorded at the
+	// rewind rather than derived, because the opener node no longer exists; anchored
+	// to the run rather than a byte offset so a mutation elsewhere does not move it.
+	demoted []DemotedOpener
+
 	declStamp uint64
 	declSet   bool
 
@@ -418,6 +423,22 @@ func (bc *BracketContext) Unpaired() []*Closer {
 	}
 	return out
 }
+
+// CRC: crc-BracketContext.md | R349
+//
+// DemotedOpener is one opener the parse demoted to text: the bytes that opened, the
+// text run they were folded into, and their offset within that run. The line is the
+// run's start plus the offset, asked of the document when wanted.
+type DemotedOpener struct {
+	Marker string
+	Run    *Text
+	Offset int
+}
+
+// CRC: crc-BracketContext.md | R349
+// Demoted returns the openers the parse demoted to text, in document order — the
+// context's own slice, like the other accessors.
+func (bc *BracketContext) Demoted() []DemotedOpener { return bc.demoted }
 
 // attach binds the context to the document it was parsed from and stamps it
 // with the generation the parse's own links describe, so the first read of a

@@ -35,14 +35,15 @@
 **Pulled:** 2026-09-05 — re-pulled by a delegated puller after the reader gained the unclosed report; rang: `Unread [{Line:0 Text:- not an entry, but entry-like}]` and `lines 0 0 0`, only the fixture read-back. Previously 2026-09-04 — rang: `Unread [{Line:0 Text:- not an entry, but entry-like}]` and `lines 0 0 0`; only that test. Same non-building first attempt as the pending alarm. Re-pulled the same day after the simplification pass hoisted `off`: the unread line alone was injected and rang on the unread assertion.
 
 ## Test: a group open at end of input is unread
-**Purpose:** R300 — the failure `Unread` exists to prevent, arriving one layer below it
-**Input:** a done file whose last entry is followed by a fence that never closes
-**Expected:** `Unread` holds one item at the fence's line whose text names the marker and says it is never closed; the entries before it still read
+**Purpose:** R300, R351 — the failure `Unread` exists to prevent, arriving one layer below it; since the base demotes, the tail reads too
+**Input:** a done file whose entry is followed by a fence that never closes and then a second entry
+**Expected:** both entries read; `Unread` holds one item at the fence's line whose text names the marker and says it is never closed, read as text
 **Refs:** crc-Done.md
 **Code:** minispecsdom/done_test.go
-**Fire alarm:** make `unclosed` return nil. Red: this test and its three siblings in the pending, carve and current designs — one helper, four readers.
+**Fire alarm:** make `unbalanced` return nil. Red: this test and its three siblings in the pending, carve and current designs — one helper, four readers. A second: drop the demoted loop alone. Red: the same five, since every one now reads a demoted opener.
 **Inject:** minispecsdom/unread.go:unbalanced
-**Pulled:** 2026-09-05 — rang in exactly the four sibling tests; re-pulled the same day after the simplifier dropped the helper's `doc` parameter, rang in the same four. **Past the list, same day:** disabling the line sort that first followed this helper rang nothing, and on inspection could not — nothing structured follows a group still open at the end, so the unclosed lines are last in file order by construction. The sort was removed; the requirements say *after*, not *sorted*.
+**Alarm:** 5
+**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; both injections rang the same five tests, `unread []`. Previously 2026-09-07 — both injections rang in the same five tests: this, its pending, carve and current siblings, and the carve's closes-nothing test. Previously 2026-09-05 — rang in exactly the four sibling tests; re-pulled the same day after the simplifier dropped the helper's `doc` parameter, rang in the same four. **Past the list, same day:** disabling the line sort that first followed this helper rang nothing, and on inspection could not — nothing structured follows a group still open at the end, so the unclosed lines are last in file order by construction. The sort was removed; the requirements say *after*, not *sorted*.
 
 ## Test: Prepend reads back
 **Purpose:** R315 — through the guard, by the existing prepend test

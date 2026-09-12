@@ -1,5 +1,5 @@
 # Sequences: the scan
-**Requirements:** R57, R64, R72, R73, R74, R75, R77, R291, R294, R309
+**Requirements:** R57, R64, R72, R73, R74, R75, R77, R291, R294, R309, R346, R347, R349, R353
 
 Three diagrams: a code-mode group, a scan-restricted one, and the rules that keep
 the scan from stalling or losing bytes.
@@ -49,5 +49,14 @@ the scan from stalling or losing bytes.
         testing again — which holds structurally, since this branch is only
         reached once no marker matched at this position
    3.3. The run ends where a marker would start, or at end of input
-   3.4. At end of input every group still open closes where it stands
+   3.4. At end of input every group still open closes where it stands — unless it demotes
+        3.4.1. A `DemoteUnclosed` group reaching end of input, or a `BlankLineBound` one
+               reaching a blank line — unless `LineHeadUnbound` and the opener stood at a
+               line head — returns to `open` *unclosed*
+        3.4.2. `open` rewinds the state to the node count and position before its opener,
+               takes the opener's bytes as text, and records the demotion on the context —
+               dropping any demotion recorded inside the group
+        3.4.3. `open` returns to the enclosing loop, which re-reads the bytes in its own
+               mode: markers the group had enclosed are recognized, and a later opener of
+               the same group opens afresh
    3.5. The array tiles the source: every byte belongs to exactly one node

@@ -45,9 +45,12 @@ const (
 // `**LANDED (`abc`)**` need and nothing more.
 var LangMarkdown = sdom.IndentLang{
 	BracketLang: sdom.BracketLang{Brackets: []sdom.BracketGroup{
-		{OpenRegex: codeRun, CloseIsOpen: true, RejectLongerCloses: true, AllowedInner: []string{}, Kind: "code"},
-		{OpenRegex: emphasis, CloseIsOpen: true, AfterOpen: `\S`, BeforeClose: `\S`, AllowedInner: []string{emphasis, codeRun}},
-		{Open: []string{"~~"}, Close: "~~", AllowedInner: []string{emphasis, codeRun}},
+		// R352: all three demote an opener never closed and end at a blank line; the
+		// code group alone exempts an opener at a line head, a fence, which holds blank
+		// lines and is demoted at end of input or ended by a longer run.
+		{OpenRegex: codeRun, CloseIsOpen: true, RejectLongerCloses: true, DemoteUnclosed: true, BlankLineBound: true, LineHeadUnbound: true, AllowedInner: []string{}, Kind: "code"},
+		{OpenRegex: emphasis, CloseIsOpen: true, AfterOpen: `\S`, BeforeClose: `\S`, DemoteUnclosed: true, BlankLineBound: true, AllowedInner: []string{emphasis, codeRun}},
+		{Open: []string{"~~"}, Close: "~~", DemoteUnclosed: true, BlankLineBound: true, AllowedInner: []string{emphasis, codeRun}},
 	}},
 	Tab: 4,
 }

@@ -1,5 +1,5 @@
 # MarkdownParser
-**Requirements:** R226, R228, R229, R230, R231, R232, R233, R234, R235, R312
+**Requirements:** R226, R228, R229, R230, R231, R232, R233, R234, R235, R312, R352
 
 The markdown base's parser: one pass, wrapping an `IndentParser`, emitting line-head
 markers where the delegate emitted nothing. With `LangMarkdown` and the three marker

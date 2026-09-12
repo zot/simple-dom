@@ -270,3 +270,76 @@ func TestEmphasisNestsAndALongerRunIsRejected(t *testing.T) {
 		t.Errorf("%d unpaired closers, want the three-run", len(u))
 	}
 }
+
+// CRC: crc-MarkdownParser.md | R352, R349
+// The three groups demote, so the entries after an opener never closed survive, and
+// every demotion is listed at its line.
+func TestAnOpenerNeverClosedIsText(t *testing.T) {
+	src := fixture(t, "unclosed-runs.md")
+	d, p := parseMarkdown(src)
+	if r, _ := d.Render(); r != src {
+		t.Fatalf("render differs from source")
+	}
+	if c := count(d); c.headings != 5 || c.items != 5 {
+		t.Errorf("headings %d items %d, want 5 and 5", c.headings, c.items)
+	}
+	ctx := p.Indent().Brackets().Context()
+	// The one unclosed opener is the two-run the rejected three-run ended (R309); every
+	// other group either closed or was demoted.
+	if u := ctx.Unclosed(); len(u) != 1 {
+		t.Errorf("unclosed %d, want the span the three-run ended", len(u))
+	}
+	if u := ctx.Unpaired(); len(u) != 1 {
+		t.Errorf("unpaired %d, want the three-run alone", len(u))
+	} else if s, _ := u[0].Render(); s != "```" {
+		t.Errorf("unpaired %q, want the three-run", s)
+	}
+	// Hand count, in document order: the five-run in prose, the glob's asterisk, the two
+	// runs the quoted pattern opens, the bold before the blank line, the trailing two-run.
+	want := []struct {
+		marker string
+		line   int
+	}{{"`````", 3}, {"*", 4}, {"**", 6}, {"*", 6}, {"**", 10}, {"``", 23}, {"`", 27}, {"`", 29}}
+	dm := ctx.Demoted()
+	if len(dm) != len(want) {
+		t.Fatalf("demoted %d, want %d: %+v", len(dm), len(want), dm)
+	}
+	for i, w := range want {
+		if line := d.Line(dm[i].Run.Location().Offset() + dm[i].Offset); dm[i].Marker != w.marker || line != w.line {
+			t.Errorf("demoted[%d] %q at line %d, want %q at %d", i, dm[i].Marker, line, w.marker, w.line)
+		}
+	}
+	// The fence holding a blank line pairs, and the span around the asterisk pairs.
+	paired := 0
+	for _, n := range d.Nodes() {
+		if o, ok := n.(*sdom.Opener); ok {
+			if s, _ := o.Render(); (s == "````" || s == "`") && ctx.Closer(o) != nil {
+				paired++
+			}
+		}
+	}
+	if paired != 2 {
+		t.Errorf("paired fence and span %d, want 2", paired)
+	}
+}
+
+// CRC: crc-MarkdownParser.md | R346
+// The indent parser and the wrapper need no rewind: neither was offered a position inside
+// the group, so a heading and a dedented item after a demotion read at their depth.
+func TestAHeadingInsideADemotedSpanReadsAtItsDepth(t *testing.T) {
+	d, p := parseMarkdown("- a\n  - b `x\n- c\n## d\n")
+	c := count(d)
+	indents := 0
+	for _, n := range d.Nodes() {
+		if _, ok := n.(*sdom.Indent); ok {
+			indents++
+		}
+	}
+	// Three indents: the document's opening one, the step in, and the step back out.
+	if c.items != 3 || c.headings != 1 || indents != 3 {
+		t.Errorf("items %d headings %d indents %d, want 3, 1 and 3", c.items, c.headings, indents)
+	}
+	if dm := p.Indent().Brackets().Context().Demoted(); len(dm) != 1 {
+		t.Errorf("demoted %d, want the lone backtick", len(dm))
+	}
+}

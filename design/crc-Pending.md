@@ -1,5 +1,5 @@
 # Pending
-**Requirements:** R258, R259, R260, R262, R264, R265, R283, R284, R287, R288, R289, R301, R305, R306, R311, R313, R314
+**Requirements:** R258, R259, R260, R262, R264, R265, R283, R284, R287, R288, R289, R301, R305, R306, R311, R313, R314, R351
 
 The pending file schema: embeds the markdown base, owns the document, and adds the
 queue entry — a view over a heading region, since nothing in an entry is a field a

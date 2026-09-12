@@ -199,12 +199,14 @@ func TestASourceIsAPartOrAGap(t *testing.T) {
 func TestAGroupOpenAtEndOfInputIsUnreadInPending(t *testing.T) {
 	src := "# Pending\n\n---\n\n## 1. **T**. s\n   Source: [x](x.md), part `#1`.\n\n``oops`\n## 2. **U**. s\n"
 	p := ParsePending(src)
-	if len(p.Entries()) != 1 {
-		t.Errorf("%d entries, want the one before the span", len(p.Entries()))
+	// R351: the two-run is demoted at end of input and the entry after it reads; the lone
+	// backtick it had enclosed then opens a span of its own, demoted in turn.
+	if len(p.Entries()) != 2 {
+		t.Errorf("%d entries, want both — the span was text", len(p.Entries()))
 	}
 	u := p.Unread()
-	if len(u) != 1 || u[0].Line != 8 || !strings.Contains(u[0].Text, "never closed") {
-		t.Errorf("unread %+v, want the span at line 8", u)
+	if len(u) != 2 || u[0].Line != 8 || u[1].Line != 8 || !strings.HasSuffix(u[0].Text, "read as text") || !strings.HasSuffix(u[1].Text, "read as text") {
+		t.Errorf("unread %+v, want the two-run and the lone backtick at line 8, read as text", u)
 	}
 }
 

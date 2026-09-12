@@ -89,6 +89,21 @@ type BracketGroup struct {
 	// literal, which is CommonMark's reading and the default.
 	RejectLongerCloses bool
 
+	// R346: an opener of this group whose closer is never found was text — the parse
+	// rewinds to the byte after it and re-reads what it enclosed in the enclosing
+	// mode. Without it the group closes at end of input (R75), which is what a code
+	// bracket wants and a markdown asterisk does not.
+	DemoteUnclosed bool
+
+	// R347: the group also ends, unclosed and demoted, at a blank line — CommonMark's
+	// inline rule, bounding the re-parse to a paragraph. Never for a fence, which
+	// holds blank lines; needs DemoteUnclosed (R348).
+	BlankLineBound bool
+
+	// R353: an opener with only whitespace before it on its line — a fence — takes no
+	// blank-line bound and demotes at end of input only; needs BlankLineBound.
+	LineHeadUnbound bool
+
 	AllowedInner  []string
 	AllowedParent []string
 
@@ -201,6 +216,12 @@ func (l *BracketLang) check() (*patterns, error) {
 		}
 		if g.CloseIsOpen && g.Close != "" {
 			return nil, fmt.Errorf("sdom: %s: CloseIsOpen contradicts Close %q", l.label(i), g.Close)
+		}
+		if g.BlankLineBound && !g.DemoteUnclosed { // R348
+			return nil, fmt.Errorf("sdom: %s: BlankLineBound needs DemoteUnclosed", l.label(i))
+		}
+		if g.LineHeadUnbound && !g.BlankLineBound { // R348
+			return nil, fmt.Errorf("sdom: %s: LineHeadUnbound needs BlankLineBound", l.label(i))
 		}
 		if g.OpenRegex != "" {
 			re, err := l.anchored(i, "OpenRegex", g.OpenRegex)

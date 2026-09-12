@@ -1,5 +1,5 @@
 # BracketParser
-**Requirements:** R57, R72, R73, R74, R75, R76, R77, R78, R165, R166, R192, R294, R297, R309
+**Requirements:** R57, R72, R73, R74, R75, R76, R77, R78, R165, R166, R192, R294, R297, R309, R346, R347, R353
 
 The parser. It walks a source once and appends nodes to the document in the
 order it meets them.
@@ -42,7 +42,16 @@ The source and the position belong to `ParserState`, which it is handed.
   **literal** closer is recognized, so a stray `}` lands as a bracket rather than
   derailing the parse; a close-is-open marker outside its group is an opener and has
   already matched as one
-- **A group left open at end of input closes there**, with no bytes dropped
+- **A group left open at end of input closes there**, with no bytes dropped — unless it
+  demotes: then the opener was text, and the parser **rewinds** to the byte after it, drops
+  the opener and everything since, and returns to the enclosing loop, which re-reads the
+  bytes in its own mode; a `BlankLineBound` group demotes at a blank line the same way,
+  unless `LineHeadUnbound` and its opener stood at a line head — decided once, at the
+  opener, and carried down with the opener's text. The
+  indent parser and the markdown wrapper are never offered a position inside a group, so
+  their state needs no rewind
+- **records each demotion on the context** at the rewind — marker, the run it folded into,
+  its offset there — and drops the records made inside a group it then demotes itself
 - **Whitespace is not a node of its own.** A text run is everything between two recognized
   markers, not a run of non-whitespace. A layer wanting line or indent boundaries
   contributes a parser to the same pass and emits them where they occur, rather than

@@ -84,11 +84,12 @@ func TestPrependLandsAfterTheRule(t *testing.T) {
 func TestAGroupOpenAtEndOfInputIsUnreadInDone(t *testing.T) {
 	src := "# Done\n\n---\n\n- **2026-09-05 — #1: T.** (`abc`)\nbody\n```\nlost tail\n- **2026-09-04 — #2: U.**\n"
 	d := ParseDone(src)
-	if len(d.Entries()) != 1 {
-		t.Errorf("%d entries, want the one before the fence", len(d.Entries()))
+	// R351: the fence is demoted at end of input, so the entry after it reads too.
+	if len(d.Entries()) != 2 {
+		t.Errorf("%d entries, want both — the fence was text", len(d.Entries()))
 	}
 	u := d.Unread()
-	if len(u) != 1 || u[0].Line != 7 || !strings.Contains(u[0].Text, "never closed") || !strings.Contains(u[0].Text, "```") {
-		t.Errorf("unread %+v, want the fence at line 7", u)
+	if len(u) != 1 || u[0].Line != 7 || !strings.Contains(u[0].Text, "never closed, read as text") || !strings.Contains(u[0].Text, "```") {
+		t.Errorf("unread %+v, want the fence at line 7, read as text", u)
 	}
 }

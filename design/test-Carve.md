@@ -100,12 +100,12 @@
 ## Test: a closer that closes nothing is unread
 **Purpose:** R311
 **Input:** a carve whose prose holds a two-run span with a three-run inside
-**Expected:** three unread items on that line — the span the three-run ended and the span the trailing two-run opened, both never closed, and the three-run, which closes nothing
+**Expected:** three unread items on that line — the span the three-run ended, never closed; the three-run, which closes nothing; and the span the trailing two-run opened, demoted at end of input and read as text (R351). Previously the trailing span was never closed and took the file's tail with ithing
 **Refs:** crc-Carve.md
 **Code:** minispecsdom/carve_test.go
 **Fire alarm:** drop the unpaired closers from `unbalanced`. Red: two items, no `closes nothing`.
 **Inject:** minispecsdom/unread.go:unbalanced
-**Pulled:** 2026-09-05 — rang: two items and no `closes nothing`, only that test.
+**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test alone, two items and no `closes nothing`. Previously 2026-09-07 — re-pulled after the demoted line joined the helper; rang: this test alone. Previously 2026-09-05 — rang: two items and no `closes nothing`, only that test.
 
 ## Test: SetMarker and Land read back
 **Purpose:** R316 — through the guard, by the existing write tests

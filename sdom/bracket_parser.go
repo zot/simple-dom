@@ -80,34 +80,68 @@ func (bp *BracketParser) Done(d *Doc) { bp.ctx.attach(d) }
 // unexported walk it replaced always did.
 func (bp *BracketParser) bind(st *ParserState) { bp.ctx.origin = st.origin }
 
-// CRC: crc-BracketParser.md | Seq: seq-parse.md#1 | R64, R294
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1 | R64, R294, R346
 // parseBody parses until enclosing's closer is found, or to end of input. opened is
 // the text that opened enclosing, carried down so a CloseIsOpen group closes on
-// exactly those bytes.
-func (bp *BracketParser) parseBody(st *ParserState, enclosing *BracketGroup, opened string) {
+// exactly those bytes. It reports whether the group ENDED — by its closer or a
+// rejected run — rather than running out of input or meeting its bound.
+func (bp *BracketParser) parseBody(st *ParserState, enclosing *BracketGroup, opened string, bound bool) bool {
 	if enclosing != nil && enclosing.Restricted() {
-		bp.parseRestricted(st, enclosing, opened)
-		return
+		return bp.parseRestricted(st, enclosing, opened, bound)
 	}
-	bp.parseCode(st, enclosing, opened)
+	return bp.parseCode(st, enclosing, opened, bound)
+}
+
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.4.1 | R347, R353
+// bounded decides once, at the opener, whether this instance of g ends at a blank
+// line: a BlankLineBound group, unless LineHeadUnbound and the opener has only spaces
+// or tabs before it on its line — a fence.
+func bounded(src string, pos int, g *BracketGroup) bool {
+	if !g.BlankLineBound {
+		return false
+	}
+	if !g.LineHeadUnbound {
+		return true
+	}
+	beforeOpener := src[strings.LastIndexByte(src[:pos], '\n')+1 : pos]
+	return strings.TrimLeft(beforeOpener, " \t") != ""
+}
+
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#3.4.1 | R347
+// atBound reports whether a bounded group ends unclosed here: at a blank line — a
+// newline followed by a line of only spaces or tabs.
+func atBound(st *ParserState, bound bool) bool {
+	return bound && blankLineAt(st.Src(), st.Pos())
+}
+
+// blankLineAt reports whether pos is at a newline followed by a blank line.
+func blankLineAt(src string, pos int) bool {
+	if pos >= len(src) || src[pos] != '\n' {
+		return false
+	}
+	i := pos + 1
+	for i < len(src) && (src[i] == ' ' || src[i] == '\t') {
+		i++
+	}
+	return i >= len(src) || src[i] == '\n'
 }
 
 // CRC: crc-BracketParser.md | Seq: seq-parse.md#1.3 | R72, R73, R74, R75
 //
 // parseCode parses in code mode: openers of any group allowed here, then the open
 // group's closers, then its separators, then the any-close fallback, then text.
-func (bp *BracketParser) parseCode(st *ParserState, enclosing *BracketGroup, opened string) {
-	for st.Pos() < len(st.Src()) {
+func (bp *BracketParser) parseCode(st *ParserState, enclosing *BracketGroup, opened string, bound bool) bool {
+	for st.Pos() < len(st.Src()) && !atBound(st, bound) {
 		// R291: a group closed by its own text checks its closer before any opener,
 		// or the marker would reopen rather than close; and a run of its pattern
 		// that is not the opener's text is content, whole, or a rejected closer (R309).
 		if enclosing != nil && enclosing.CloseIsOpen {
 			if bp.closeGroup(st, enclosing, opened) {
-				return
+				return true
 			}
 			handled, closed := bp.otherRun(st, enclosing, opened)
 			if closed {
-				return
+				return true
 			}
 			if handled {
 				continue
@@ -119,7 +153,7 @@ func (bp *BracketParser) parseCode(st *ParserState, enclosing *BracketGroup, ope
 		}
 		if enclosing != nil {
 			if bp.closeGroup(st, enclosing, opened) {
-				return
+				return true
 			}
 			if m := matchAny(st.Src(), st.Pos(), enclosing.Separators); m != "" {
 				st.Emit(NewSeparator(m, st.At(st.Pos(), len(m))))
@@ -136,8 +170,9 @@ func (bp *BracketParser) parseCode(st *ParserState, enclosing *BracketGroup, ope
 		// what guarantees the parse always consumes at least one byte.
 		st.Advance(1)
 	}
-	// A group left open at end of input closes there; the live run already holds
-	// every byte, so nothing drops.
+	// A group left open at end of input closes there (R75) unless it demotes, which
+	// is open's decision; the live run already holds every byte, so nothing drops.
+	return false
 }
 
 // CRC: crc-BracketParser.md | Seq: seq-parse.md#2 | R294
@@ -146,10 +181,10 @@ func (bp *BracketParser) parseCode(st *ParserState, enclosing *BracketGroup, ope
 // Escape, and the openers of the groups AllowedInner names are recognized. Every
 // other byte is literal — comments inside strings are not comments, and brackets
 // inside comments are not brackets.
-func (bp *BracketParser) parseRestricted(st *ParserState, g *BracketGroup, opened string) {
-	for st.Pos() < len(st.Src()) {
+func (bp *BracketParser) parseRestricted(st *ParserState, g *BracketGroup, opened string, bound bool) bool {
+	for st.Pos() < len(st.Src()) && !atBound(st, bound) {
 		if bp.closeGroup(st, g, opened) {
-			return
+			return true
 		}
 		if g.Escape != "" && strings.HasPrefix(st.Src()[st.Pos():], g.Escape) {
 			st.Advance(len(g.Escape))
@@ -166,20 +201,38 @@ func (bp *BracketParser) parseRestricted(st *ParserState, g *BracketGroup, opene
 		}
 		handled, closed := bp.otherRun(st, g, opened)
 		if closed {
-			return
+			return true
 		}
 		if handled {
 			continue
 		}
 		st.Advance(1)
 	}
+	return false
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-pair.md#1.1 | R81
-// open emits an opener for g and parses its body.
+// CRC: crc-BracketParser.md | Seq: seq-pair.md#1.1, seq-parse.md#3.4.2 | R81, R346, R349
+//
+// open emits an opener for g and parses its body. When the body ends without the
+// group ending and the group demotes, the opener was text: the state rewinds to
+// before the opener, the marker's bytes are taken as text, the demotion is recorded
+// — after dropping any recorded inside the group, which the outer re-parse records
+// again — and the enclosing loop re-reads everything the group had enclosed in its
+// own mode. The indent parser and the markdown wrapper were never offered a position
+// inside the group, so nothing above this parser has state to rewind.
 func (bp *BracketParser) open(st *ParserState, g *BracketGroup, marker string) {
-	st.Emit(NewOpener(marker, st.At(st.Pos(), len(marker))))
-	bp.parseBody(st, g, marker)
+	count, pos, recorded := st.NodeCount(), st.Pos(), len(bp.ctx.demoted)
+	bound := bounded(st.Src(), pos, g)
+	st.Emit(NewOpener(marker, st.At(pos, len(marker))))
+	ended := bp.parseBody(st, g, marker, bound)
+	if ended || !g.DemoteUnclosed {
+		return
+	}
+	st.Rewind(count, pos)
+	st.Advance(len(marker))
+	run := st.Last().(*Text)
+	demotion := DemotedOpener{Marker: marker, Run: run, Offset: pos - run.Location().Offset()}
+	bp.ctx.demoted = append(bp.ctx.demoted[:recorded], demotion)
 }
 
 // CRC: crc-BracketParser.md | Seq: seq-parse.md#1.4 | R82, R83, R291
