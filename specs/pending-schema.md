@@ -62,8 +62,10 @@ would not read back is not a source.
 one and a done entry's body may name more. Nothing here should make that a breaking change.
 
 **A region ends at the next heading of level 2 or higher, or at a `---` line outside a
-fence.** A fence in a body is that entry's: the base emits no heading inside one, so a
-quoted `## 5.` cannot end an entry, by construction.
+code group.** The rule is a whole line of the document — a code span reading `---`
+mid-sentence is prose, and a `---` line inside a fence is that fence's. A fence in a body is
+that entry's: the base emits no heading inside one, so a quoted `## 5.` cannot end an
+entry, by construction.
 
 **Placement is a node placement, never a byte splice.** `Place(e, pos)` renders the
 canonical entry — the heading line, the `Source:` line, an optional `Next:` line, a blank

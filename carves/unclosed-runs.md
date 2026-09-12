@@ -39,7 +39,7 @@ there every backtick in the file is flipped from open to close until the asteris
 ## Status
 
 - [x] ~~**Item 1 — an opener with no closer is demoted to text.**~~ **LANDED (`a261869`, 2026-09-12 — `#37`.)**
-- [ ] **Item 2 — the test-entry title reads to the end of its line.** **OPEN (#38.)**
+- [x] ~~**Item 2 — the test-entry title reads to the end of its line.**~~ **LANDED (`3998925`, 2026-09-12 — `#38`.)**
 - [ ] **Item 3 — a rule is a line of its own, never a code span's interior.** **OPEN (#39.)**
 
 ## Decisions
@@ -216,6 +216,8 @@ stops early and leaves a file nothing reads as wrong.
 
 **Acceptance.** A fixture entry whose body carries a three-dash code span mid-line and a second entry
 after it; the first reads whole and `Remove` of it leaves the second untouched and no tail;
-a `---` line in a fence does not end a region (already true by construction, pinned); and
+a `---` line in a fence does not end a region — **not** already true, measured 2026-09-12: the
+fence's interior is one text node and its `---` line ended the region too, so the same fix
+covers both; and
 the existing rule-ends-region test still passes. Fire alarm: the line-head test removed from
 `ruleAt`, which must leave the tail after `Remove`.

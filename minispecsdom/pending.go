@@ -206,8 +206,7 @@ func (p *Pending) regionEnd(start int) (end, cut int) {
 			return i, -1
 		}
 		if t, ok := nodes[i].(*sdom.Text); ok {
-			s, _ := t.Render()
-			if at := ruleAt(s); at >= 0 {
+			if at := p.ruleAt(t); at >= 0 {
 				return i + 1, at
 			}
 		}
@@ -215,17 +214,46 @@ func (p *Pending) regionEnd(start int) (end, cut int) {
 	return len(nodes), -1
 }
 
-// ruleAt is the byte offset of the first line that is exactly `---`, or -1.
-// SplitAfter keeps each newline with the line it ends, so every element begins one.
-func ruleAt(s string) int {
+// CRC: crc-Pending.md | Seq: seq-pending.md#1.3 | R259, R355
+//
+// ruleAt is the byte offset within t's text of the first `---` that is a whole document
+// line outside a code group, or -1. A code span's interior is its own text node reading
+// `---`, and a fence's interior is a text node holding a `---` line: neither is a rule
+// (measured 2026-09-12, both ended an entry's region). The node's boundaries are checked
+// against the source, and its enclosure against the code group. SplitAfter keeps each
+// newline with the line it ends, so every element begins one.
+func (p *Pending) ruleAt(t *sdom.Text) int {
+	if p.inCode(t) {
+		return -1
+	}
+	s, _ := t.Render()
+	src, base := p.doc.Source(), t.Location().Offset()
 	off := 0
 	for _, line := range strings.SplitAfter(s, "\n") {
 		if strings.TrimRight(line, " \t\n") == "---" {
-			return off
+			start, end := base+off, base+off+len(line)
+			atHead := start == 0 || src[start-1] == '\n'
+			atEnd := strings.HasSuffix(line, "\n") || end >= len(src) || src[end] == '\n'
+			if atHead && atEnd {
+				return off
+			}
 		}
 		off += len(line)
 	}
 	return -1
+}
+
+// CRC: crc-Pending.md | R355
+// inCode reports whether n sits inside a code group — a span or a fence.
+func (p *Pending) inCode(n sdom.Node) bool {
+	lang := p.ctx.Language()
+	for enc := p.ctx.Enclosing(n); enc != nil; enc = p.ctx.Enclosing(enc) {
+		s, _ := enc.Render()
+		if g := lang.GroupFor(s); g != nil && g.Kind == "code" {
+			return true
+		}
+	}
+	return false
 }
 
 // derive reads the values from the run's rendered bytes, and returns the `Source:` line
@@ -340,12 +368,18 @@ func (p *Pending) Place(e EntryText, pos int) error {
 		return ErrBadGapSource
 	}
 	text := e.Text()
+	var rule *sdom.Text
+	var at int
+	var last bool
+	if n == 0 {
+		rule, at, last = p.headerRule()
+	}
 	if err := p.doc.Mutate(func() error {
 		if pos <= n {
 			return p.insert(text, p.entries[pos-1].head)
 		}
 		if n == 0 {
-			return p.placeFirst(text)
+			return p.placeFirst(text, rule, at, last)
 		}
 		last := p.entries[n-1]
 		if last.tail == nil {
@@ -407,38 +441,49 @@ func (p *Pending) appendEntry(text string) error {
 
 // CRC: crc-Pending.md | Seq: seq-pending.md#2.3.3 | R305
 //
-// placeFirst lands the only entry after the header's rule — the first `---` line in the
-// file — with one blank line between, whether the rule is followed by commentary or by
-// nothing; with no rule at all the entry goes at end of file.
-func (p *Pending) placeFirst(text string) error {
+// headerRule finds the header's rule — the first `---` line in the file — as the text
+// holding it, the rule's offset within that text, and whether the text is the file's
+// last node. Read-only, and called before the mutation window opens, since deciding
+// what is a rule asks the context (R355) and the context does not answer mid-mutation.
+func (p *Pending) headerRule() (t *sdom.Text, at int, last bool) {
 	nodes := p.doc.Nodes()
 	for i, n := range nodes {
 		t, ok := n.(*sdom.Text)
 		if !ok {
 			continue
 		}
-		s, _ := t.Render()
-		at := ruleAt(s)
-		if at < 0 {
-			continue
+		if at := p.ruleAt(t); at >= 0 {
+			return t, at, i == len(nodes)-1
 		}
-		cut := at + len("---\n")
-		if cut > len(s) || (cut == len(s) && i == len(nodes)-1) {
-			// The rule is the file's last line, with no newline or with nothing after it.
-			return p.appendEntry(text)
-		}
-		if strings.HasPrefix(s[cut:], "\n") {
-			cut++ // the blank line after the rule already exists
-		} else {
-			text = "\n" + text
-		}
-		_, right, err := p.doc.Split(t, cut)
-		if err != nil {
-			return err
-		}
-		return p.insert(text, right)
 	}
-	return p.appendEntry(text)
+	return nil, -1, false
+}
+
+// CRC: crc-Pending.md | Seq: seq-pending.md#2.3.3 | R305
+//
+// placeFirst lands the only entry after the header's rule, found by headerRule, with one
+// blank line between, whether the rule is followed by commentary or by nothing; with no
+// rule at all the entry goes at end of file.
+func (p *Pending) placeFirst(text string, t *sdom.Text, at int, last bool) error {
+	if t == nil {
+		return p.appendEntry(text)
+	}
+	s, _ := t.Render()
+	cut := at + len("---\n")
+	if cut > len(s) || (cut == len(s) && last) {
+		// The rule is the file's last line, with no newline or with nothing after it.
+		return p.appendEntry(text)
+	}
+	if strings.HasPrefix(s[cut:], "\n") {
+		cut++ // the blank line after the rule already exists
+	} else {
+		text = "\n" + text
+	}
+	_, right, err := p.doc.Split(t, cut)
+	if err != nil {
+		return err
+	}
+	return p.insert(text, right)
 }
 
 // CRC: crc-Pending.md | Seq: seq-pending.md#3 | R306, R265

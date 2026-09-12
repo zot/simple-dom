@@ -290,3 +290,27 @@ func TestAWriteThatDoesNotReadBackPanics(t *testing.T) {
 	}()
 	mustReadBack("Pending", "Place", "7", false, "x", "y")
 }
+
+// CRC: crc-Pending.md | Seq: seq-pending.md#1.3 | R355
+// A three-dash code span mid-sentence and a `---` line inside a fence are not rules:
+// the region runs on to the next entry, and Remove leaves no tail behind.
+func TestARuleIsALineOfItsOwnOutsideCode(t *testing.T) {
+	head := "# Pending\n\n---\n\n"
+	two := "## 6. **two**. s\n   Source: [c.md](c.md), part `#2`.\n"
+	for name, body := range map[string]string{
+		"span":  "body from its `---` rule the way it does.\n\nmore tail.\n\n",
+		"fence": "```\n---\n```\n\nmore tail.\n\n",
+	} {
+		src := head + "## 5. **one**. s\n   Source: [c.md](c.md), part `#1`.\n\n" + body + two
+		p := ParsePending(src)
+		if n := len(p.Entries()); n != 2 {
+			t.Fatalf("%s: %d entries, want 2", name, n)
+		}
+		if err := p.Remove(5); err != nil {
+			t.Fatal(err)
+		}
+		if got, _ := p.Render(); got != head+two {
+			t.Errorf("%s: the region ended at the dashes, leaving a tail:\n%s", name, got)
+		}
+	}
+}

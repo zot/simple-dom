@@ -8,7 +8,7 @@
    1.2. For each level-2 `Heading`: if the text after it opens `N.`, an entry begins;
         otherwise it is listed as unread, with its line
    1.3. The region runs to the next level-2-or-higher heading, or to a text holding a
-        `---` line, where the run is cut
+        `---` that is a whole document line outside a code group, where the run is cut
    1.4. Derive the values from the run's rendered bytes: the heading line, the
         `Source:` line, the `Next:` line
         1.4.1. The `Source:` line reads as `part` or `gap` by its word; a part key drops

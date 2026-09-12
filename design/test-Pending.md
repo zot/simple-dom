@@ -113,3 +113,14 @@
 **Fire alarm:** corrupt `Place`'s bytes — prefix the inserted text with `#`. Red: every `Place` test panics with `Pending.Place … did not read back`. A second: have `Remove` leave the head node in place. Red: `Remove … the entry still reads`.
 **Inject:** minispecsdom/pending.go:Pending.Place, minispecsdom/pending.go:Pending.Remove
 **Pulled:** 2026-09-05 — pulled again after the simplifier restructured the guards, rang again; first: both rang: the corrupted placement and the unremoved head each panicked through the guard in every write test.
+
+## Test: a rule is a line of its own outside code
+**Purpose:** R355 — mini-spec's `pending finish 55` left an entry's tail behind a three-dash code span (2026-09-12); a `---` line in a fence did the same here, measured the same day
+**Input:** two entries; the first's body holds a three-dash code span mid-sentence, or a fence whose one line is `---`; `Remove` of the first
+**Expected:** both read as two entries; after `Remove` the render is the header and the second entry, no tail
+**Refs:** crc-Pending.md, seq-pending.md#1.3
+**Code:** minispecsdom/pending_test.go
+**Fire alarm:** in `ruleAt`, drop the `inCode` guard and the two boundary tests, so any node line reading `---` counts. Red: both cases leave a tail after `Remove`, the span case from the closing backtick on.
+**Inject:** minispecsdom/pending.go:Pending.ruleAt
+
+**Pulled:** 2026-09-12 — rang: this test alone, both cases (`the region ended at the dashes, leaving a tail`); injection by hand in the live tree, restored from a copy, diff checked.

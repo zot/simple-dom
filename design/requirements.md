@@ -612,6 +612,9 @@
   close, with the ID taken from the bytes before it and the skill and status from the bytes after.
 - **R314:** After the re-read, `Place` finds the entry at its position with every field and `Remove` no
   longer finds it, or the write panics with a `ReadBackError` naming reader, write, key, want and got.
+- **R355:** A `---` counts as the rule only when it is a whole document line outside a code group;
+  a code span's interior reading `---` and a `---` line inside a fence are body text, and the header
+  rule is found before a placement's mutation window opens.
 
 ## Feature: done schema
 **Source:** specs/done-schema.md
