@@ -1,10 +1,13 @@
 # Carve: an opener never closed is text
 
-> **DRAFT (2026-09-07).** Opened the evening mini-spec's second opinion — an independent line
-> scan its `validate` now runs over every document our readers own — reported on three
-> repositories that an inline marker with no closer takes the rest of the file with it, and
-> that a `## Test:` heading's title stops at its first code span. Every instance was
-> reproduced here against `2a9921c` before the scope below was written.
+> **CLOSED (2026-09-12).** Three parts landed in three commits (`a261869`, `3998925`,
+> `2139d1f`); the decisions live in `specs/bracket-parser.md`, `specs/markdown.md`,
+> `specs/testdoc-schema.md` and `specs/pending-schema.md`, and R346–R355. Originally opened
+> 2026-09-07, the evening mini-spec's second opinion reported on three repositories that an
+> inline marker with no closer takes the rest of the file with it, and that a `## Test:`
+> heading's title stops at its first code span; Item 3 joined 2026-09-12 from mini-spec's
+> report of a pending region ending at a three-dash code span. Every instance was reproduced
+> here before its scope was written.
 
 `carves/done/backtick-runs.md` gave the markdown base CommonMark's run rule and made the
 parser *say* when a group is still open at end of input. Saying so was the right first half:
@@ -40,7 +43,7 @@ there every backtick in the file is flipped from open to close until the asteris
 
 - [x] ~~**Item 1 — an opener with no closer is demoted to text.**~~ **LANDED (`a261869`, 2026-09-12 — `#37`.)**
 - [x] ~~**Item 2 — the test-entry title reads to the end of its line.**~~ **LANDED (`3998925`, 2026-09-12 — `#38`.)**
-- [ ] **Item 3 — a rule is a line of its own, never a code span's interior.** **OPEN (#39.)**
+- [x] ~~**Item 3 — a rule is a line of its own, never a code span's interior.**~~ **LANDED (`2139d1f`, 2026-09-12 — `#39`.)**
 
 ## Decisions
 
