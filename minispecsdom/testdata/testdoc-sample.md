@@ -16,14 +16,14 @@ The two differ only in the boundary, which is the whole property
 **Code:** internal/alarm/alarm_test.go
 **Alarm:** 3
 
-## Test: pending entries read through the dependency
+## Test: pending entries read through **the dependency**
 **Purpose:** validates R240 — the adapter reads ID, source document, source key and kind
 **Input:** a pending file with a part-sourced and a gap-sourced entry
 **Expected:** two entries with the expected IDs, keys and kinds
 **Refs:** crc-Trajectory.md — R240
 **Code:** internal/parser/trajectory_test.go
 
-## Test: the pre-track refusal asks the intent and stops
+## Test: the pre-`track` refusal asks the intent and stops
 **Purpose:** validates R175 and R176
 **Input:** `preTrackMessage`
 **Expected:** carries the stop and the private-or-ships question

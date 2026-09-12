@@ -151,10 +151,7 @@ func (t *TestDoc) scan() {
 		if !ok || h.Level() != 2 {
 			continue
 		}
-		var title string
-		if i+1 < len(nodes) {
-			title = headingText(nodes[i+1])
-		}
+		title := headingLine(t.doc, h) // R354: the whole line after the marker, as source
 		line := t.doc.Line(h.Location().Offset())
 		rest, isTest := strings.CutPrefix(title, "Test:")
 		if !isTest {
@@ -430,4 +427,19 @@ func (t *TestDoc) NumberAlarms() ([]int, error) {
 	}
 	mustReadBack("TestDoc", "NumberAlarms", fmt.Sprint(assigned), ok, "every assigned number on an alarm", fmt.Sprintf("%d entries", len(t.entries)))
 	return assigned, nil
+}
+
+// CRC: crc-TestDoc.md | Seq: seq-testdoc.md#1.2 | R354
+// headingLine is every byte of the heading's line after its marker, trimmed, read from
+// the source rather than the node after the marker — so a code span or emphasis in the
+// heading rides along as source instead of ending the title at its opener.
+func headingLine(doc *sdom.Doc, h *schema.Heading) string {
+	src := doc.Source()
+	loc := h.Location()
+	from := loc.Offset() + loc.Length()
+	to := strings.IndexByte(src[from:], '\n')
+	if to < 0 {
+		to = len(src) - from
+	}
+	return strings.TrimSpace(src[from : from+to])
 }

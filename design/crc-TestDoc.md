@@ -1,5 +1,5 @@
 # TestDoc
-**Requirements:** R319, R320, R321, R322, R323, R324, R325, R326, R327, R328, R329, R351
+**Requirements:** R319, R320, R321, R322, R323, R324, R325, R326, R327, R328, R329, R351, R354
 
 The test-design file schema: embeds the markdown base, owns the document, and adds the
 `## Test:` entry with its five alarm fields. The first reader over a design document rather

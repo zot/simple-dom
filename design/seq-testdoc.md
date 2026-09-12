@@ -5,8 +5,8 @@
 
 1. `ParseTestDoc(src)`
    1.1. Parse with the markdown base
-   1.2. For each level-2 `Heading`: the title is the following text's first line; one not
-        beginning `Test:` is unread
+   1.2. For each level-2 `Heading`: the title is the rest of the heading's source line after
+        the marker, whatever markers it carries; one not beginning `Test:` is unread
    1.3. The region ends at the next heading of level 2 or higher, or the end
    1.4. Render the region's nodes to lines, noting which lines fall inside a code group
         (`Enclosing` on the node, group kind `code`)

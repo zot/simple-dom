@@ -108,7 +108,7 @@ func TestTestDocSetPulled(t *testing.T) {
 		t.Errorf("read back %+v", e.Pulled)
 	}
 	// Outside the entry nothing moved: the other three entries render as before.
-	for _, part := range []string{"## Test: pending entries", "## Test: the pre-track", "## Notes\n\nA level-2"} {
+	for _, part := range []string{"## Test: pending entries", "## Test: the pre-`track`", "## Notes\n\nA level-2"} {
 		if !strings.Contains(out, part) {
 			t.Errorf("lost %q", part)
 		}
@@ -199,5 +199,24 @@ func TestTestDocNumberAlarms(t *testing.T) {
 	}
 	if d.Tests()[1].Alarm != 0 {
 		t.Error("an entry with no Fire alarm was numbered")
+	}
+}
+
+// CRC: crc-TestDoc.md | Seq: seq-testdoc.md#1.2 | R354
+func TestATitleWithACodeSpanOrBoldReadsWhole(t *testing.T) {
+	d, _ := loadTestDoc(t)
+	want := map[string]bool{
+		"the pre-`track` refusal asks the intent and stops": false,
+		"pending entries read through **the dependency**":   false,
+	}
+	for _, e := range d.Tests() {
+		if _, ok := want[e.Title]; ok {
+			want[e.Title] = true
+		}
+	}
+	for title, seen := range want {
+		if !seen {
+			t.Errorf("no entry titled %q — the title stopped at a marker", title)
+		}
 	}
 }

@@ -704,6 +704,8 @@
   append-only, idempotent, no number for an entry with no `**Fire alarm:**`, refused whole with a
   `DeviationError` when an unnumbered alarm entry carries deviations, and it returns the numbers
   assigned in document order.
+- **R354:** The title is every byte after `Test:` to the end of the heading's line, read from the
+  source, so a code span or emphasis in the heading is part of the title as its own bytes.
 
 ## Feature: gaps schema
 **Source:** specs/gaps-schema.md

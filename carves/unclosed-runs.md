@@ -38,7 +38,7 @@ there every backtick in the file is flipped from open to close until the asteris
 
 ## Status
 
-- [ ] **Item 1 — an opener with no closer is demoted to text.** **OPEN (#37.)**
+- [x] ~~**Item 1 — an opener with no closer is demoted to text.**~~ **LANDED (`a261869`, 2026-09-12 — `#37`.)**
 - [ ] **Item 2 — the test-entry title reads to the end of its line.** **OPEN (#38.)**
 - [ ] **Item 3 — a rule is a line of its own, never a code span's interior.** **OPEN (#39.)**
 

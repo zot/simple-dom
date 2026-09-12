@@ -55,3 +55,14 @@
 **Fire alarm:** count from the number of entries rather than the highest number present. Red: the assigned number collides with 3 or is not 4.
 **Inject:** minispecsdom/testdoc.go:TestDoc.NumberAlarms
 **Pulled:** 2026-09-06 — rang, by hand: `assigned [5], want [4]`; restore byte-clean
+
+## Test: a title with a code span or bold reads whole
+**Purpose:** R354 — mini-spec's *the pre-`track` refusal asks the intent and stops* read as *the pre-*; 25 of its headings carry a code span
+**Input:** the fixture, whose headings now hold a code span and a bold run
+**Expected:** both titles read whole, markers included, as source
+**Refs:** crc-TestDoc.md, seq-testdoc.md#1.2
+**Code:** minispecsdom/testdoc_test.go
+**Fire alarm:** cut the title back to the first text node after the marker (`headingText(nodes[i+1])`). Red: no entry titled with the span or the bold; the titles stop at the pre- and at through.
+**Inject:** minispecsdom/testdoc.go:TestDoc.scan
+
+**Pulled:** 2026-09-12 — rang: this test alone, both titles missing (`the title stopped at a marker`); injection by hand in the live tree, restored by reverse edit, diff checked.

@@ -42,7 +42,9 @@ func (e *TestEntry) Deviations() []Deviation  // each doubled field, by name
 ## What it reads
 
 **An entry is a region**: from a level-2 heading whose text begins `Test:` to the next
-heading of level 2 or higher, or the end of the file. The title is the text after `Test:`.
+heading of level 2 or higher, or the end of the file. The title is every byte after `Test:` to
+the end of the heading's line, read as source — a code span or emphasis in the heading rides
+along as its own bytes rather than ending the title at its opener.
 A level-2 heading that is not a test — `## Notes`, a stray `## Status` — is listed as
 unread rather than guessed at, and a fenced `## Test:` is no heading at all to the base, so
 it neither opens an entry nor ends one.
