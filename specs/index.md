@@ -44,34 +44,12 @@ honest.
   a narrow `IndentLang` and a one-pass parser wrapping `IndentParser` that emits
   line-head markers.
 
-## minispecsdom — mini-spec's readers
+## minispecsdom — moved out
 
-A sibling package of `sdom` in this repo. The only system that may know what a CRC
-card is, and the only one that will ever be used by mini-spec alone. The boundary is
-enforced by the compiler rather than by discipline.
-
-- [traceability-comment.md](traceability-comment.md) — the anchor comment as one
-  node over the whole group: grammar, `Parse`, the second pass, and construction.
-- [part-line.md](part-line.md) — a carve status line as one node: bound checkbox
-  and key, marker spans, strike behind an accessor, deviations as the contract.
-- [carve-schema.md](carve-schema.md) — the first file schema: owns a carve's DOM,
-  reads the `## Status` region into parts with depth, writes markers and landings.
-- [testdoc-schema.md](testdoc-schema.md) — the first design-document reader: a test
-  design's `## Test:` entries, the five alarm fields, and the three alarm writes
-  (pulled, inject, number-alarms) through node references.
-- [gaps-schema.md](gaps-schema.md) — the `## Gaps` section of a design document: typed,
-  numbered entries with checkbox or permanence, nesting, and the add, resolve and
-  approve writes.
-- [requirements-schema.md](requirements-schema.md) — `requirements.md`: sections at any
-  level with their own content and source, live and retired entries, and the add and
-  retire writes.
-- [pending-schema.md](pending-schema.md) — the queue file: entries as views over
-  heading regions, placement by position never by splice, removal, and what could
-  not be read.
-- [done-schema.md](done-schema.md) — the ledger: entries at `- **`, the identifier
-  slot between em dash and colon, the part pointer, prepend after the rule.
-- [current-schema.md](current-schema.md) — the resume buffer: exactly one `## Active`,
-  its region set or reset as a unit, standing sections never touched.
+The readers mini-spec builds over `sdom` lived here as a sibling package until 2026-09-14,
+when they moved to mini-spec's `tool/internal/minispecsdom` with their nine specs and
+design (mini-spec's `carves/minispecsdom-move.md`). Nothing in this repository knows what
+a CRC card is any more; the boundary is now the module boundary.
 
 ## Summary specs
 

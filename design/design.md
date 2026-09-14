@@ -37,16 +37,6 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] crc-TodoItem.md → `sdom/stencil_test.go`
 - [x] crc-List.md → `sdom/list.go`
 - [x] crc-RequirementList.md → `sdom/list.go`
-- [x] crc-Current.md → `minispecsdom/current.go`
-- [x] crc-Done.md → `minispecsdom/done.go`
-- [x] crc-Pending.md → `minispecsdom/pending.go`
-- [x] crc-Carve.md → `minispecsdom/carve.go`
-- [x] crc-PartLine.md → `minispecsdom/partline.go`
-- [x] crc-MarkerSpan.md → `minispecsdom/partline.go`
-- [x] crc-TraceabilityComment.md → `minispecsdom/comment.go`
-- [x] crc-TestDoc.md → `minispecsdom/testdoc.go`, `minispecsdom/mdbase.go`
-- [x] crc-Gaps.md → `minispecsdom/gaps.go`
-- [x] crc-Requirements.md → `minispecsdom/requirements.go`
 - [x] crc-Declaration.md → `sdom/declaration.go`
 - [x] crc-DeclSchema.md → `sdom/schema/schema.go`
 - [x] crc-GoSchema.md → `sdom/schema/golang.go`
@@ -65,15 +55,7 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] seq-stencil.md → `sdom/stencil.go`
 - [x] seq-declare.md → `sdom/declaration.go`, `sdom/schema/schema.go`
 - [x] seq-markdown.md → `sdom/schema/markdown.go`
-- [x] seq-current.md → `minispecsdom/current.go`
-- [x] seq-done.md → `minispecsdom/done.go`
-- [x] seq-pending.md → `minispecsdom/pending.go`
-- [x] seq-carve.md → `minispecsdom/carve.go`
-- [x] seq-partline.md → `minispecsdom/partline.go`
-- [x] seq-anchor.md → `sdom/list.go`, `minispecsdom/comment.go`
-- [x] seq-testdoc.md → `minispecsdom/testdoc.go`
-- [x] seq-gaps.md → `minispecsdom/gaps.go`
-- [x] seq-requirements.md → `minispecsdom/requirements.go`
+- [x] seq-anchor.md → `sdom/list.go`
 
 ### Test Designs
 - [x] test-Node.md → `sdom/node_test.go`
@@ -91,15 +73,6 @@ Source: [carves/done/simple-dom.md](../carves/done/simple-dom.md), part `#1`.
 - [x] test-DeclSchema.md → `sdom/schema/declaration_test.go`
 - [x] test-List.md → `sdom/list_test.go`
 - [x] test-Markdown.md → `sdom/schema/markdown_test.go`
-- [x] test-Current.md → `minispecsdom/current_test.go`
-- [x] test-Done.md → `minispecsdom/done_test.go`
-- [x] test-Pending.md → `minispecsdom/pending_test.go`
-- [x] test-Carve.md → `minispecsdom/carve_test.go`
-- [x] test-PartLine.md → `minispecsdom/partline_test.go`
-- [x] test-TraceabilityComment.md → `minispecsdom/comment_test.go`
-- [x] test-TestDoc.md → `minispecsdom/testdoc_test.go`
-- [x] test-Gaps.md → `minispecsdom/gaps_test.go`
-- [x] test-Requirements.md → `minispecsdom/requirements_test.go`
 
 ## Gaps
 
