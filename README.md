@@ -138,6 +138,16 @@ comments carry traceability links such as `// CRC: crc-Doc.md | R1, R2` back to 
 design and requirements. Start with [`specs/index.md`](specs/index.md) if you want
 the reasoning behind a decision.
 
+It works in the other direction too: **mini-spec is built on simple-dom.** Starting
+with [mini-spec 3.0.0](https://github.com/zot/mini-spec/releases/tag/v3.0.0), its
+CLI reads and edits its own artifacts through sdom: traceability comments in every
+supported language, requirements, design gaps, carves, and the queue files. It
+changes a checkbox or a marker in place and leaves every other byte of your file
+alone. Its readers live in
+[`tool/internal/minispecsdom`](https://github.com/zot/mini-spec/tree/v3.0.0/tool/internal/minispecsdom).
+They're a good worked example of building a schema on stencils, lists and the
+markdown base.
+
 ## License
 
 [MIT](LICENSE)
