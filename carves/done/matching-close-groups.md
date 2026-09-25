@@ -1,8 +1,11 @@
 # Carve: a closer that must match its opener
 
-> **DRAFT (2026-09-25).** Opened the morning mini-spec asked for two things it needs to read
-> code files through sdom with language tables loaded from a project's config. Scope and
-> design were settled the same day; Items 4 and 5 joined from what the design turned up.
+> **CLOSED (2026-09-25).** Five parts landed the day the carve opened, as queue items #40–#44;
+> the decisions live in `specs/bracket-parser.md` (the construction paragraph, "Closers that
+> must agree with their opener", the parsing rules and the derivation paragraph) and R354–R361.
+> Opened the morning mini-spec asked for two things it needs to read code files through sdom
+> with language tables loaded from a project's config; Items 4 and 5 joined from what the
+> design turned up, and every rule was measured here before its scope was written.
 
 mini-spec is moving its code-file traceability reading onto sdom (its items #93/#94). A
 project will define languages in `.minispec/config.toml`, the definition mirroring
@@ -41,7 +44,7 @@ or comment closes a real group. The repair is the one proposed.
 
 - [x] ~~**Item 1 — `Check() error`, exported.**~~ **LANDED (2026-09-25 — `#40`.)**
 - [x] ~~**Item 2 — a closer whose named groups must equal the opener's.**~~ **LANDED (2026-09-25 — `#43`.)**
-- [ ] **Item 3 — Lua long brackets at every level.** **OPEN (#44.)**
+- [x] ~~**Item 3 — Lua long brackets at every level.**~~ **LANDED (2026-09-25 — `#44`.)**
 - [x] ~~**Item 4 — `rebuild()` ends a group wherever the parse does (R309).**~~ **LANDED (2026-09-25 — `#41`.)**
 - [x] ~~**Item 5 — a closer that matches an enclosing group closes it, ending the groups in between.**~~ **LANDED (2026-09-25 — `#42`.)**
 

@@ -8,7 +8,7 @@ ways at once, and one of them is not text at all.
 - `local` — an ordinary keyword, in a text node
 - `function` — a **bracket opener**, closing with `end`, so no text pattern sees it
 - a keyword-less global assignment, `NAME =`, with whitespace permitted
-- its comment markers: `--` and `--[[`
+- its comment markers: `--`, and `--[[` at every level (`--[==[`)
 
 ## Does
 - matches one alternation with a `kw` branch and a `name` branch, over top-level

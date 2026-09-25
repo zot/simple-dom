@@ -5,12 +5,16 @@
 **Purpose:** R121 — the tables cover the mechanism as well as serving the
 languages mini-spec reads, and this is the assertion that keeps the first half
 true as they change
-**Input:** the six shipped tables
-**Expected:** across them, each of `Open`, `Separators`, `Close`, `Escape`,
-`AllowedInner` (both nil and non-nil) and `AllowedParent` is exercised by at
-least one group. A field live in no table is dead code
+**Input:** every shipped table — the six in `sdom`, `LangPython`, and the markdown base's
+`LangMarkdown` from `sdom/schema`, which alone uses the flanking, run and demotion fields
+**Expected:** every field of `BracketGroup`, read by reflection so a new field is covered the
+day it is added, is set by at least one group, and `AllowedInner` is seen in all three modes
+(nil, empty, named). A field live in no table is dead code
 **Refs:** crc-BracketLang.md
-**Code:** sdom/lang_test.go
+**Code:** sdom/schema/fields_test.go
+**Fire alarm:** drop `LineHeadUnbound` from markdown's code group, its only user. Red: `LineHeadUnbound is exercised by no shipped table, so it is dead code`, beside the fence fixture test.
+**Inject:** sdom/schema/markdown.go:LangMarkdown
+**Pulled:** 2026-09-25 — rang: this test, naming `LineHeadUnbound`, and `TestAnOpenerNeverClosedIsText`.
 
 ## Test: Go
 **Purpose:** R59, R62 — comments and strings as groups, not special cases
@@ -65,7 +69,7 @@ is not an interpolation opener
 **Alarm:** 2
 **Fire alarm:** set Lua's `Prefix` to `--[[ ` with `Suffix` `\n` — the opener is the block form, whose closer is `]]`, so the constructed comment does not close and the kind check still passes; make the test also require `ctx.Closer(opener)` to render `Suffix`, and then this injection is red.
 **Inject:** sdom/lang.go:LangLua
-**Pulled:** 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `lua: the constructed comment never closes`, only that case. Previously 2026-09-03 — rang: `lua: the constructed comment never closes`, only that case; the test already asserted the closer, so the injection's own caveat did not apply.
+**Pulled:** 2026-09-25 — re-pulled after R361 made the block comment a pattern group; rang: this test. Previously 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `lua: the constructed comment never closes`, only that case. Previously 2026-09-03 — rang: `lua: the constructed comment never closes`, only that case; the test already asserted the closer, so the injection's own caveat did not apply.
 
 ## Test: every shipped table constructs
 **Purpose:** R296 — the construction check runs over every shipped `BracketLang` so a consumer never meets the panic
@@ -73,3 +77,24 @@ is not an interpolation opener
 **Expected:** `NewBracketParser` returns without panicking for each
 **Refs:** crc-BracketLang.md
 **Code:** sdom/lang_test.go
+
+## Test: Lua long brackets at every level
+**Purpose:** R361 — a level-n long string or block comment closes only on a closer of level n
+**Input:** `LangLua` over the morning's three probes (a level-1 string and comment holding a level-0 closer, a level-0 string holding a level-1 closer), an `end` inside a level-1 comment and inside a level-1 string, and index brackets beside a long string
+**Expected:** each source's pairing as hand-written, and each round-trips
+**Refs:** crc-BracketLang.md
+**Code:** sdom/lang_test.go
+**Fire alarm:** turn the long-string group back into the literal `[[`/`]]` group. Red: the level-1 string cases, `[=[` read as two index brackets.
+**Inject:** sdom/lang.go:LangLua
+**Pulled:** 2026-09-25 — rang: the two level-1 string cases (`[] [] | ] ] |`; the `end` still reaches its `if`, now by the parent rule through two unclosed index brackets).
+
+## Test: Lua long brackets at every level — the block comment
+**Purpose:** R361 — the block comment takes every level too
+**Input:** the case table above, the two comment cases
+**Expected:** as above
+**Refs:** crc-BracketLang.md, crc-LuaSchema.md
+**Code:** sdom/lang_test.go
+**Fire alarm:** turn the block-comment group back into the literal `--[[`/`]]` group. Red: the comment cases, `--[=[` read as a line comment and the `end` on its next line closing the function.
+**Inject:** sdom/lang.go:LangLua
+**Pulled:** 2026-09-25 — rang: both comment cases; the function closed on the commented `end` and the real one was left unpaired.
+

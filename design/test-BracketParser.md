@@ -295,5 +295,5 @@ tiles it
 **Code:** sdom/parser_test.go
 **Fire alarm:** drop the check. Red: no panic.
 **Inject:** sdom/bracket.go:BracketLang.check
-**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test alone, `panic <nil>, want one naming BlankLineBound`. Previously 2026-09-07 — rang: this test alone, with the `BlankLineBound` check dropped.
+**Pulled:** 2026-09-25 — re-pulled after R359 added checks to `check`; rang: this test (`panic <nil>, want one naming BlankLineBound`) and `TestCheckReturnsWhatConstructionPanicsWith` (`BlankLineBound: Check <nil>, panic <nil>`). Previously 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test alone, `panic <nil>, want one naming BlankLineBound`. Previously 2026-09-07 — rang: this test alone, with the `BlankLineBound` check dropped.
 **Alarm:** 11

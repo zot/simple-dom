@@ -179,8 +179,11 @@
   instance.
 - **R121:** The package exports the language tables `LangGo`, `LangShell`, `LangPascal`,
   `LangJavaScript`, `LangTypeScript` and `LangLua`, chosen both so that every field of
-  `BracketGroup` is exercised by at least one of them and so that the languages mini-spec reads
-  are covered.
+  `BracketGroup` is exercised by at least one of them or by the markdown base's table that
+  `sdom/schema` ships, and so that the languages mini-spec reads are covered.
+- **R361:** `LangLua` reads long strings and block comments at every level, `[==[ … ]==]` and
+  `--[==[ … ]==]`, each closing only on a closer with the same number of `=`; a closer of
+  another level inside is content.
 
 - **R152:** An opener knows the separators belonging to its group.
 - **R153:** A separator knows its opener.

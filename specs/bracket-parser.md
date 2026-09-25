@@ -218,13 +218,16 @@ Tables are **Go values**, exported from the package:
 - **`LangJavaScript`** — the only one exercising `AllowedInner` and
   `AllowedParent` together, through `` `text ${expr} more` ``.
 - **`LangTypeScript`** — the same brackets as JavaScript; types add none.
-- **`LangLua`** — `function`/`do`/`if` … `end`, `repeat`/`until`, `[[ ]]` long
-  strings and `--[[ ]]` block comments.
+- **`LangLua`** — `function`/`do`/`if` … `end`, `repeat`/`until`, and long strings and
+  block comments at every level, `[==[ … ]==]` and `--[==[ … ]==]`, each closing only on
+  the same number of `=` — the table's use of `CloseRegex`.
 - **`LangPython`** — the first `IndentLang`, and the only table modelling string
   **prefixes**. See below.
 
 **The set has two jobs, and it used to have one.** It still covers the mechanism:
-between them every field of `BracketGroup` is live, so no mode is dead code and the
+between them, with the markdown base's table that `sdom/schema` ships, every field of
+`BracketGroup` is live — the flanking, run and demotion fields are markdown's alone — so no
+mode is dead code and the
 recognition count has languages that actually recognize something. It now also
 **serves the languages mini-spec reads** — Go, TypeScript, JavaScript, Lua and
 Shell, with Python following the indent parser. `LangPascal` earns its place under

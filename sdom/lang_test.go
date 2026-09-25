@@ -18,49 +18,6 @@ func assertContains(t *testing.T, got string, wants ...string) {
 	}
 }
 
-// CRC: crc-BracketLang.md | R121
-//
-// The tables are chosen to cover the mechanism; this is the assertion that keeps
-// that true as they change. A field live in no table is dead code.
-func TestEveryFieldOfBracketGroupIsLiveSomewhere(t *testing.T) {
-	seen := map[string]bool{}
-	for _, lang := range shippedLangs() {
-		for i := range lang.Brackets {
-			g := &lang.Brackets[i]
-			if len(g.Open) > 0 {
-				seen["Open"] = true
-			}
-			if len(g.Separators) > 0 {
-				seen["Separators"] = true
-			}
-			if len(g.Close) > 0 {
-				seen["Close"] = true
-			}
-			if g.Escape != "" {
-				seen["Escape"] = true
-			}
-			if g.AllowedInner == nil {
-				seen["AllowedInner(nil)"] = true
-			} else if len(g.AllowedInner) == 0 {
-				seen["AllowedInner(empty)"] = true
-			} else {
-				seen["AllowedInner(named)"] = true
-			}
-			if g.AllowedParent != nil {
-				seen["AllowedParent"] = true
-			}
-		}
-	}
-	for _, field := range []string{
-		"Open", "Separators", "Close", "Escape",
-		"AllowedInner(nil)", "AllowedInner(empty)", "AllowedInner(named)", "AllowedParent",
-	} {
-		if !seen[field] {
-			t.Errorf("%s is exercised by no shipped table, so it is dead code", field)
-		}
-	}
-}
-
 // CRC: crc-BracketLang.md | R59, R62
 // Comments and strings as groups, not special cases.
 func TestLangGo(t *testing.T) {
@@ -155,6 +112,30 @@ func TestEveryShippedTableConstructs(t *testing.T) {
 	for name, lang := range langs {
 		if r := recovered(func() { NewBracketParser(lang) }); r != nil {
 			t.Errorf("%s: %v", name, r)
+		}
+	}
+}
+
+// CRC: crc-BracketLang.md | R361
+// Lua's long strings and block comments at every level: a closer of another level
+// inside is content, and a keyword inside closes nothing. The first three are the
+// probes that found level 1 unread (2026-09-25).
+func TestLuaLongBracketsAtEveryLevel(t *testing.T) {
+	cases := []struct{ name, src, want string }{
+		{"a level-1 string holds a level-0 closer", "x = [=[ a ]] b ]=] y", "[=[]=] | |"},
+		{"a level-0 string holds a level-1 closer", "x = [[ a ]=] b ]] y", "[[]] | |"},
+		{"a level-1 comment holds a level-0 closer", "--[=[ a ]] b ]=] y", "--[=[]=] | |"},
+		{"end inside a level-1 comment closes nothing", "function f()\n--[=[\nend\n]=]\nend", "functionend () --[=[]=] | |"},
+		{"end inside a level-1 string closes nothing", "if x then s = [=[ end ]] ]=] end", "ifend [=[]=] | |"},
+		{"index brackets are not long strings", "t[1] = t[ [[k]] ]", "[] [] [[]] | |"},
+	}
+	for _, c := range cases {
+		d, ctx := parse(c.src, 0, &LangLua)
+		if got := pairing(d, ctx); got != c.want {
+			t.Errorf("%s: %q pairs as %q, want %q", c.name, c.src, got, c.want)
+		}
+		if r, _ := d.Render(); r != c.src {
+			t.Errorf("%s: render %q, want the source", c.name, r)
 		}
 	}
 }

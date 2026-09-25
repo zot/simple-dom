@@ -87,13 +87,16 @@ var LangTypeScript = LangJavaScript
 // separator, an inner `do ... end` would read as separator-then-close and end the
 // enclosing group early, and making it an opener breaks the loops instead.
 //
-// Order matters twice here: `--[[` precedes `--` and `[[` precedes `[`, because
-// the first match wins; and `elseif` precedes `else` among the separators, since
-// `else` is a prefix of it.
+// Long strings and block comments come at every level (R361): `[==[` closes only on
+// `]==]`, the named group `eq` carrying the level from opener to closer (R358).
+//
+// Order matters twice here: the block comment precedes `--` and the long string
+// precedes `[`, because the first match wins; and `elseif` precedes `else` among the
+// separators, since `else` is a prefix of it.
 var LangLua = BracketLang{Comment: CommentStyle{"-- ", "\n", "comment"}, Brackets: []BracketGroup{
-	{Open: []string{"--[["}, Close: "]]", AllowedInner: []string{}, Kind: "comment"},
+	{OpenRegex: `--\[(?P<eq>=*)\[`, CloseRegex: `\](?P<eq>=*)\]`, AllowedInner: []string{}, Kind: "comment"},
 	{Open: []string{"--"}, Close: "\n", AllowedInner: []string{}, Kind: "comment"},
-	{Open: []string{"[["}, Close: "]]", AllowedInner: []string{}},
+	{OpenRegex: `\[(?P<eq>=*)\[`, CloseRegex: `\](?P<eq>=*)\]`, AllowedInner: []string{}},
 	{Open: []string{`"`}, Close: `"`, Escape: `\`, AllowedInner: []string{}},
 	{Open: []string{"'"}, Close: "'", Escape: `\`, AllowedInner: []string{}},
 	{Open: []string{"function", "for", "while"}, Separators: []string{"do"}, Close: "end"},
