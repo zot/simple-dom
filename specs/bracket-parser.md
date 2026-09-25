@@ -418,3 +418,10 @@ same answers — the index is a convenience over structure the array already car
 never a fact only the index holds. That is also why the parse records nothing: one
 derivation, on demand, and nothing to fall out of step with.
 
+**Every way the parse ends a group is derivable from the nodes' text**, or the derivation
+and the parse disagree on everything that follows. A closer pairs with the opener on top when
+it is that group's closer. A closer that group rejected as a longer run (`RejectLongerCloses`)
+ends the group without pairing: it is a whole match of the group's pattern, longer than the
+opener's text, and the derivation pops the opener there, unclosed, as the parse did. A closer
+that does neither is stray and ends nothing.
+

@@ -87,6 +87,16 @@
 **Inject:** sdom/schema/markdown.go:LangMarkdown
 **Pulled:** 2026-09-12 — rang: this test (outer bold reads `A `) and the pending title-with-emphasis test. Previously 2026-09-05 — rang: this test and the pending title test — without `BeforeClose` the inner `**` closed the outer bold.
 
+## Test: a rejected run inside emphasis leaves the emphasis paired
+**Purpose:** R355 — the index ends a span where R309 did, so the emphasis around it closes
+**Input:** a line with an asterisk, a two-backtick span meeting a three-backtick run, and a closing asterisk
+**Expected:** the emphasis opener has a closer; the three-backtick run is the one unpaired closer
+**Refs:** crc-BracketContext.md
+**Code:** sdom/schema/markdown_test.go
+**Fire alarm:** the same injection as the context's rejected-run test: drop the rejected-run branch from `rebuild`. Red: the emphasis is unclosed, with two unpaired closers.
+**Inject:** sdom/context.go:BracketContext.rebuild
+**Pulled:** 2026-09-25 — rang: `the emphasis is unclosed; unpaired 2, unclosed 2` and `2 unpaired closers, want the three-run alone`.
+
 ## Test: an opener never closed is text
 **Purpose:** R352 — the three groups demote, so the entries after a lone backtick, a three-run in prose, an asterisk in a glob and an unclosed bold survive; and every demotion is listed
 **Input:** `testdata/unclosed-runs.md`: a five-run quoted in prose before list items; a bare `specs/*.md` before a blank line — its own paragraph, since an asterisk two lines on would close it, as CommonMark would; a `"**/*.md"` opening two emphasis runs that neither close, before a heading; a bold opener before a blank line and a heading; a code span holding an asterisk, which closes; a fence holding a blank line; a two-run span holding a three-run, with a trailing two-run; a lone backtick before a blank line and a heading, then a lone backtick on the last line — the first must not pair with the second across the blank

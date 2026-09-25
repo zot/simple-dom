@@ -3,6 +3,7 @@ package sdom
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -109,6 +110,21 @@ func independentLinks(d *Doc, lang *BracketLang) (closerOf map[Node]*Closer, ope
 		ct, err := closer.Render()
 		return err == nil && (ct == g.Close || g.CloseIsOpen && ct == ot)
 	}
+	// rejected is R355's case: a longer run the opener's group rejected ended that group
+	// in the parse, so it leaves the stack here too, pairing with nothing. Compiled here,
+	// from the table, rather than through anything the library compiled.
+	rejected := func(opener, closer Node) bool {
+		ot, err := opener.Render()
+		if err != nil {
+			return false
+		}
+		g := lang.GroupFor(ot)
+		if g == nil || !g.RejectLongerCloses || g.OpenRegex == "" {
+			return false
+		}
+		ct, err := closer.Render()
+		return err == nil && len(ct) > len(ot) && regexp.MustCompile(`^(?:`+g.OpenRegex+`)$`).MatchString(ct)
+	}
 	for _, n := range d.Nodes() {
 		switch m := n.(type) {
 		case *Closer:
@@ -118,6 +134,8 @@ func independentLinks(d *Doc, lang *BracketLang) (closerOf map[Node]*Closer, ope
 			if o := top(); o != nil && closes(o, m) {
 				stack = stack[:len(stack)-1]
 				closerOf[o], openerOf[m] = m, o
+			} else if o != nil && rejected(o, m) {
+				stack = stack[:len(stack)-1]
 			}
 		case *Opener:
 			if e := top(); e != nil {
@@ -150,6 +168,10 @@ func independentLinks(d *Doc, lang *BracketLang) (closerOf map[Node]*Closer, ope
 // what a consumer can see.
 func TestIndexAgreesWithTheIndependentDerivation(t *testing.T) {
 	langs := shippedLangs()
+	// No shipped code table rejects a run, so one that does rides along: without it this
+	// check never meets R355, and it did not, until a probe found the two derivations
+	// sharing the omission.
+	langs["rejecting"] = rejectingCodeLang()
 	for path, src := range corpus(t) {
 		for name, lang := range langs {
 			d, ctx := parse(src, 0, lang)
@@ -500,5 +522,53 @@ func TestUnclosedNamesTheGroupsThatRanToEndOfInput(t *testing.T) {
 	_, ctx = parse("(a) [b]", 0, &LangGo)
 	if got := ctx.Unclosed(); got != nil {
 		t.Errorf("balanced document lists %d unclosed", len(got))
+	}
+}
+
+// rejectingCodeLang is a code table with a run group that rejects longer closes, which
+// no shipped code table has: backtick runs beside the three code brackets.
+func rejectingCodeLang() *BracketLang {
+	return &BracketLang{Brackets: []BracketGroup{
+		{OpenRegex: "`+", CloseIsOpen: true, RejectLongerCloses: true, AllowedInner: []string{}},
+		{Open: []string{"("}, Close: ")"},
+		{Open: []string{"{"}, Close: "}"},
+		{Open: []string{"["}, Close: "]"},
+	}}
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#2.3.1 | R355
+// A run the span rejected ends the span in the parse, so the index ends it there too:
+// what follows pairs with the enclosing group, not with a span the parse had closed.
+func TestARejectedRunEndsItsGroupInTheIndex(t *testing.T) {
+	d, ctx := parse("( ``a```b ) c", 0, rejectingCodeLang())
+	ns := d.Nodes()
+	render := func(n Node) string {
+		if n == nil {
+			return "<nil>"
+		}
+		s, _ := n.Render()
+		return s
+	}
+	if got := render(ctx.Closer(ns[0])); got != ")" {
+		t.Errorf("the paren's closer is %s, want )", got)
+	}
+	var rest Node // the text after the rejected run, inside the paren again
+	for _, n := range ns {
+		if render(n) == "b " {
+			rest = n
+		}
+	}
+	if got := render(ctx.Enclosing(rest)); got != "(" {
+		t.Errorf("the text after the rejected run is enclosed by %s, want (", got)
+	}
+	var unclosed, unpaired []string
+	for _, o := range ctx.Unclosed() {
+		unclosed = append(unclosed, render(o))
+	}
+	for _, c := range ctx.Unpaired() {
+		unpaired = append(unpaired, render(c))
+	}
+	if !slices.Equal(unclosed, []string{"``"}) || !slices.Equal(unpaired, []string{"```"}) {
+		t.Errorf("unclosed %q, unpaired %q; want the span alone, and the rejected run alone", unclosed, unpaired)
 	}
 }

@@ -271,6 +271,32 @@ func TestEmphasisNestsAndALongerRunIsRejected(t *testing.T) {
 	}
 }
 
+// CRC: crc-MarkdownParser.md | R355
+// A span that meets a longer run inside emphasis ends there (R309), and the index ends it
+// there too: the emphasis's closing asterisk pairs with its opener rather than being
+// tested against a span the parse had already closed.
+func TestARejectedRunInsideEmphasisLeavesTheEmphasisPaired(t *testing.T) {
+	d, p := parseMarkdown("*a ``b``` c* d\n")
+	ctx := p.Indent().Brackets().Context()
+	var star *sdom.Opener
+	for _, n := range d.Nodes() {
+		if o, ok := n.(*sdom.Opener); ok {
+			if s, _ := o.Render(); s == "*" {
+				star = o
+			}
+		}
+	}
+	if star == nil {
+		t.Fatal("no emphasis opener")
+	}
+	if c := ctx.Closer(star); c == nil {
+		t.Errorf("the emphasis is unclosed; unpaired %d, unclosed %d", len(ctx.Unpaired()), len(ctx.Unclosed()))
+	}
+	if u := ctx.Unpaired(); len(u) != 1 {
+		t.Errorf("%d unpaired closers, want the three-run alone", len(u))
+	}
+}
+
 // CRC: crc-MarkdownParser.md | R352, R349
 // The three groups demote, so the entries after an opener never closed survive, and
 // every demotion is listed at its line.

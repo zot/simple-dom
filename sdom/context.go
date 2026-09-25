@@ -336,6 +336,11 @@ func (bc *BracketContext) rebuild() {
 			if open != nil && bc.closes(open, m) {
 				stack = stack[:len(stack)-1]
 				bc.pair(open, m)
+			} else if open != nil && bc.rejects(open, m) {
+				// R355: the parse ended the group at a run it rejected, so the
+				// opener leaves the stack here too, unpaired — or every later
+				// closer is tested against a group the parse had already closed.
+				stack = stack[:len(stack)-1]
 			}
 		case *Opener:
 			if open != nil {
@@ -373,6 +378,34 @@ func (bc *BracketContext) closes(opener, closer Node) bool {
 		return ct == ot // R291
 	}
 	return ct == g.Close
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#2.3.1 | R355
+// rejects reports whether closer is a run opener's group rejected as longer than the
+// opener (R309): the group sets RejectLongerCloses, and the closer is a whole match of
+// its pattern longer than the opener's own bytes. Resolved from the text alone, as
+// closes is.
+func (bc *BracketContext) rejects(opener, closer Node) bool {
+	ot, err := opener.Render()
+	if err != nil {
+		return false
+	}
+	g := bc.groupOf(ot)
+	if g == nil || !g.RejectLongerCloses {
+		return false
+	}
+	ct, err := closer.Render()
+	if err != nil || len(ct) <= len(ot) {
+		return false
+	}
+	for i, re := range bc.pats.open {
+		if &bc.lang.Brackets[i] != g || re == nil {
+			continue
+		}
+		loc := re.FindStringIndex(ct)
+		return loc != nil && loc[1] == len(ct)
+	}
+	return false
 }
 
 // CRC: crc-BracketContext.md | R295

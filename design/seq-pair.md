@@ -1,5 +1,5 @@
 # Sequence: the pairing links
-**Requirements:** R81, R82, R83, R84, R85, R86, R87
+**Requirements:** R81, R82, R83, R84, R85, R86, R87, R355
 
 How the bracket structure is recovered from a flat array, and how the answer is
 checked rather than believed.
@@ -36,6 +36,11 @@ checked rather than believed.
         **opener's own bytes** through the table. Without that a stray closer,
         which the any-close fallback emits unpaired, is paired here and the two
         answers differ on every unbalanced file
+        2.3.1. A closer that does not belong, but is a longer run the opener's
+               `RejectLongerCloses` group rejected — a whole match of its pattern,
+               longer than the opener's text — pops the opener unpaired, because the
+               parse ended the group there. Without it the ended opener stays on the
+               stack and every later closer is tested against the wrong group
    2.4. No index is consulted anywhere in this, which is what makes the answer
         independent of the one it checks
    2.5. It must agree with what the context reports. **That is the point** — an

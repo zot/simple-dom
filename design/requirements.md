@@ -164,6 +164,10 @@
   its own stack reaches the same closer, opener, enclosing opener and separators the context
   reports. The index is a convenience over structure the array already carries, never a fact
   only the index holds.
+- **R355:** The derivation ends a group wherever the parse did: a closer that does not pair with
+  the opener on top, but is a whole match of that group's pattern longer than the opener's text
+  in a `RejectLongerCloses` group, pops the opener unclosed and pairs with nothing, so later
+  closers pair with the enclosing group as they did in the parse.
 - **R121:** The package exports the language tables `LangGo`, `LangShell`, `LangPascal`,
   `LangJavaScript`, `LangTypeScript` and `LangLua`, chosen both so that every field of
   `BracketGroup` is exercised by at least one of them and so that the languages mini-spec reads

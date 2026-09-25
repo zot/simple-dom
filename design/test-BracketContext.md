@@ -30,7 +30,9 @@ afterwards to name the node; the assertion is unchanged, so this record stands.
 
 ## Test: an independent derivation agrees, over the corpus
 **Purpose:** R87 — the check that makes the index a fact rather than an assertion
-**Input:** every corpus file under each shipped language; every link the context
+**Input:** every corpus file under each shipped language, and under a code table whose
+backtick-run group rejects longer closes (no shipped code table does; the corpus yields six
+rejected runs in three files under it); every link the context
 reports through its **public accessors**, against the same links derived by a stack
 walk written in the test rather than in the library
 **Expected:** the two agree for every node of every file. **This is the test that
@@ -40,6 +42,26 @@ checked by code sharing its author, its file and its helpers is checked by
 something liable to share its misconceptions. What the library owes is that the
 answer is reproducible from the array; proving it is a consumer's job, and a test
 is a consumer.
+
+## Test: a rejected run ends its group in the index
+**Purpose:** R355 — the derivation ends a group wherever the parse did
+**Input:** a parenthesis holding a two-backtick span that meets a three-backtick run, then text and the closing parenthesis, over a code table whose run group rejects longer closes
+**Expected:** the parenthesis's closer is the closing parenthesis; the text after the rejected run is enclosed by the parenthesis; the span alone is unclosed and the three-backtick run alone is unpaired
+**Refs:** crc-BracketContext.md, seq-pair.md
+**Code:** sdom/context_test.go
+**Fire alarm:** drop the rejected-run branch from `rebuild`, so the ended span stays on the stack. Red: this test (the parenthesis's closer is nil; the parenthesis is unclosed and its closer unpaired), the markdown emphasis case, and the corpus agreement check under the rejecting table, since the independent walk still ends the span.
+**Inject:** sdom/context.go:BracketContext.rebuild
+**Pulled:** 2026-09-25 — rang: this test, `TestARejectedRunInsideEmphasisLeavesTheEmphasisPaired` (`the emphasis is unclosed; unpaired 2, unclosed 2`), and the agreement check (`../design/test-Markdown.md under rejecting: the two derivations disagree on an enclosing opener`). Past the list the same day: dropping the `RejectLongerCloses` guard from `rejects` left everything green, because a parse never emits a longer run as a closer under a group that does not reject; the guard matters only for an array built or edited by hand.
+
+## Test: the independent walk ends a rejected group too
+**Purpose:** R355, R87 — the corpus agreement check reaches the rejected-run rule, rather than two derivations sharing an omission
+**Input:** the corpus agreement check above, under the rejecting table
+**Expected:** the two derivations agree
+**Refs:** crc-BracketContext.md, seq-pair.md
+**Code:** sdom/context_test.go
+**Fire alarm:** drop the rejected-run branch from the test's own walk, leaving the library's in place. Red: the agreement check alone, on a file under the rejecting table.
+**Inject:** sdom/context_test.go:independentLinks
+**Pulled:** 2026-09-25 — rang: the agreement check alone, `../design/test-Markdown.md under rejecting: the two derivations disagree on an enclosing opener`.
 
 ## Test: a rescan per node agrees, on a fixture
 **Purpose:** R87 — the same guarantee by a genuinely different algorithm

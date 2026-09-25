@@ -42,7 +42,7 @@ or comment closes a real group. The repair is the one proposed.
 - [x] ~~**Item 1 — `Check() error`, exported.**~~ **LANDED (2026-09-25 — `#40`.)**
 - [ ] **Item 2 — a closer whose named groups must equal the opener's.** **OPEN (#43.)**
 - [ ] **Item 3 — Lua long brackets at every level.** **OPEN (#44.)**
-- [ ] **Item 4 — `rebuild()` ends a group wherever the parse does (R309).** **OPEN (#41.)**
+- [x] ~~**Item 4 — `rebuild()` ends a group wherever the parse does (R309).**~~ **LANDED (2026-09-25 — `#41`.)**
 - [ ] **Item 5 — a closer that matches an enclosing group closes it, ending the groups in between.** **OPEN (#42.)**
 
 ## Decisions
@@ -165,12 +165,12 @@ such as `end` inside a level-1 string and comment that closes nothing.
 
 `rebuild()` pops the top opener, unpaired, at a closer that R309 rejected: the top group has
 `RejectLongerCloses`, the closer is a match of its pattern, and it is longer than the
-opener's text. Item 2's parent rule adds the second case. A test over the parse and the
+opener's text. Item 5's parent rule adds the second case. A test over the parse and the
 derivation keeps the two in agreement.
 
 Tests: a parenthesis holding a two-backtick span that meets a three-backtick run, over a
-rejecting run table, pairs `(` with `)` and lists only the span
-as unclosed, and the same shape in the markdown base.
+rejecting run table, pairs `(` with `)` and lists only the span as unclosed, and the same
+shape in the markdown base.
 
 ## Item 5
 
