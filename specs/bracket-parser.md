@@ -119,7 +119,16 @@ constructed. A pattern that does not compile, an `OpenRegex` beside a non-empty 
 `CloseIsOpen` beside a non-empty `Close`, `BlankLineBound` without `DemoteUnclosed`, or
 `LineHeadUnbound` without `BlankLineBound` is a construction error: `NewBracketParser` panics
 naming the group, and every shipped table is checked by a test so the panic is never seen by
-a consumer. The any-close fallback recognizes literal closers only — a close-is-open marker
+a consumer.
+
+**A table that is caller input is checked before it is used.** A table read from a user's
+configuration is not a library invariant, and its errors belong to the caller rather than to a
+panic. `func (l *BracketLang) Check() error` returns the construction error `NewBracketParser`
+would panic with, naming the group, or nil. An `IndentLang` answers it too, since it embeds its
+`BracketLang` and adds no checks of its own. `NewBracketParser` still panics on a table that
+fails.
+
+The any-close fallback recognizes literal closers only — a close-is-open marker
 outside its group is an opener, and has matched as one before the fallback is reached.
 
 **A group is named by any of its openers, or by its pattern.** `AllowedInner`,

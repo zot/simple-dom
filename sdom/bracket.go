@@ -195,6 +195,16 @@ type patterns struct {
 	prefix              []string
 }
 
+// CRC: crc-BracketLang.md | R354
+// Check reports the construction error NewBracketParser would panic with, naming the
+// group, or nil. It is for a table that is caller input — read from a consumer's
+// configuration — whose errors belong to the caller rather than to a panic. An
+// IndentLang answers it through its embedded BracketLang, adding no checks of its own.
+func (l *BracketLang) Check() error {
+	_, err := l.check()
+	return err
+}
+
 // CRC: crc-BracketLang.md | R296
 //
 // check compiles the table's patterns and reports the construction errors: a pattern

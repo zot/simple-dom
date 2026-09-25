@@ -193,7 +193,17 @@ tiles it
 **Code:** sdom/parser_test.go
 **Fire alarm:** drop the exclusivity check. Red: the first case constructs.
 **Inject:** sdom/bracket.go:BracketLang.check
-**Pulled:** 2026-09-05 — pulled again after the simplifier restructured the site; rang. Earlier the same day: rang: `Open and OpenRegex: constructed without panicking`, only that case of that test.
+**Pulled:** 2026-09-25 — re-pulled after `check` changed 2026-09-12; rang: `Open and OpenRegex: constructed without panicking`, only that case. Previously 2026-09-05 — pulled again after the simplifier restructured the site; rang. Earlier the same day: rang: `Open and OpenRegex: constructed without panicking`, only that case of that test.
+
+## Test: Check returns what construction panics with
+**Purpose:** R354 — a table that is caller input is checked without a panic, and the check is the constructor's own
+**Input:** one group for each construction error (R296's three, R348's two); every shipped table; `LangPython` and an `IndentLang` with a bad group, through the embedding
+**Expected:** for each bad group `Check` returns an error whose text is exactly the constructor's panic; every shipped table, Python included, checks clean; the bad `IndentLang` does not
+**Refs:** crc-BracketLang.md
+**Code:** sdom/parser_test.go
+**Fire alarm:** make `Check` discard the error and return nil. Red: all five bad groups report `Check <nil>` beside a panic, and the bad `IndentLang` checks clean.
+**Inject:** sdom/bracket.go:BracketLang.Check
+**Pulled:** 2026-09-25 — rang: all five bad groups `Check <nil>` beside the constructor's panic, and `an IndentLang with a bad group checks clean`.
 
 ## Test: the any-close fallback ignores close-is-open groups
 **Purpose:** R297

@@ -1,5 +1,5 @@
 # BracketLang
-**Requirements:** R58, R59, R60, R62, R68, R70, R121, R169, R170, R171, R172, R173, R207, R208, R209, R295, R296
+**Requirements:** R58, R59, R60, R62, R68, R70, R121, R169, R170, R171, R172, R173, R207, R208, R209, R295, R296, R354
 
 A language's whole bracket table, and nothing else. Supporting a new language is
 adding an entry, not writing code.
@@ -18,6 +18,9 @@ adding an entry, not writing code.
   `OpenRegex` beside a non-empty `Open`, or `CloseIsOpen` beside a `Close` panics
   naming the group, and a test over every shipped table keeps that panic from a
   consumer
+- answers `Check`, the same construction check returned as an error rather than
+  panicked, for a table that is caller input — a consumer's configuration — whose
+  errors belong to the caller; an `IndentLang` answers it through the embedding
 - offers its groups in order, which is the precedence the BracketParser parses by
 
 ## Constraints
@@ -36,7 +39,9 @@ adding an entry, not writing code.
 - **Tables are Go values, not a file format**, and no loader ships. The deciding
   reason is that nil versus empty is semantically distinct and is precisely what
   a document format loses, an absent key and an empty list being the same thing
-  to most readers of most formats
+  to most readers of most formats. A consumer that loads tables from its own format
+  (mini-spec's TOML, whose decoder keeps nil and empty apart) owns that loader and
+  validates each table with `Check`
 
 ## Ships
 `LangGo`, `LangShell`, `LangPascal`, `LangJavaScript`, `LangTypeScript`,

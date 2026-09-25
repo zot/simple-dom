@@ -27,7 +27,7 @@ type BracketParser struct {
 // CRC: crc-BracketParser.md | R296
 // NewBracketParser returns a parser for lang, with the context it will fill. It
 // compiles the table's patterns once, and a table that cannot be constructed panics
-// here naming the group — a library invariant, not caller input.
+// here naming the group. A table that is caller input is checked with Check first.
 func NewBracketParser(lang *BracketLang) *BracketParser {
 	pats, err := lang.check()
 	if err != nil {

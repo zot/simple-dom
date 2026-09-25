@@ -246,6 +246,9 @@
   newline followed by a line of only spaces or tabs — bounding the re-parse to one paragraph.
 - **R348:** `BlankLineBound` without `DemoteUnclosed`, or `LineHeadUnbound` without `BlankLineBound`,
   is a construction error, reported as R296's are.
+- **R354:** `BracketLang.Check` returns the construction error `NewBracketParser` would panic
+  with, naming the group, or nil, so a table that is caller input is checked without a panic;
+  an `IndentLang` answers it through its embedded `BracketLang`.
 - **R353:** With `LineHeadUnbound`, an opener with only spaces or tabs between the previous newline
   and it takes no blank-line bound and demotes at end of input only — a fence; an opener elsewhere on
   its line takes the bound.

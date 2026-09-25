@@ -490,6 +490,39 @@ func TestTheRewindKeepsTheLiveRunTrue(t *testing.T) {
 	}
 }
 
+// CRC: crc-BracketLang.md | R354
+func TestCheckReturnsWhatConstructionPanicsWith(t *testing.T) {
+	bad := map[string]BracketGroup{
+		"Open and OpenRegex":      {Open: []string{"a"}, OpenRegex: "a+", Close: "b"},
+		"CloseIsOpen contradicts": {Open: []string{"a"}, Close: "b", CloseIsOpen: true},
+		"OpenRegex":               {OpenRegex: "(", CloseIsOpen: true},
+		"BlankLineBound":          {Open: []string{"<"}, Close: ">", BlankLineBound: true},
+		"LineHeadUnbound":         {Open: []string{"<"}, Close: ">", DemoteUnclosed: true, LineHeadUnbound: true},
+	}
+	for name, g := range bad {
+		lang := &BracketLang{Brackets: []BracketGroup{g}}
+		err := lang.Check()
+		r := recovered(func() { NewBracketParser(lang) })
+		if err == nil || r == nil || err.Error() != fmt.Sprint(r) {
+			t.Errorf("%s: Check %v, panic %v, want the same error from both", name, err, r)
+		}
+	}
+	langs := shippedLangs()
+	langs["typescript"], langs["lua"] = &LangTypeScript, &LangLua
+	for name, lang := range langs {
+		if err := lang.Check(); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if err := LangPython.Check(); err != nil {
+		t.Errorf("python, through the embedding: %v", err)
+	}
+	indent := IndentLang{BracketLang: BracketLang{Brackets: []BracketGroup{bad["OpenRegex"]}}}
+	if err := indent.Check(); err == nil {
+		t.Error("an IndentLang with a bad group checks clean")
+	}
+}
+
 // CRC: crc-BracketGroup.md | R348
 func TestBlankLineBoundWithoutDemoteUnclosedPanics(t *testing.T) {
 	cases := map[string]BracketGroup{
