@@ -363,6 +363,7 @@ func (bc *BracketContext) rebuild() {
 	}
 }
 
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#2.3 | R360
 // closes reports whether closer ends the group that opener started, resolving the
 // group from the opener's own bytes.
 func (bc *BracketContext) closes(opener, closer Node) bool {
@@ -381,7 +382,22 @@ func (bc *BracketContext) closes(opener, closer Node) bool {
 	if g.CloseIsOpen {
 		return ct == ot // R291
 	}
+	if g.CloseRegex != "" { // R360: a whole match, agreeing with the opener's groups
+		i := bc.slot(g)
+		loc := bc.pats.close[i].FindStringIndex(ct)
+		return loc != nil && loc[1] == len(ct) && bc.pats.agree(i, ot, ct)
+	}
 	return ct == g.Close
+}
+
+// slot is a group's index in the table, and so in the parallel pattern slices.
+func (bc *BracketContext) slot(g *BracketGroup) int {
+	for i := range bc.lang.Brackets {
+		if &bc.lang.Brackets[i] == g {
+			return i
+		}
+	}
+	return -1
 }
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#2.3.2 | R357
@@ -426,14 +442,12 @@ func (bc *BracketContext) rejects(opener, closer Node) bool {
 	if err != nil || len(ct) <= len(ot) {
 		return false
 	}
-	for i, re := range bc.pats.open {
-		if &bc.lang.Brackets[i] != g || re == nil {
-			continue
-		}
-		loc := re.FindStringIndex(ct)
-		return loc != nil && loc[1] == len(ct)
+	re := bc.pats.open[bc.slot(g)]
+	if re == nil {
+		return false
 	}
-	return false
+	loc := re.FindStringIndex(ct)
+	return loc != nil && loc[1] == len(ct)
 }
 
 // CRC: crc-BracketContext.md | R295

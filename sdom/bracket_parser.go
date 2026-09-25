@@ -1,6 +1,9 @@
 package sdom
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 // CRC: crc-BracketParser.md | Seq: seq-parse.md, seq-collaborate.md | R57, R72, R73, R74, R75, R76, R77, R78, R165, R166
 //
@@ -302,11 +305,18 @@ func (bp *BracketParser) matchGroupOpen(src string, pos, i int) string {
 // it could match, and the bytes it matched honour the word-boundary rule like a
 // literal marker.
 func (bp *BracketParser) matchPattern(src string, pos, i int) string {
+	return matchRegexp(src, pos, bp.pats.open[i], bp.pats.prefix[i])
+}
+
+// matchRegexp reports what re matches at pos, or "": gated by its literal prefix, never
+// empty, and honouring the word-boundary rule like a literal marker. An opener pattern
+// and a closer pattern are matched the same way.
+func matchRegexp(src string, pos int, re *regexp.Regexp, prefix string) string {
 	rest := src[pos:]
-	if !strings.HasPrefix(rest, bp.pats.prefix[i]) {
+	if !strings.HasPrefix(rest, prefix) {
 		return ""
 	}
-	loc := bp.pats.open[i].FindStringIndex(rest)
+	loc := re.FindStringIndex(rest)
 	if loc == nil || loc[1] == 0 || !boundaryOK(src, pos, pos+loc[1]) {
 		return ""
 	}
@@ -341,13 +351,24 @@ func (bp *BracketParser) otherRun(st *ParserState, g *BracketGroup, opened strin
 	return true, false
 }
 
-// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.4 | R291, R309
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.4 | R291, R309, R358
 // matchCloser reports group i's closer at pos, or "": its literal Close, or with
 // CloseIsOpen the very bytes that opened it — for a pattern group, the pattern's match
-// here equal to them — under the group's BeforeClose. opened is unread for a group that
+// here equal to them — or its CloseRegex match whose named groups agree with them, under
+// the group's BeforeClose. opened is unread for a group that
 // is not CloseIsOpen, which is what lets the any-close fallback ask this question with
 // no group open.
 func (bp *BracketParser) matchCloser(src string, pos, i int, opened string) string {
+	if re := bp.pats.close[i]; re != nil {
+		// R358: a pattern closer, and only where its named groups agree with the opened
+		// text. One that disagrees is not a closer here, so the loop takes one byte as
+		// content and an overlapping real closer is still found.
+		m := matchRegexp(src, pos, re, bp.pats.closePrefix[i])
+		if m == "" || !bp.pats.agree(i, opened, m) || !beforeOK(src, pos, bp.pats.before[i]) {
+			return ""
+		}
+		return m
+	}
 	g := &bp.lang.Brackets[i]
 	want := g.Close
 	if g.CloseIsOpen {
@@ -416,11 +437,12 @@ func (bp *BracketParser) matchInner(st *ParserState, g *BracketGroup) (*BracketG
 // CRC: crc-BracketParser.md | Seq: seq-parse.md#3.1 | R73, R297
 // matchAnyClose recognizes any code-mode group's literal closer, so depth stays
 // consistent even when the document is unbalanced. A close-is-open marker outside
-// its group is an opener and has already matched as one.
+// its group is an opener and has already matched as one, and a pattern closer has no
+// opened text for its groups to agree with, so neither is a stray.
 func (bp *BracketParser) matchAnyClose(st *ParserState) string {
 	for i := range bp.lang.Brackets {
 		g := &bp.lang.Brackets[i]
-		if g.Restricted() || g.CloseIsOpen {
+		if g.Restricted() || g.CloseIsOpen || g.CloseRegex != "" {
 			continue
 		}
 		if m := bp.matchCloser(st.Src(), st.Pos(), i, ""); m != "" {

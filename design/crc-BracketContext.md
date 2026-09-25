@@ -1,5 +1,5 @@
 # BracketContext
-**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154, R193, R194, R195, R196, R197, R198, R222, R291, R299, R310, R349, R355, R357
+**Requirements:** R80, R81, R82, R83, R84, R85, R86, R87, R91, R126, R127, R128, R152, R153, R154, R193, R194, R195, R196, R197, R198, R222, R291, R299, R310, R349, R355, R357, R360
 
 The schema's parse context: a concrete type, not an interface. It carries the
 language through the parse and **outlives** it to own the pairing links.
@@ -8,7 +8,8 @@ language through the parse and **outlives** it to own the pairing links.
 - the language, during the parse
 - the **`Origin` it minted for this parse**, which every node it produces carries
 - the pairing links, afterwards — a closer pairs with an opener when it is the group's
-  literal `Close`, or the opener's own text for a `CloseIsOpen` group; a longer run the
+  literal `Close`, the opener's own text for a `CloseIsOpen` group, or a whole match of
+  `CloseRegex` whose named groups agree with the opener's (R360); a longer run the
   group rejected (R309) ends it unpaired, since the parse ended it there; and under a
   code-mode group a closer of an opener further down pairs with the nearest such, ending
   the openers above it unpaired (R356):

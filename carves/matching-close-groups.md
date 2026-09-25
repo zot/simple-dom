@@ -40,7 +40,7 @@ or comment closes a real group. The repair is the one proposed.
 ## Status
 
 - [x] ~~**Item 1 — `Check() error`, exported.**~~ **LANDED (2026-09-25 — `#40`.)**
-- [ ] **Item 2 — a closer whose named groups must equal the opener's.** **OPEN (#43.)**
+- [x] ~~**Item 2 — a closer whose named groups must equal the opener's.**~~ **LANDED (2026-09-25 — `#43`.)**
 - [ ] **Item 3 — Lua long brackets at every level.** **OPEN (#44.)**
 - [x] ~~**Item 4 — `rebuild()` ends a group wherever the parse does (R309).**~~ **LANDED (2026-09-25 — `#41`.)**
 - [x] ~~**Item 5 — a closer that matches an enclosing group closes it, ending the groups in between.**~~ **LANDED (2026-09-25 — `#42`.)**

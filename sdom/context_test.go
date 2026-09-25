@@ -108,6 +108,9 @@ func independentLinks(d *Doc, lang *BracketLang) (closerOf map[Node]*Closer, ope
 			return false
 		}
 		ct, err := closer.Render()
+		if err == nil && g.CloseRegex != "" {
+			return agreeing(g, ot, ct)
+		}
 		return err == nil && (ct == g.Close || g.CloseIsOpen && ct == ot)
 	}
 	// rejected is R355's case: a longer run the opener's group rejected ended that group
@@ -170,6 +173,29 @@ func independentLinks(d *Doc, lang *BracketLang) (closerOf map[Node]*Closer, ope
 	return
 }
 
+// agreeing is R360 for the independent walk: the closer's text is a whole match of
+// CloseRegex, and every group it names equals the same group in the opener's text, a
+// whole match of OpenRegex. Compiled here from the table, never through the library.
+func agreeing(g *BracketGroup, ot, ct string) bool {
+	cre := regexp.MustCompile(`^(?:` + g.CloseRegex + `)$`)
+	cm := cre.FindStringSubmatch(ct)
+	if cm == nil {
+		return false
+	}
+	var ore *regexp.Regexp
+	var om []string
+	if g.OpenRegex != "" {
+		ore = regexp.MustCompile(`^(?:` + g.OpenRegex + `)$`)
+		om = ore.FindStringSubmatch(ot)
+	}
+	for k, name := range cre.SubexpNames() {
+		if name != "" && (om == nil || cm[k] != om[ore.SubexpIndex(name)]) {
+			return false
+		}
+	}
+	return true
+}
+
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#2 | R87
 //
 // The check that makes the index a fact rather than an assertion. The context
@@ -186,6 +212,8 @@ func TestIndexAgreesWithTheIndependentDerivation(t *testing.T) {
 	// check never meets R355, and it did not, until a probe found the two derivations
 	// sharing the omission.
 	langs["rejecting"] = rejectingCodeLang()
+	// Nor does any shipped table close on a pattern, so one that does rides along too.
+	langs["pattern-closing"] = patternClosingLang()
 	for path, src := range corpus(t) {
 		for name, lang := range langs {
 			d, ctx := parse(src, 0, lang)
@@ -539,6 +567,19 @@ func TestUnclosedNamesTheGroupsThatRanToEndOfInput(t *testing.T) {
 	}
 }
 
+// patternClosingLang is a code table whose strings close on patterns that must agree
+// with their openers (R358): C++ raw strings and Lua long brackets, beside the three
+// code brackets.
+func patternClosingLang() *BracketLang {
+	return &BracketLang{Brackets: []BracketGroup{
+		{OpenRegex: `R"(?P<delim>[^()\\ ]{0,16})\(`, CloseRegex: `\)(?P<delim>[^()\\ ]{0,16})"`, AllowedInner: []string{}},
+		{OpenRegex: `\[(?P<eq>=*)\[`, CloseRegex: `\](?P<eq>=*)\]`, AllowedInner: []string{}},
+		{Open: []string{"("}, Close: ")"},
+		{Open: []string{"{"}, Close: "}"},
+		{Open: []string{"["}, Close: "]"},
+	}}
+}
+
 // rejectingCodeLang is a code table with a run group that rejects longer closes, which
 // no shipped code table has: backtick runs beside the three code brackets.
 func rejectingCodeLang() *BracketLang {
@@ -657,6 +698,95 @@ func TestAnEnclosingCloserEndsTheGroupsBetween(t *testing.T) {
 		}
 		if r, _ := d.Render(); r != c.src {
 			t.Errorf("%s: render %q, want the source", c.name, r)
+		}
+	}
+}
+
+// CRC: crc-BracketGroup.md | Seq: seq-parse.md#1.4.2 | R358, R360
+// A closer that must agree with its opener on named groups: C++ raw strings, Lua long
+// brackets and Rust raw strings, where a closer of another delimiter, level or hash
+// count is content; and a code-mode template block, where a disagreeing closer can
+// still close an enclosing block (R356). Each document round-trips.
+func TestAPatternCloserAgreesWithItsOpener(t *testing.T) {
+	cpp := &BracketLang{Brackets: []BracketGroup{
+		{OpenRegex: `(?:u8|u|U|L)?R"(?P<delim>[^()\\ ]{0,16})\(`, CloseRegex: `\)(?P<delim>[^()\\ ]{0,16})"`, AllowedInner: []string{}},
+		{Open: []string{`"`}, Close: `"`, Escape: `\`, AllowedInner: []string{}},
+		{Open: []string{"("}, Close: ")"},
+	}}
+	lua := &BracketLang{Brackets: []BracketGroup{
+		{OpenRegex: `--\[(?P<eq>=*)\[`, CloseRegex: `\](?P<eq>=*)\]`, AllowedInner: []string{}},
+		{Open: []string{"--"}, Close: "\n", AllowedInner: []string{}},
+		{OpenRegex: `\[(?P<eq>=*)\[`, CloseRegex: `\](?P<eq>=*)\]`, AllowedInner: []string{}},
+		{Open: []string{"["}, Close: "]"},
+	}}
+	rust := &BracketLang{Brackets: []BracketGroup{
+		{OpenRegex: `r(?P<h>#*)"`, CloseRegex: `"(?P<h>#*)`, AllowedInner: []string{}},
+	}}
+	tmpl := &BracketLang{Brackets: []BracketGroup{
+		{OpenRegex: `\{% block (?P<name>\w+) %\}`, CloseRegex: `\{% endblock (?P<name>\w+) %\}`},
+	}}
+	cases := []struct {
+		name, src, want string
+		lang            *BracketLang
+	}{
+		{"C++, empty delimiter", `s = R"( a )";`, `R"()" | |`, cpp},
+		{"C++, a closer of another delimiter is content", `R"x( a )" b )x"`, `R"x()x" | |`, cpp},
+		{"C++, u8 prefix", `u8R"d( ) )d"`, `u8R"d()d" | |`, cpp},
+		{"C++, u, U and L prefixes", `uR"(a)" UR"(b)" LR"(c)"`, `uR"()" UR"()" LR"()" | |`, cpp},
+		{"C++, parentheses inside are text", `( R"x( ) )x" )`, `() R"x()x" | |`, cpp},
+		{"C++, never closed", `R"x( a )y"`, `R"x(- | |`, cpp},
+		{"Lua, level 0", "[[ a ]] b", "[[]] | |", lua},
+		{"Lua, level 1 holds a level-0 closer", "[=[ a ]] b ]=] c", "[=[]=] | |", lua},
+		{"Lua, level 2 holds a level-1 closer", "[==[ ]=] ]==]", "[==[]==] | |", lua},
+		{"Lua, a real closer overlapping a disagreeing one", "[==[ a ]=]==] b", "[==[]==] | |", lua},
+		{"Lua, a level-1 comment", "--[=[ x ]] y ]=]", "--[=[]=] | |", lua},
+		{"Lua, an index bracket", "t[1]", "[] | |", lua},
+		{"Rust, one hash", `r#"a "b" c"#`, `r#""# | |`, rust},
+		{"Rust, two hashes hold a one-hash closer", `r##"a "# b"##`, `r##""## | |`, rust},
+		{"template, a block closes on its own name", "{% block a %} x {% endblock a %}", "{% block a %}{% endblock a %} | |", tmpl},
+		{"template, an enclosing block's closer ends the inner one", "{% block a %}{% block b %}{% endblock a %}", "{% block a %}{% endblock a %} {% block b %}- | |", tmpl},
+		{"template, a closer of no open block is text", "{% block a %}{% endblock z %}", "{% block a %}- | |", tmpl},
+	}
+	for _, c := range cases {
+		d, ctx := parse(c.src, 0, c.lang)
+		if got := pairing(d, ctx); got != c.want {
+			t.Errorf("%s: %q pairs as %q, want %q", c.name, c.src, got, c.want)
+		}
+		if r, _ := d.Render(); r != c.src {
+			t.Errorf("%s: render %q, want the source", c.name, r)
+		}
+		// The corpus holds no nested blocks, so the independent walk is held to these too.
+		closerOf, _, _, _ := independentLinks(d, c.lang)
+		for _, n := range d.Nodes() {
+			if o, ok := n.(*Opener); ok && ctx.Closer(o) != closerOf[o] {
+				t.Errorf("%s: the independent walk pairs an opener differently", c.name)
+			}
+		}
+	}
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#2.3 | R360
+// A parse only ever emits a pattern closer that agrees, so what R360 guards is an edit:
+// a closer replaced with one of another delimiter must not pair with the opener.
+func TestAnEditedPatternCloserPairsOnlyIfItAgrees(t *testing.T) {
+	lang := &BracketLang{Brackets: []BracketGroup{
+		{OpenRegex: `R"(?P<delim>[^()\\ ]{0,16})\(`, CloseRegex: `\)(?P<delim>[^()\\ ]{0,16})"`, AllowedInner: []string{}},
+	}}
+	d, ctx := parse(`R"x( a )x"`, 0, lang)
+	open, _ := d.Nodes()[0].(*Opener)
+	closer := ctx.Closer(open)
+	if closer == nil {
+		t.Fatal("the raw string does not pair before the edit")
+	}
+	for _, text := range []string{`)y"`, `)x"`} {
+		next := NewCloser(text, closer.Location())
+		if err := d.Mutate(func() error { return d.Replace(closer, next) }); err != nil {
+			t.Fatalf("Mutate: %v", err)
+		}
+		closer = next
+		paired := ctx.Closer(open) == next
+		if want := text == `)x"`; paired != want {
+			t.Errorf("after replacing the closer with %s: paired %v, want %v", text, paired, want)
 		}
 	}
 }

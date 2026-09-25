@@ -61,7 +61,7 @@ is a consumer.
 **Code:** sdom/context_test.go
 **Fire alarm:** drop the rejected-run branch from the test's own walk, leaving the library's in place. Red: the agreement check alone, on a file under the rejecting table.
 **Inject:** sdom/context_test.go:independentLinks
-**Pulled:** 2026-09-25 — rang: the agreement check alone, `../design/test-Markdown.md under rejecting: the two derivations disagree on an enclosing opener`.
+**Pulled:** 2026-09-25 — re-pulled after R360 changed `independentLinks`; rang: the agreement check alone, `context_test.go under rejecting: the two derivations disagree on a closer`. Previously 2026-09-25 — rang: the agreement check alone, `../design/test-Markdown.md under rejecting: the two derivations disagree on an enclosing opener`.
 
 ## Test: an enclosing closer ends the groups between
 **Purpose:** R356, R357 — a closer of an enclosing group closes it from inside a child, and the derivation pairs it the same way
@@ -121,7 +121,47 @@ is a consumer.
 **Code:** sdom/context_test.go
 **Fire alarm:** drop the enclosing-closer search from the test's own walk. Red: the agreement check alone.
 **Inject:** sdom/context_test.go:independentLinks
-**Pulled:** 2026-09-25 — rang: the agreement check alone, `doc_test.go under shell: the two derivations disagree on a closer`.
+**Pulled:** 2026-09-25 — re-pulled after R360 changed `independentLinks`; rang: the agreement check (`lang_test.go under rejecting`) and the pattern-closer case table's walk check. Previously 2026-09-25 — rang: the agreement check alone, `doc_test.go under shell: the two derivations disagree on a closer`.
+
+## Test: a pattern closer agrees with its opener
+**Purpose:** R358, R360 — a closer of another delimiter, level or hash count is content; a disagreeing closer can still close an enclosing group
+**Input:** synthetic tables for C++ raw strings (empty and named delimiters, the four prefixes, parentheses inside, never closed), Lua long brackets (levels 0 to 2, a disagreeing closer inside, an overlapping real closer, a level-1 comment, an index bracket), Rust raw strings (one and two hashes), and a code-mode template block (its own name, an enclosing block's closer, a closer of no open block)
+**Expected:** each source's pairing as hand-written, each round-trips, and the independent walk pairs every opener the same way
+**Refs:** crc-BracketGroup.md, crc-BracketParser.md, crc-BracketContext.md, seq-parse.md
+**Code:** sdom/context_test.go
+**Fire alarm:** make `patterns.agree` return true once the closer matches, comparing no groups. Red: every case where a closer of another delimiter, level or name stands inside, closing early.
+**Inject:** sdom/bracket.go:patterns.agree
+**Pulled:** 2026-09-25 — rang: every case with another delimiter or level inside (`R"x( a )" b )x"` pairs as `R"x()" "-`), the never-closed raw string, and the corpus agreement check under the pattern-closing table.
+
+## Test: a pattern closer agrees with its opener — one byte past a disagreeing match
+**Purpose:** R358 — a disagreeing match is content one byte at a time, so an overlapping real closer is found
+**Input:** the case table above, the overlapping Lua closer
+**Expected:** as above
+**Refs:** crc-BracketParser.md, seq-parse.md
+**Code:** sdom/context_test.go
+**Fire alarm:** in `parseRestricted`, when the group's `CloseRegex` matches but does not close, advance past the whole match. Red: the overlapping case, the level-2 string running past its closer.
+**Inject:** sdom/bracket_parser.go:BracketParser.parseRestricted
+**Pulled:** 2026-09-25 — rang: the overlapping case alone, `[==[ a ]=]==] b` pairs as `[==[-`.
+
+## Test: a pattern closer agrees with its opener — the independent walk compares groups
+**Purpose:** R360, R87 — the second derivation compares the named groups itself
+**Input:** the case table above, run through the independent walk
+**Expected:** as above
+**Refs:** crc-BracketContext.md, seq-pair.md
+**Code:** sdom/context_test.go
+**Fire alarm:** make the test's `agreeing` return true once the closer is a whole match. Red: the enclosing-block case, the walk pairing the inner block with the outer one's closer.
+**Inject:** sdom/context_test.go:agreeing
+**Pulled:** 2026-09-25 — rang: `TestAPatternCloserAgreesWithItsOpener`, the walk pairing an opener differently.
+
+## Test: an edited pattern closer pairs only if it agrees
+**Purpose:** R360 — the derivation compares groups, which a parse never needs but an edit does
+**Input:** a C++ raw string whose closer is replaced with one of another delimiter, then with its own again
+**Expected:** unpaired after the first edit, paired after the second
+**Refs:** crc-BracketContext.md, seq-pair.md
+**Code:** sdom/context_test.go
+**Fire alarm:** drop the `agree` call from the `CloseRegex` branch of `closes`. ~~Red: this test alone; every parsed document pairs the same.~~ Corrected by pulling it: red here and on the template enclosing-block case, where the parent rule has `rebuild` test the inner block against the outer block's closer.
+**Inject:** sdom/context.go:BracketContext.closes
+**Pulled:** 2026-09-25 — rang: this test (`paired true, want false`) and, against the prediction, the template enclosing-block case: under the parent rule `rebuild` asks `closes` of the inner block with the outer one's closer, and without the comparison it pairs them.
 
 ## Test: a rescan per node agrees, on a fixture
 **Purpose:** R87 — the same guarantee by a genuinely different algorithm

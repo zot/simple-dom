@@ -1,5 +1,5 @@
 # Sequences: the scan
-**Requirements:** R57, R64, R72, R73, R74, R75, R77, R291, R294, R309, R346, R347, R349, R353, R356
+**Requirements:** R57, R64, R72, R73, R74, R75, R77, R291, R294, R309, R346, R347, R349, R353, R356, R358
 
 Three diagrams: a code-mode group, a scan-restricted one, and the rules that keep
 the scan from stalling or losing bytes.
@@ -19,9 +19,12 @@ the scan from stalling or losing bytes.
         1.3.3. A separator of this group is appended and the loop continues
    1.4. This group's closer matches — the literal `Close`, or with `CloseIsOpen` the
         very bytes that opened it, for a pattern group the pattern's match equal to them,
-        under the group's `BeforeClose`; a `Closer` is appended and the loop returns
+        or a `CloseRegex` match whose named groups equal the opened text's, under the
+        group's `BeforeClose`; a `Closer` is appended and the loop returns
         1.4.1. A run of the pattern that is not the opener's text: content, whole — or,
                longer and rejected, an unbalanced `Closer` that ends the group
+        1.4.2. A `CloseRegex` match whose named groups disagree: content, one byte at a
+               time, so a real closer overlapping it is still found
    1.5. Nothing of the nesting survives in the array — opener, contents and closer
         are siblings, and the pairing is a derived index
    1.6. Not this group's closer and not a separator, but the closer of a group further
@@ -36,7 +39,8 @@ the scan from stalling or losing bytes.
 2. The parser meets a string, or a comment
    2.1. Its opener is appended exactly as in diagram 1
    2.2. Inside, only three things are recognized
-        2.2.1. This group's own closer, which ends it — literal, or the opener's text
+        2.2.1. This group's own closer, which ends it — literal, the opener's text, or a
+               `CloseRegex` match agreeing with it (1.4.2 for one that disagrees)
         2.2.2. Its `Escape`, which consumes itself and the following byte as
                literal
         2.2.3. An opener of a group named in `AllowedInner` — by a literal opener or by

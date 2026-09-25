@@ -1,5 +1,5 @@
 # Sequence: the pairing links
-**Requirements:** R81, R82, R83, R84, R85, R86, R87, R355, R357
+**Requirements:** R81, R82, R83, R84, R85, R86, R87, R355, R357, R360
 
 How the bracket structure is recovered from a flat array, and how the answer is
 checked rather than believed.
@@ -35,7 +35,8 @@ checked rather than believed.
    2.3. Whether a closer *belongs* to the opener on top is decided from the
         **opener's own bytes** through the table. Without that a stray closer,
         which the any-close fallback emits unpaired, is paired here and the two
-        answers differ on every unbalanced file
+        answers differ on every unbalanced file. A `CloseRegex` closer belongs only when
+        its named groups agree with the opener's, both texts matched again
         2.3.1. A closer that does not belong, but is a longer run the opener's
                `RejectLongerCloses` group rejected — a whole match of its pattern,
                longer than the opener's text — pops the opener unpaired, because the

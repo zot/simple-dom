@@ -1,5 +1,5 @@
 # BracketGroup
-**Requirements:** R61, R63, R64, R66, R67, R71, R168, R290, R291, R292, R309, R346, R347, R348, R353
+**Requirements:** R61, R63, R64, R66, R67, R71, R168, R290, R291, R292, R309, R346, R347, R348, R353, R358
 
 One entry in a language's table: a set of matching markers, and the two fields
 that decide what may be recognized inside it and where it may be recognized at
@@ -12,6 +12,10 @@ all. Code brackets, strings and comments are all this one type.
   the marker is whatever it matched
 - `CloseIsOpen`: the closer is the text that opened this instance — one word for a
   symmetric group, the only way to say it for a pattern group
+- `CloseRegex`: a pattern closer, anchored where the parse stands, exclusive with `Close`
+  and `CloseIsOpen`; the capture groups it names must equal the same groups in the text
+  that opened this instance, which is how a raw string's delimiter or a long bracket's
+  level agrees across the two ends
 - `AfterOpen`, `BeforeClose`: patterns with one role each — after an opener, against
   the rune before a closer — both satisfied at the edge of the input
 - `RejectLongerCloses`: a longer run inside this close-is-open pattern group is a

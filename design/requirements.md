@@ -173,6 +173,10 @@
   pairs with nor was rejected by the opener on top with the nearest opener further down that it
   closes, popping every opener above that one unclosed, as the parse ended them (R356), and
   never searching below a parse-restricted group.
+- **R360:** The derivation pairs a `CloseRegex` closer with an opener only when the closer's
+  text is a whole match of `CloseRegex` and every named group agrees with the opener's text
+  matched against `OpenRegex`, so an edit cannot pair an opener with a closer of another
+  instance.
 - **R121:** The package exports the language tables `LangGo`, `LangShell`, `LangPascal`,
   `LangJavaScript`, `LangTypeScript` and `LangLua`, chosen both so that every field of
   `BracketGroup` is exercised by at least one of them and so that the languages mini-spec reads
@@ -235,7 +239,16 @@
   `CloseIsOpen` beside a non-empty `Close` is a construction error: `NewBracketParser` panics
   naming the group, and a test over every shipped table keeps the panic from a consumer.
 - **R297:** The any-close fallback recognizes literal closers only; a close-is-open marker
-  outside its group is an opener and has already matched as one.
+  outside its group is an opener and has already matched as one, and a `CloseRegex` closer is
+  never a stray.
+- **R358:** `CloseRegex` is a pattern closer, matched anchored where the parse stands and under
+  `BeforeClose`; when the patterns name groups, it matches only where every named group equals
+  the same group in the opened text, matched against `OpenRegex` again rather than stored. A
+  match that disagrees is content, and the parse advances one byte past its start, so a real
+  closer overlapping it is still found.
+- **R359:** A `CloseRegex` beside a non-empty `Close` or `CloseIsOpen`, or naming a different set
+  of groups from `OpenRegex` (none, for a literal `Open`), is a construction error, reported as
+  R296's are.
 - **R299:** `BracketContext.Unclosed` returns the openers whose group ran to end of input rather
   than to a closer, in document order, derived from the pairing.
 - **R309:** `AfterOpen` must match after an opener and `BeforeClose` against the one rune before a

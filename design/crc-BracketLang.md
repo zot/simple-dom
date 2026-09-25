@@ -1,5 +1,5 @@
 # BracketLang
-**Requirements:** R58, R59, R60, R62, R68, R70, R121, R169, R170, R171, R172, R173, R207, R208, R209, R295, R296, R354
+**Requirements:** R58, R59, R60, R62, R68, R70, R121, R169, R170, R171, R172, R173, R207, R208, R209, R295, R296, R354, R359
 
 A language's whole bracket table, and nothing else. Supporting a new language is
 adding an entry, not writing code.
@@ -15,8 +15,9 @@ adding an entry, not writing code.
   reach a group; matching then uses that group's own opener, never the name as a
   prefix
 - is checked when a parser is constructed: a pattern that does not compile, an
-  `OpenRegex` beside a non-empty `Open`, or `CloseIsOpen` beside a `Close` panics
-  naming the group, and a test over every shipped table keeps that panic from a
+  `OpenRegex` beside a non-empty `Open`, `CloseIsOpen` beside a `Close`, a `CloseRegex`
+  beside a `Close` or `CloseIsOpen`, or a `CloseRegex` naming a different set of groups
+  from the opener's panics naming the group, and a test over every shipped table keeps that panic from a
   consumer
 - answers `Check`, the same construction check returned as an error rather than
   panicked, for a table that is caller input — a consumer's configuration — whose

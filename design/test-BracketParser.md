@@ -40,7 +40,7 @@ corpus round-trips stayed green.
 **Alarm:** 2
 **Fire alarm:** Make `matchAnyClose` always return no match. Red: the unmatched `}` becomes text instead of a `Closer`, **and** `TestWordMarkersRespectBoundaries` fails too — its fixture ends with an `end` that only the fallback recognizes. No byte moves and the array still tiles, which is why a fallback that quietly stops firing needs its own assertion.
 **Inject:** sdom/bracket_parser.go:BracketParser.matchAnyClose
-**Pulled:** 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: four tests — this one, the word-boundary fixture, `TestOpenerAndCloserAreTyped` (`a stray closer has an opener`) and the new close-is-open fallback test. Previously 2026-09-01 — re-pulled after the file split and rang again, on the same two tests. The anchor resolved under its new home, `sdom/bracket_parser.go:BracketParser.matchAnyClose`, which is what this pull was taken for. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestWordMarkersRespectBoundaries`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang. This test failed, and so did
+**Pulled:** 2026-09-25 — re-pulled after R358 excluded pattern closers from `matchAnyClose`; rang: this test, `TestWordMarkersRespectBoundaries`, `TestOpenerAndCloserAreTyped`, and four R356 cases whose stray went missing. Previously 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: four tests — this one, the word-boundary fixture, `TestOpenerAndCloserAreTyped` (`a stray closer has an opener`) and the new close-is-open fallback test. Previously 2026-09-01 — re-pulled after the file split and rang again, on the same two tests. The anchor resolved under its new home, `sdom/bracket_parser.go:BracketParser.matchAnyClose`, which is what this pull was taken for. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on this test and `TestWordMarkersRespectBoundaries`, as before. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang. This test failed, and so did
 `TestWordMarkersRespectBoundaries`, whose fixture ends with an `end` that only
 the fallback can recognize. **The recognition count did not catch it**, and
 neither corpus round-trip did.
@@ -153,7 +153,7 @@ tiles it
 **Code:** sdom/parser_test.go
 **Fire alarm:** compare the closer by prefix — `matchAt(src, pos, opened)` alone, without the pattern equality. Red: the three-run inside the two-span closes it early — the parity inversion that lost 41 of 58 entries. (Until 2026-09-05 the injection was clearing a `Lookahead` field, since retired.)
 **Inject:** sdom/bracket_parser.go:BracketParser.matchCloser
-**Pulled:** 2026-09-05 — pulled again after the simplifier restructured the site; rang. Earlier the same day: re-pulled by hand after Item 8 rewrote the site; rang: the prefix comparison rang in four tests across both packages — this one, the reject test, the emphasis test and the carve's closes-nothing test. Previously 2026-09-05 — rang: `TestARunClosesOnlyWithARunOfItsOwnLength` on the three-run-inside-a-two-span case, only that test. **Past the list, same day:** disabling `skipOtherRun` whole rang here and in `TestBacktickRuns` (`items 3, want 4`; an opener with no closer); dropping `lookOK`'s end-of-input clause rang in three tests, the last-byte closer among them. Both are now named by this alarm's neighbours rather than by luck.
+**Pulled:** 2026-09-25 — re-pulled after R358 added a pattern branch to `matchCloser`; rang: the markdown rejected-run tests (`0 unpaired closers, want the three-run`), the fixture test, and R355's rejected-run test. Previously 2026-09-05 — pulled again after the simplifier restructured the site; rang. Earlier the same day: re-pulled by hand after Item 8 rewrote the site; rang: the prefix comparison rang in four tests across both packages — this one, the reject test, the emphasis test and the carve's closes-nothing test. Previously 2026-09-05 — rang: `TestARunClosesOnlyWithARunOfItsOwnLength` on the three-run-inside-a-two-span case, only that test. **Past the list, same day:** disabling `skipOtherRun` whole rang here and in `TestBacktickRuns` (`items 3, want 4`; an opener with no closer); dropping `lookOK`'s end-of-input clause rang in three tests, the last-byte closer among them. Both are now named by this alarm's neighbours rather than by luck.
 
 ## Test: the closer is the opener's own bytes, not its length class
 **Purpose:** R291 — `CloseIsOpen` compares text
@@ -172,8 +172,8 @@ tiles it
 **Refs:** crc-BracketGroup.md
 **Code:** sdom/parser_test.go
 **Fire alarm:** skip the boundary check for pattern matches. Red: `xx` fires inside `xxa`.
-**Inject:** sdom/bracket_parser.go:BracketParser.matchPattern
-**Pulled:** 2026-09-05 — rang: `TestAPatternOpenerHonoursWordBoundariesAndLookahead` — `xx` fired inside `xxa`, only that test.
+**Inject:** sdom/bracket_parser.go:matchRegexp
+**Pulled:** 2026-09-25 — re-pulled at `matchRegexp`, where R358 moved the check so openers and closers share it; rang: `want O"xx" T" a " C"xx" T" xxa axx"`. Previously 2026-09-05 — rang: `TestAPatternOpenerHonoursWordBoundariesAndLookahead` — `xx` fired inside `xxa`, only that test.
 
 ## Test: AllowedInner names a group, and matching uses the group's opener
 **Purpose:** R294, R295 — a hatch named by one opener admits the group's whole opener set, pattern included
@@ -193,17 +193,27 @@ tiles it
 **Code:** sdom/parser_test.go
 **Fire alarm:** drop the exclusivity check. Red: the first case constructs.
 **Inject:** sdom/bracket.go:BracketLang.check
-**Pulled:** 2026-09-25 — re-pulled after `check` changed 2026-09-12; rang: `Open and OpenRegex: constructed without panicking`, only that case. Previously 2026-09-05 — pulled again after the simplifier restructured the site; rang. Earlier the same day: rang: `Open and OpenRegex: constructed without panicking`, only that case of that test.
+**Pulled:** 2026-09-25 — re-pulled after R359 added checks to `check`; rang: this test and `TestCheckReturnsWhatConstructionPanicsWith` (`Open and OpenRegex: Check <nil>, panic <nil>`). Previously 2026-09-25 — re-pulled after `check` changed 2026-09-12; rang: `Open and OpenRegex: constructed without panicking`, only that case. Previously 2026-09-05 — pulled again after the simplifier restructured the site; rang. Earlier the same day: rang: `Open and OpenRegex: constructed without panicking`, only that case of that test.
 
 ## Test: Check returns what construction panics with
 **Purpose:** R354 — a table that is caller input is checked without a panic, and the check is the constructor's own
-**Input:** one group for each construction error (R296's three, R348's two); every shipped table; `LangPython` and an `IndentLang` with a bad group, through the embedding
+**Input:** one group for each construction error (R296's three, R348's two, R359's six: `CloseRegex` beside `Close`, beside `CloseIsOpen`, not compiling, naming other groups, naming groups under a literal opener, naming one fewer); two sound pattern closers; every shipped table; `LangPython` and an `IndentLang` with a bad group, through the embedding
 **Expected:** for each bad group `Check` returns an error whose text is exactly the constructor's panic; every shipped table, Python included, checks clean; the bad `IndentLang` does not
 **Refs:** crc-BracketLang.md
 **Code:** sdom/parser_test.go
 **Fire alarm:** make `Check` discard the error and return nil. Red: all five bad groups report `Check <nil>` beside a panic, and the bad `IndentLang` checks clean.
 **Inject:** sdom/bracket.go:BracketLang.Check
 **Pulled:** 2026-09-25 — rang: all five bad groups `Check <nil>` beside the constructor's panic, and `an IndentLang with a bad group checks clean`.
+
+## Test: Check returns what construction panics with — the named groups agree
+**Purpose:** R359 — a `CloseRegex` naming other groups than its opener's is refused, since it could never close
+**Input:** the construction cases above, the three naming cases
+**Expected:** each is refused
+**Refs:** crc-BracketLang.md
+**Code:** sdom/parser_test.go
+**Fire alarm:** drop the comparison of named-group sets from `check`. Red: the three naming cases construct without error, each reported as `Check <nil>` with no panic.
+**Inject:** sdom/bracket.go:BracketLang.check
+**Pulled:** 2026-09-25 — rang: the three naming cases, each `Check <nil>, panic <nil>`.
 
 ## Test: the any-close fallback ignores close-is-open groups
 **Purpose:** R297
@@ -230,7 +240,7 @@ tiles it
 **Code:** sdom/parser_test.go
 **Fire alarm:** keep the opener node at the rewind — truncate to one past the count. Red: `Unclosed` lists `<` and the run does not contain it.
 **Inject:** sdom/bracket_parser.go:BracketParser.open
-**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test (`unclosed 1, want none`), the four other demotion tests, the markdown fixture test and the five reader tests. Previously 2026-09-07 — rang: this test and every other demotion test in the package, the fixture test, and the five reader tests — the opener survived the rewind everywhere.
+**Pulled:** 2026-09-25 — re-pulled after R356 put the stack push and pop in `open`; rang: this test (`unclosed 1, want none`), the four other demotion tests, and R356's demoting-group case. Previously 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test (`unclosed 1, want none`), the four other demotion tests, the markdown fixture test and the five reader tests. Previously 2026-09-07 — rang: this test and every other demotion test in the package, the fixture test, and the five reader tests — the opener survived the rewind everywhere.
 **Alarm:** 6
 
 ## Test: a demoted group's enclosure is re-read in the enclosing mode
@@ -241,7 +251,7 @@ tiles it
 **Code:** sdom/parser_test.go
 **Fire alarm:** after the rewind, continue in the demoted group's own mode rather than returning. Red: `}` is not paired.
 **Inject:** sdom/bracket_parser.go:BracketParser.open
-**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; the second `parseBody` rang the markdown fixture test (items 4 want 5, demoted 7 want 8), the depth test, and the done and pending reader tests — not this test, whose `}` still pairs, as on the first pull. Previously 2026-09-07 — the injection is a second `parseBody` after the rewind; rang in the fixture test, the depth test, and the done and pending reader tests — not in this one, whose `}` is a code-mode any-close and lands either way. The assertion here is weaker than the property; the fixture test carries it.
+**Pulled:** 2026-09-25 — re-pulled after R356 put the stack push and pop in `open`; the second `parseBody` rang the markdown fixture test (`headings 5 items 4`, `demoted 7, want 8`) and the depth test — not this test, as before. Previously 2026-09-12 — re-pulled by delegate after the checkpoint commit; the second `parseBody` rang the markdown fixture test (items 4 want 5, demoted 7 want 8), the depth test, and the done and pending reader tests — not this test, whose `}` still pairs, as on the first pull. Previously 2026-09-07 — the injection is a second `parseBody` after the rewind; rang in the fixture test, the depth test, and the done and pending reader tests — not in this one, whose `}` is a code-mode any-close and lands either way. The assertion here is weaker than the property; the fixture test carries it.
 **Alarm:** 7
 
 ## Test: a blank line bounds a demoting group
@@ -263,7 +273,7 @@ tiles it
 **Code:** sdom/parser_test.go
 **Fire alarm:** do not truncate the demoted list at the rewind — append to the whole list, with `_ = recorded` so it builds. Red: three records.
 **Inject:** sdom/bracket_parser.go:BracketParser.open
-**Pulled:** 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test (three records, want two) and the markdown fixture test (demoted 9, want 8). Previously 2026-09-07 — rang: this test and the markdown fixture test.
+**Pulled:** 2026-09-25 — re-pulled after R356 put the stack push and pop in `open`; rang: this test (three records, want two) and the markdown fixture test (demoted 9, want 8). Previously 2026-09-12 — re-pulled by delegate after the checkpoint commit; rang: this test (three records, want two) and the markdown fixture test (demoted 9, want 8). Previously 2026-09-07 — rang: this test and the markdown fixture test.
 **Alarm:** 9
 
 ## Test: the rewind keeps the live run true

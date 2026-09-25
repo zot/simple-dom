@@ -22,6 +22,7 @@ type BracketGroup struct {
     Separators  []string // mid-group markers: {"else","elif","then"}
     Close       string   // the one closer: "}", "end", "\n"; "" when CloseIsOpen
     CloseIsOpen bool     // the closer is the text that opened this instance of the group
+    CloseRegex  string   // a pattern closer, anchored where the parse stands; exclusive with Close and CloseIsOpen
     AfterOpen   string   // a pattern the bytes after an opener must satisfy; "" for none
     BeforeClose string   // a pattern the rune before a closer must satisfy; "" for none
     RejectLongerCloses bool // a longer run inside a close-is-open pattern group is a rejected closer, not content
@@ -73,6 +74,31 @@ Four fields say all of this without a group per length or a rule in the parser:
   reads block structure first, so a line of three backticks interrupts a paragraph and
   opens a fence even inside an open span; this base has no block level.
 
+### Closers that must agree with their opener
+
+Some closers are different text from their opener but must agree with it on one part: a C++
+raw string `R"delim( … )delim"`, a Lua long bracket `[==[ … ]==]`, a Rust raw string
+`r#"…"#`. `CloseIsOpen` cannot say this, since the closer is not the opener's text.
+
+- **`CloseRegex`** is a pattern closer, matched anchored at the position the parse has
+  reached, like `OpenRegex`, and under the group's `BeforeClose`. It is exclusive with
+  `Close` and with `CloseIsOpen`.
+- **Named groups are the agreement.** When `OpenRegex` and `CloseRegex` name capture
+  groups, the closer matches only where every named group it captures equals the same
+  group in the text that opened this instance. Nothing is stored at the open: the opened
+  text is matched against `OpenRegex` again when the closer is tried. Patterns that name
+  no groups make a plain pattern closer.
+- **A match that disagrees is content**, and the group stays open. `R"x( a )" b )x"`
+  closes only at `)x"`. The parse moves one byte past such a match, not past all of it,
+  because a real closer can overlap it: inside a level-2 Lua string, `]=]==]` closes at the
+  second `]`. In code mode a disagreeing match can still close an enclosing group, as any
+  closer can.
+- **The two patterns name the same groups, or the table is refused.** A closer that
+  misspells or forgets a name would otherwise never close, so this is a construction error.
+  A literal `Open` names none, so a `CloseRegex` under it may name none.
+
+`GroupFor` stays opener-only: a consumer holding a closer has its opener through the context.
+
 ### An opener never closed was text
 
 A code bracket left open at the end of a Go file is an error a reader should keep seeing.
@@ -116,8 +142,10 @@ that a mutation elsewhere in the document does not move it.
 
 Markers stay byte comparisons; only the patterns are compiled, once, when the parser is
 constructed. A pattern that does not compile, an `OpenRegex` beside a non-empty `Open`,
-`CloseIsOpen` beside a non-empty `Close`, `BlankLineBound` without `DemoteUnclosed`, or
-`LineHeadUnbound` without `BlankLineBound` is a construction error: `NewBracketParser` panics
+`CloseIsOpen` beside a non-empty `Close`, a `CloseRegex` beside a non-empty `Close` or
+`CloseIsOpen`, a `CloseRegex` naming a different set of groups from the opener's,
+`BlankLineBound` without `DemoteUnclosed`, or `LineHeadUnbound` without `BlankLineBound` is a
+construction error: `NewBracketParser` panics
 naming the group, and every shipped table is checked by a test so the panic is never seen by
 a consumer.
 
@@ -129,7 +157,8 @@ would panic with, naming the group, or nil. An `IndentLang` answers it too, sinc
 fails.
 
 The any-close fallback recognizes literal closers only — a close-is-open marker
-outside its group is an opener, and has matched as one before the fallback is reached.
+outside its group is an opener, and has matched as one before the fallback is reached, and
+a pattern closer is never a stray, since there is no opener for its groups to agree with.
 
 **A group is named by any of its openers, or by its pattern.** `AllowedInner`,
 `AllowedParent` and `GroupFor` resolve a string to the group whose `Open` lists it or

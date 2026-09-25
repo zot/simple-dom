@@ -490,14 +490,20 @@ func TestTheRewindKeepsTheLiveRunTrue(t *testing.T) {
 	}
 }
 
-// CRC: crc-BracketLang.md | R354
+// CRC: crc-BracketLang.md | R354, R359
 func TestCheckReturnsWhatConstructionPanicsWith(t *testing.T) {
 	bad := map[string]BracketGroup{
-		"Open and OpenRegex":      {Open: []string{"a"}, OpenRegex: "a+", Close: "b"},
-		"CloseIsOpen contradicts": {Open: []string{"a"}, Close: "b", CloseIsOpen: true},
-		"OpenRegex":               {OpenRegex: "(", CloseIsOpen: true},
-		"BlankLineBound":          {Open: []string{"<"}, Close: ">", BlankLineBound: true},
-		"LineHeadUnbound":         {Open: []string{"<"}, Close: ">", DemoteUnclosed: true, LineHeadUnbound: true},
+		"Open and OpenRegex":             {Open: []string{"a"}, OpenRegex: "a+", Close: "b"},
+		"CloseIsOpen contradicts":        {Open: []string{"a"}, Close: "b", CloseIsOpen: true},
+		"OpenRegex":                      {OpenRegex: "(", CloseIsOpen: true},
+		"BlankLineBound":                 {Open: []string{"<"}, Close: ">", BlankLineBound: true},
+		"LineHeadUnbound":                {Open: []string{"<"}, Close: ">", DemoteUnclosed: true, LineHeadUnbound: true},
+		"CloseRegex with Close":          {Open: []string{"a"}, Close: "b", CloseRegex: "c"},
+		"CloseRegex with CloseIsOpen":    {Open: []string{"a"}, CloseIsOpen: true, CloseRegex: "c"},
+		"CloseRegex compiles":            {Open: []string{"a"}, CloseRegex: "("},
+		"CloseRegex names differ":        {OpenRegex: `a(?P<x>b)`, CloseRegex: `c(?P<y>d)`},
+		"CloseRegex names, Open literal": {Open: []string{"a"}, CloseRegex: `(?P<x>b)`},
+		"CloseRegex names one fewer":     {OpenRegex: `a(?P<x>b)(?P<y>c)`, CloseRegex: `d(?P<x>e)`},
 	}
 	for name, g := range bad {
 		lang := &BracketLang{Brackets: []BracketGroup{g}}
@@ -512,6 +518,16 @@ func TestCheckReturnsWhatConstructionPanicsWith(t *testing.T) {
 	for name, lang := range langs {
 		if err := lang.Check(); err != nil {
 			t.Errorf("%s: %v", name, err)
+		}
+	}
+	// A plain pattern closer under a literal opener, and two patterns naming the same
+	// groups, are sound.
+	for _, g := range []BracketGroup{
+		{Open: []string{"a"}, CloseRegex: "b+"},
+		{OpenRegex: `a(?P<x>b)(?P<y>c)`, CloseRegex: `d(?P<y>c)(?P<x>b)`},
+	} {
+		if err := (&BracketLang{Brackets: []BracketGroup{g}}).Check(); err != nil {
+			t.Errorf("a sound pattern closer: %v", err)
 		}
 	}
 	if err := LangPython.Check(); err != nil {

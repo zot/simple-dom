@@ -80,6 +80,13 @@ type BracketGroup struct {
 	Separators  []string
 	Close       string
 	CloseIsOpen bool
+
+	// R358: a pattern closer, anchored where the parse stands and exclusive with Close
+	// and CloseIsOpen. The capture groups it names must equal the same groups in the
+	// text that opened this instance — how a raw string's delimiter or a long bracket's
+	// level agrees across the two ends.
+	CloseRegex string
+
 	AfterOpen   string
 	BeforeClose string
 	Escape      string
@@ -191,8 +198,49 @@ func (l *BracketLang) label(i int) string {
 // group and nil where a group has none, plus each pattern opener's literal prefix as a
 // cheap gate before the regexp runs. A parser and its context each hold one.
 type patterns struct {
-	open, after, before []*regexp.Regexp
-	prefix              []string
+	open, after, before, close []*regexp.Regexp
+	prefix, closePrefix        []string
+}
+
+// CRC: crc-BracketGroup.md | R358
+// agree reports whether every capture group group i's CloseRegex names holds the same
+// text in closed as in opened, the opened text matched against OpenRegex again rather
+// than remembered. Patterns that name no groups always agree.
+func (p *patterns) agree(i int, opened, closed string) bool {
+	cre, ore := p.close[i], p.open[i]
+	cm := cre.FindStringSubmatch(closed)
+	if cm == nil {
+		return false
+	}
+	var om []string
+	for k, name := range cre.SubexpNames() {
+		if name == "" {
+			continue
+		}
+		if om == nil {
+			if om = ore.FindStringSubmatch(opened); om == nil {
+				return false
+			}
+		}
+		if cm[k] != om[ore.SubexpIndex(name)] {
+			return false
+		}
+	}
+	return true
+}
+
+// names is the set of capture-group names re declares, empty for a nil pattern.
+func names(re *regexp.Regexp) []string {
+	var out []string
+	if re != nil {
+		for _, n := range re.SubexpNames() {
+			if n != "" && !slices.Contains(out, n) {
+				out = append(out, n)
+			}
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // CRC: crc-BracketLang.md | R354
@@ -208,16 +256,19 @@ func (l *BracketLang) Check() error {
 // CRC: crc-BracketLang.md | R296
 //
 // check compiles the table's patterns and reports the construction errors: a pattern
-// that does not compile, an OpenRegex beside a non-empty Open, or CloseIsOpen beside a
-// non-empty Close. NewBracketParser panics on the error; a test over every shipped
-// table keeps that panic from a consumer.
+// that does not compile, an OpenRegex beside a non-empty Open, CloseIsOpen beside a
+// non-empty Close, a CloseRegex beside a Close or CloseIsOpen, or a CloseRegex naming
+// other groups than the opener's. NewBracketParser panics on the error; a test over
+// every shipped table keeps that panic from a consumer.
 func (l *BracketLang) check() (*patterns, error) {
 	n := len(l.Brackets)
 	p := &patterns{
-		open:   make([]*regexp.Regexp, n),
-		after:  make([]*regexp.Regexp, n),
-		before: make([]*regexp.Regexp, n),
-		prefix: make([]string, n),
+		open:        make([]*regexp.Regexp, n),
+		after:       make([]*regexp.Regexp, n),
+		before:      make([]*regexp.Regexp, n),
+		close:       make([]*regexp.Regexp, n),
+		prefix:      make([]string, n),
+		closePrefix: make([]string, n),
 	}
 	for i := range l.Brackets {
 		g := &l.Brackets[i]
@@ -243,6 +294,21 @@ func (l *BracketLang) check() (*patterns, error) {
 			// off the bare pattern, which compiles because the anchored one did.
 			bare, _ := regexp.Compile(g.OpenRegex)
 			p.prefix[i], _ = bare.LiteralPrefix()
+		}
+		if g.CloseRegex != "" { // R359
+			if g.Close != "" || g.CloseIsOpen {
+				return nil, fmt.Errorf("sdom: %s: CloseRegex is exclusive with Close and CloseIsOpen", l.label(i))
+			}
+			re, err := l.anchored(i, "CloseRegex", g.CloseRegex)
+			if err != nil {
+				return nil, err
+			}
+			if on, cn := names(p.open[i]), names(re); !slices.Equal(on, cn) {
+				return nil, fmt.Errorf("sdom: %s: CloseRegex names groups %v, the opener %v", l.label(i), cn, on)
+			}
+			p.close[i] = re
+			bare, _ := regexp.Compile(g.CloseRegex)
+			p.closePrefix[i], _ = bare.LiteralPrefix()
 		}
 		if g.AfterOpen != "" {
 			re, err := l.anchored(i, "AfterOpen", g.AfterOpen)
