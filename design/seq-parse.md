@@ -1,5 +1,5 @@
 # Sequences: the scan
-**Requirements:** R57, R64, R72, R73, R74, R75, R77, R291, R294, R309, R346, R347, R349, R353
+**Requirements:** R57, R64, R72, R73, R74, R75, R77, R291, R294, R309, R346, R347, R349, R353, R356
 
 Three diagrams: a code-mode group, a scan-restricted one, and the rules that keep
 the scan from stalling or losing bytes.
@@ -10,8 +10,9 @@ the scan from stalling or losing bytes.
    1.1. The marker matches, and the group's `AllowedParent` permits the context
         currently open
    1.2. An `Opener` node is constructed and **appended to the document's array**
-   1.3. The group's loop runs, receiving the group as the enclosing context — no
-        stack is consulted, because the loop *is* the context
+   1.3. The group's loop runs, receiving the group as the enclosing context — the loop
+        *is* the context; the parser's stack of open (group, opened text) frames is
+        consulted only for step 1.6
         1.3.1. Whatever the loop recognizes is appended as a **sibling**, never as
                a child
         1.3.2. A nested opener recurses; the nesting lives on the call stack
@@ -23,6 +24,12 @@ the scan from stalling or losing bytes.
                longer and rejected, an unbalanced `Closer` that ends the group
    1.5. Nothing of the nesting survives in the array — opener, contents and closer
         are siblings, and the pairing is a derived index
+   1.6. Not this group's closer and not a separator, but the closer of a group further
+        down the stack, the nearest first: the loop returns unclosed without consuming
+        1.6.1. `open` ends the group as at end of input — demoted if `DemoteUnclosed`,
+               otherwise left unclosed — and pops its frame
+        1.6.2. The enclosing loop meets the same position: its own closer closes it, or
+               it returns in turn, until the group that closer belongs to is reached
 
 ## 2. A scan-restricted group
 
@@ -42,9 +49,9 @@ the scan from stalling or losing bytes.
 ## 3. The scan cannot stall, and cannot lose bytes
 
 3. Nothing recognized matches here
-   3.1. The any-close fallback is tried: any code-mode group's literal closer is
-        recognized, so a stray `}` lands as a `Closer` rather than derailing the
-        scan
+   3.1. The any-close fallback is tried, once no enclosing group closes here (1.6): any
+        code-mode group's literal closer is recognized, so a stray `}` lands as a `Closer`
+        rather than derailing the scan
    3.2. Otherwise a text run begins, and **advances at least one byte** before
         testing again — which holds structurally, since this branch is only
         reached once no marker matched at this position

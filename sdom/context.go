@@ -341,6 +341,10 @@ func (bc *BracketContext) rebuild() {
 				// opener leaves the stack here too, unpaired — or every later
 				// closer is tested against a group the parse had already closed.
 				stack = stack[:len(stack)-1]
+			} else if j := bc.enclosingCloses(stack, m); j >= 0 {
+				// R357: the parse ended every group above j at this closer (R356).
+				bc.pair(stack[j], m)
+				stack = stack[:j]
 			}
 		case *Opener:
 			if open != nil {
@@ -378,6 +382,30 @@ func (bc *BracketContext) closes(opener, closer Node) bool {
 		return ct == ot // R291
 	}
 	return ct == g.Close
+}
+
+// CRC: crc-BracketContext.md | Seq: seq-pair.md#2.3.2 | R357
+// enclosingCloses reports the index of the nearest opener below the top of stack that
+// closer closes, or -1, searching as the parse did (R356): only when the top group is
+// in code mode, and never below a parse-restricted group.
+func (bc *BracketContext) enclosingCloses(stack []*Opener, closer Node) int {
+	for j := len(stack) - 1; j >= 0; j-- {
+		ot, err := stack[j].Render()
+		if err != nil {
+			return -1
+		}
+		g := bc.groupOf(ot)
+		if g == nil {
+			return -1
+		}
+		if j < len(stack)-1 && bc.closes(stack[j], closer) {
+			return j
+		}
+		if g.Restricted() {
+			return -1
+		}
+	}
+	return -1
 }
 
 // CRC: crc-BracketContext.md | Seq: seq-pair.md#2.3.1 | R355

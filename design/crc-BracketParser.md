@@ -1,12 +1,14 @@
 # BracketParser
-**Requirements:** R57, R72, R73, R74, R75, R76, R77, R78, R165, R166, R192, R294, R297, R309, R346, R347, R353
+**Requirements:** R57, R72, R73, R74, R75, R76, R77, R78, R165, R166, R192, R294, R297, R309, R346, R347, R353, R356
 
 The parser. It walks a source once and appends nodes to the document in the
 order it meets them.
 
 ## Knows
-- its language table, its `BracketContext`, and its stack of open openers — all
-  three being **its own** rather than the walk's, since the walk holds no language
+- its language table, its `BracketContext`, and its stack of open groups — each frame
+  the group and the text that opened it, pushed and popped by `open`, empty when the
+  parse ends — all three being **its own** rather than the walk's, since the walk holds
+  no language
 - the group currently open, which it receives rather than looks up — the node
   driving the loop *is* the enclosing context
 
@@ -25,6 +27,10 @@ The source and the position belong to `ParserState`, which it is handed.
 - **takes a run that is not the opener's text whole**, inside a close-is-open pattern
   group: shorter as content, longer as content or — with `RejectLongerCloses` — as an
   unbalanced closer that ends the group; the hatches are tried first, so emphasis nests
+- **closes an enclosing group from inside a child**, in code mode: a closer that is not
+  the open group's but closes a group further down its stack, the nearest first, makes
+  the loop return unclosed without consuming; each group in between ends as at end of
+  input, and the frame whose closer it is closes on it
 - compiles each group's `OpenRegex`, `AfterOpen` and `BeforeClose` once, at construction;
   markers stay byte comparisons
 - emits `Opener`, `Closer`, `Separator` and `Text`, appending each to the
@@ -38,7 +44,8 @@ The source and the position belong to `ParserState`, which it is handed.
   does not understand. This holds structurally rather than by a check: the text
   branch is only reached once no marker matched here, so its first advance
   always fires
-- **An any-close fallback.** When nothing else matches, any code-mode group's
+- **An any-close fallback.** When nothing else matches and no enclosing group closes
+  here, any code-mode group's
   **literal** closer is recognized, so a stray `}` lands as a bracket rather than
   derailing the parse; a close-is-open marker outside its group is an opener and has
   already matched as one

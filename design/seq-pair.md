@@ -1,5 +1,5 @@
 # Sequence: the pairing links
-**Requirements:** R81, R82, R83, R84, R85, R86, R87, R355
+**Requirements:** R81, R82, R83, R84, R85, R86, R87, R355, R357
 
 How the bracket structure is recovered from a flat array, and how the answer is
 checked rather than believed.
@@ -41,6 +41,10 @@ checked rather than believed.
                longer than the opener's text — pops the opener unpaired, because the
                parse ended the group there. Without it the ended opener stays on the
                stack and every later closer is tested against the wrong group
+        2.3.2. A closer that neither belongs to the opener on top nor was rejected by
+               it, when that opener's group is in code mode, pairs with the nearest
+               opener further down that it closes; every opener above that one leaves
+               the stack unpaired, as the parse ended them there (R356)
    2.4. No index is consulted anywhere in this, which is what makes the answer
         independent of the one it checks
    2.5. It must agree with what the context reports. **That is the point** — an

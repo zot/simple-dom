@@ -43,7 +43,7 @@ or comment closes a real group. The repair is the one proposed.
 - [ ] **Item 2 — a closer whose named groups must equal the opener's.** **OPEN (#43.)**
 - [ ] **Item 3 — Lua long brackets at every level.** **OPEN (#44.)**
 - [x] ~~**Item 4 — `rebuild()` ends a group wherever the parse does (R309).**~~ **LANDED (2026-09-25 — `#41`.)**
-- [ ] **Item 5 — a closer that matches an enclosing group closes it, ending the groups in between.** **OPEN (#42.)**
+- [x] ~~**Item 5 — a closer that matches an enclosing group closes it, ending the groups in between.**~~ **LANDED (2026-09-25 — `#42`.)**
 
 ## Decisions
 
@@ -85,8 +85,10 @@ groups.** "Painful but more correct." It changes recovery in every shipped langu
 today emits `)` stray and leaves `{` open; after this carve `)` closes `(` and `{` is
 unclosed, which is how compilers report it. A closer that matches no enclosing group is
 still stray. The any-close fallback's wording (`specs/bracket-parser.md`, the bullet
-beginning "An any-close fallback") and its tests (`parser_test.go` near line 120,
-`context_test.go` near lines 97, 116 and 375) change with it. The rule is Item 5.
+beginning "An any-close fallback") changes with it. ~~Its tests (`parser_test.go` near line
+120, `context_test.go` near lines 97, 116 and 375) change too.~~ **Measured 2026-09-25 while
+landing Item 5: they do not.** Each is a top-level stray with nothing enclosing it, which the
+rule leaves stray. The rule is Item 5.
 
 **DECIDED (Bill, 2026-09-25, on Daneel's recommendation): the groups in between end as they
 would at end of input.** A `DemoteUnclosed` group demotes, and any other is unclosed, so

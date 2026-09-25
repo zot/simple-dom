@@ -145,7 +145,8 @@
 - **R70:** Language tables are Go values; the package ships no config-file format or loader for them.
 - **R71:** A marker whose first byte is a word character is recognized only at a word boundary — neither preceded nor followed by a word character.
 - **R72:** A group's separators are recognized only while that group is the one currently open.
-- **R73:** When no other marker matches, any code-mode group's closer is recognized, so a stray closer lands as a bracket rather than derailing the parse.
+- **R73:** When no other marker matches and no enclosing group closes here (R356), any code-mode group's closer is recognized, so a stray closer lands as a bracket rather than derailing the parse.
+- **R356:** In code mode, a closer that does not close the current group but closes an enclosing one ends every group in between and pairs with that one, the nearest if several would; each group in between ends as at end of input, demoted if `DemoteUnclosed` and otherwise unclosed. It applies to every closer, and not inside a parse-restricted group; the search for an enclosing group stops at a parse-restricted one, whose own closer can still end it.
 - **R74:** The parse always consumes at least one byte.
 - **R75:** A group left open at end of input closes there unless its group demotes (R346), and no
   bytes are dropped either way.
@@ -168,6 +169,10 @@
   the opener on top, but is a whole match of that group's pattern longer than the opener's text
   in a `RejectLongerCloses` group, pops the opener unclosed and pairs with nothing, so later
   closers pair with the enclosing group as they did in the parse.
+- **R357:** When the group on top is in code mode, the derivation pairs a closer that neither
+  pairs with nor was rejected by the opener on top with the nearest opener further down that it
+  closes, popping every opener above that one unclosed, as the parse ended them (R356), and
+  never searching below a parse-restricted group.
 - **R121:** The package exports the language tables `LangGo`, `LangShell`, `LangPascal`,
   `LangJavaScript`, `LangTypeScript` and `LangLua`, chosen both so that every field of
   `BracketGroup` is exercised by at least one of them and so that the languages mini-spec reads

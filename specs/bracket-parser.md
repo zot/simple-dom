@@ -265,9 +265,17 @@ position inside a group at all.
   character must not be preceded or followed by one.
 - **Separators** are matched against the group currently open, between its opener
   and its closer.
-- **An any-close fallback**: when nothing else matches, any code-mode group's
-  closer is recognized, so a stray `}` lands as a bracket rather than derailing
-  the parse.
+- **A closer of an enclosing group closes it.** In code mode, a closer that does not
+  close the current group but closes one enclosing it ends every group in between and
+  pairs with that one, the nearest if several would. The groups in between end as they
+  would at end of input: a `DemoteUnclosed` group is demoted, and any other is left
+  unclosed, which is how `( { )` reports `{`. This holds for every closer. Inside a
+  parse-restricted group nothing changes, since only its own closer is recognized there,
+  and for the same reason the search for an enclosing group stops at one: a restricted
+  group can be ended by its own closer, but reads any other as text.
+- **An any-close fallback**: when nothing else matches and no enclosing group closes
+  here, any code-mode group's closer is recognized, so a stray `}` lands as a bracket
+  rather than derailing the parse.
 - **The parse always consumes at least one byte**, so nothing stalls on input it
   does not understand.
 - **A group left open at end of input closes there** — unless its group demotes, in
@@ -393,7 +401,8 @@ locations by hand is the kind of thing a library owes rather than each consumer.
 **`Unclosed()` returns the openers that pair with no closer**, and **`Unpaired()` the
 closers that pair with no opener**, both in document order, derived from the pairing like
 everything else the context answers. An opener is never closed when its group ran to end
-of input, or when a rejected longer run ended it; a closer pairs with nothing when the
+of input, when a rejected longer run ended it, or when a closer of an enclosing group
+ended it; a closer pairs with nothing when the
 any-close fallback emitted it stray, or when a group rejected it. A fence or span that runs
 to the end of a file takes every later heading and list item with it, and a reader above
 the base can list nothing as unread, because nothing entry-like survived to be unread. This
@@ -422,6 +431,9 @@ derivation, on demand, and nothing to fall out of step with.
 and the parse disagree on everything that follows. A closer pairs with the opener on top when
 it is that group's closer. A closer that group rejected as a longer run (`RejectLongerCloses`)
 ends the group without pairing: it is a whole match of the group's pattern, longer than the
-opener's text, and the derivation pops the opener there, unclosed, as the parse did. A closer
-that does neither is stray and ends nothing.
+opener's text, and the derivation pops the opener there, unclosed, as the parse did. When the
+group on top is in code mode, a closer that does neither but pairs with an opener further down
+pops every opener above that one, unclosed, and pairs with it, the nearest if several would,
+never searching below a parse-restricted group.
+A closer that does none of these is stray and ends nothing.
 

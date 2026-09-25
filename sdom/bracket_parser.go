@@ -22,6 +22,17 @@ type BracketParser struct {
 	lang *BracketLang
 	pats *patterns
 	ctx  *BracketContext
+
+	// R356: the groups open around the parse, innermost last, pushed and popped by
+	// open. Scratch rather than a record — empty whenever a parse is not inside one.
+	stack []frame
+}
+
+// frame is one open group and the text that opened it, which a CloseIsOpen closer
+// must equal.
+type frame struct {
+	g      *BracketGroup
+	opened string
 }
 
 // CRC: crc-BracketParser.md | R296
@@ -159,6 +170,11 @@ func (bp *BracketParser) parseCode(st *ParserState, enclosing *BracketGroup, ope
 				st.Emit(NewSeparator(m, st.At(st.Pos(), len(m))))
 				continue
 			}
+			// R356: an enclosing group's closer ends this one, unclosed, without
+			// consuming — the frame it belongs to meets the same position next.
+			if bp.enclosingCloses(st) {
+				return false
+			}
 		}
 		// The any-close fallback: a stray closer lands as a bracket rather than
 		// derailing the parse.
@@ -224,7 +240,9 @@ func (bp *BracketParser) open(st *ParserState, g *BracketGroup, marker string) {
 	count, pos, recorded := st.NodeCount(), st.Pos(), len(bp.ctx.demoted)
 	bound := bounded(st.Src(), pos, g)
 	st.Emit(NewOpener(marker, st.At(pos, len(marker))))
+	bp.stack = append(bp.stack, frame{g, marker})
 	ended := bp.parseBody(st, g, marker, bound)
+	bp.stack = bp.stack[:len(bp.stack)-1]
 	if ended || !g.DemoteUnclosed {
 		return
 	}
@@ -344,6 +362,23 @@ func (bp *BracketParser) matchCloser(src string, pos, i int, opened string) stri
 		return ""
 	}
 	return want
+}
+
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.6 | R356
+// enclosingCloses reports whether a group open below the current one closes here, the
+// nearest first. The search stops at a parse-restricted group: its own closer can end
+// it, but it reads any other closer as text, so nothing below it can be reached.
+func (bp *BracketParser) enclosingCloses(st *ParserState) bool {
+	for j := len(bp.stack) - 2; j >= 0; j-- {
+		f := bp.stack[j]
+		if bp.matchCloser(st.Src(), st.Pos(), bp.index(f.g), f.opened) != "" {
+			return true
+		}
+		if f.g.Restricted() {
+			return false
+		}
+	}
+	return false
 }
 
 // CRC: crc-BracketParser.md | R66

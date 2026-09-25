@@ -136,6 +136,20 @@ func independentLinks(d *Doc, lang *BracketLang) (closerOf map[Node]*Closer, ope
 				closerOf[o], openerOf[m] = m, o
 			} else if o != nil && rejected(o, m) {
 				stack = stack[:len(stack)-1]
+			} else {
+				// R357: under a code-mode top, the nearest opener further down that
+				// this closes takes it, and the openers above it end unpaired. The
+				// search never passes below a parse-restricted group.
+				for j := len(stack) - 1; j >= 0; j-- {
+					if j < len(stack)-1 && closes(stack[j], m) {
+						closerOf[stack[j]], openerOf[m] = m, stack[j]
+						stack = stack[:j]
+						break
+					}
+					if ot, _ := stack[j].Render(); lang.GroupFor(ot).AllowedInner != nil {
+						break
+					}
+				}
 			}
 		case *Opener:
 			if e := top(); e != nil {
@@ -570,5 +584,79 @@ func TestARejectedRunEndsItsGroupInTheIndex(t *testing.T) {
 	}
 	if !slices.Equal(unclosed, []string{"``"}) || !slices.Equal(unpaired, []string{"```"}) {
 		t.Errorf("unclosed %q, unpaired %q; want the span alone, and the rejected run alone", unclosed, unpaired)
+	}
+}
+
+// pairing summarizes a parse as one line: each opener in document order with the closer
+// it pairs with, or "-" when unclosed; then the unpaired closers; then the demoted markers.
+func pairing(d *Doc, ctx *BracketContext) string {
+	var b strings.Builder
+	for _, n := range d.Nodes() {
+		if o, ok := n.(*Opener); ok {
+			s, _ := o.Render()
+			c := "-"
+			if cl := ctx.Closer(o); cl != nil {
+				c, _ = cl.Render()
+			}
+			fmt.Fprintf(&b, "%s%s ", s, c)
+		}
+	}
+	b.WriteString("|")
+	for _, c := range ctx.Unpaired() {
+		s, _ := c.Render()
+		b.WriteString(" " + s)
+	}
+	b.WriteString(" |")
+	for _, dm := range ctx.Demoted() {
+		b.WriteString(" " + dm.Marker)
+	}
+	return b.String()
+}
+
+// CRC: crc-BracketParser.md | Seq: seq-parse.md#1.6 | R356, R357
+// A closer of an enclosing group closes it from inside a child, ending the groups in
+// between: unclosed, or demoted when they demote; the nearest enclosing group wins; a
+// parse-restricted group in between stops the search; a group already closed encloses
+// nothing; and Lua's `end` reaches its `if` through an unclosed parenthesis.
+func TestAnEnclosingCloserEndsTheGroupsBetween(t *testing.T) {
+	code := &BracketLang{Brackets: []BracketGroup{
+		{Open: []string{"<"}, Close: ">", DemoteUnclosed: true},
+		{Open: []string{`"`}, Close: `"`, AllowedInner: []string{"{"}},
+		{Open: []string{"("}, Close: ")"},
+		{Open: []string{"{"}, Close: "}"},
+		{Open: []string{"["}, Close: "]"},
+	}}
+	cases := []struct {
+		name, src, want string
+		lang            *BracketLang
+	}{
+		{"one group between", "( { )", "() {- | |", code},
+		{"the nearest wins", "( [ ( { ) ]", "(- [] () {- | |", code},
+		{"a demoting group between is demoted", "( < ) >", "() | > | <", code},
+		{"a restricted group stops the search", `( "{ ) } " )`, `() "" {} | ) |`, code},
+		{"a stray with nothing enclosing is stray", "{ } )", "{} | ) |", code},
+		{"a closed group no longer encloses", "{ } < } >", "{} <> | } |", code},
+		{"Lua's end through a parenthesis", "if x then ( end", "ifend (- | |", &LangLua},
+	}
+	langs := shippedLangs()
+	langs["typescript"], langs["lua"], langs["python"] = &LangTypeScript, &LangLua, &LangPython.BracketLang
+	for name, lang := range langs {
+		p, b := lang.GroupFor("("), lang.GroupFor("{")
+		if p == nil || b == nil || p.Restricted() || b.Restricted() {
+			continue
+		}
+		cases = append(cases, struct {
+			name, src, want string
+			lang            *BracketLang
+		}{name + ": one group between", "( { )", "() {- | |", lang})
+	}
+	for _, c := range cases {
+		d, ctx := parse(c.src, 0, c.lang)
+		if got := pairing(d, ctx); got != c.want {
+			t.Errorf("%s: %q pairs as %q, want %q", c.name, c.src, got, c.want)
+		}
+		if r, _ := d.Render(); r != c.src {
+			t.Errorf("%s: render %q, want the source", c.name, r)
+		}
 	}
 }

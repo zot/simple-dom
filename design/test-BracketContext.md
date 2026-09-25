@@ -19,7 +19,7 @@ level report none
 **Alarm:** 1
 **Fire alarm:** In `BracketContext.rebuild`, push the opener onto the stack *before* calling `enclose` on it rather than after — the same defect as the original, moved to where the stack now lives (retargeted 2026-09-12, Bill). Red: an opener records **itself** as its own enclosing opener instead of the one containing it. The bytes, the tiling and the pairing are untouched. ~~so this is silent everywhere else~~ — **corrected 2026-09-01: it is now the loudest alarm in the suite**, because the rest of this sentence came true: it *would quietly corrupt any layer walking enclosure to find scope*, and Item 4 built one.
 **Inject:** sdom/context.go:BracketContext.rebuild
-**Pulled:** 2026-09-12 — retargeted to `rebuild` and pulled by delegate; rang: this test (`node 1 ("{"): enclosed by node 1`), the independent-derivation and rescan cross-checks, and two Lua declaration tests reading top level as `Enclosing == nil`. Previously 2026-09-05 — **not re-pulled, and the prescription no longer applies:** `open` keeps no stack — the enclosing link is derived by `rebuild` from the finished array — so there is nothing to push before emitting. The site changed only in signature this day (the opener's text now rides to `parseBody`). The alarm needs a new injection against `rebuild`'s enclosing derivation, or retiring; Bill decides. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang **far louder than at any previous pull** — not because the property moved, but because the coverage grew into the hazard this alarm had already named. **13 failures across both packages:** this test, the corpus cross-check, and **eleven declaration tests** in `sdom/schema`, ending with `TestADeclarationPassIsAdditive` reporting **0 declarations over 24 files** against an independent count of 251. The mechanism is exactly the one the prose predicted: the declaration pass reads *top level* as `Enclosing(n) == nil`, so an index where every opener encloses itself leaves **nothing** top-level and the whole layer sees an empty document. On 2026-08-30 that consumer did not exist. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on the same two tests — this one and the cross-check. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and wider than designed. This test failed and so
+**Pulled:** 2026-09-25 — re-pulled after R355 added a branch to `rebuild`; rang: this test (`node 1 ("{"): enclosed by node 1 ("{"), want none`), both cross-checks, and the Lua declaration tests (`want "function[foo] "`). Previously 2026-09-12 — retargeted to `rebuild` and pulled by delegate; rang: this test (`node 1 ("{"): enclosed by node 1`), the independent-derivation and rescan cross-checks, and two Lua declaration tests reading top level as `Enclosing == nil`. Previously 2026-09-05 — **not re-pulled, and the prescription no longer applies:** `open` keeps no stack — the enclosing link is derived by `rebuild` from the finished array — so there is nothing to push before emitting. The site changed only in signature this day (the opener's text now rides to `parseBody`). The alarm needs a new injection against `rebuild`'s enclosing derivation, or retiring; Bill decides. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang **far louder than at any previous pull** — not because the property moved, but because the coverage grew into the hazard this alarm had already named. **13 failures across both packages:** this test, the corpus cross-check, and **eleven declaration tests** in `sdom/schema`, ending with `TestADeclarationPassIsAdditive` reporting **0 declarations over 24 files** against an independent count of 251. The mechanism is exactly the one the prose predicted: the declaration pass reads *top level* as `Enclosing(n) == nil`, so an index where every opener encloses itself leaves **nothing** top-level and the whole layer sees an empty document. On 2026-08-30 that consumer did not exist. Previously 2026-08-31 — re-pulled after the parser rename and rang again, on the same two tests — this one and the cross-check. The rename moved no property; only symbols changed name. Originally 2026-08-30 — rang, and wider than designed. This test failed and so
 did the cross-check, **in the opposite column** from the alarm above: pairs equal
 at 316, enclosings 974 vs 962. The blast radius is larger than predicted, because
 ~~`take` flushes pending text *before* emitting~~ (2026-09-03: the text run is already in the array when the opener is emitted): pushing first means the text
@@ -63,6 +63,66 @@ is a consumer.
 **Inject:** sdom/context_test.go:independentLinks
 **Pulled:** 2026-09-25 — rang: the agreement check alone, `../design/test-Markdown.md under rejecting: the two derivations disagree on an enclosing opener`.
 
+## Test: an enclosing closer ends the groups between
+**Purpose:** R356, R357 — a closer of an enclosing group closes it from inside a child, and the derivation pairs it the same way
+**Input:** a code table with a demoting angle group, a restricted string that admits braces, and three code brackets; seven sources: one group between, nested so the nearest enclosing group wins, a demoting group between, a restricted string between, a stray with nothing enclosing it, a group already closed that must not enclose, and Lua's `end` through an unclosed parenthesis; and one group between in every shipped table whose parenthesis and brace are both code-mode groups (Go, JavaScript, TypeScript, Lua, Python and shell; Pascal's brace is a comment)
+**Expected:** per source, each opener's closer or none, the unpaired closers and the demoted markers, as hand-written in the test; every source round-trips
+**Refs:** crc-BracketParser.md, crc-BracketContext.md, seq-parse.md, seq-pair.md
+**Code:** sdom/context_test.go
+**Fire alarm:** make the parser's `enclosingCloses` always false, so a child never returns for an enclosing closer. ~~Red: this test on every case but the stray.~~ Corrected by pulling it: red **only on the demoting case**. For code brackets the array is the same either way — the child keeps the closer as a stray, and the derivation pairs it with the enclosing group just the same — so the parser's half of R356 shows only where ending early changes how later bytes are read.
+**Inject:** sdom/bracket_parser.go:BracketParser.enclosingCloses
+**Pulled:** 2026-09-25 — rang: `a demoting group between is demoted: "( < ) >" pairs as "() <- | > |"`, only that case.
+
+## Test: an enclosing closer ends the groups between — the parser stops at a restricted group
+**Purpose:** R356 — the parser's search never passes below a parse-restricted group
+**Input:** the case table above
+**Expected:** as above
+**Refs:** crc-BracketParser.md, seq-parse.md
+**Code:** sdom/context_test.go
+**Fire alarm:** drop the parse-restricted stop from the parser's search. Red: the restricted case, the brace ending at the parenthesis's closer and the string reading it as text.
+**Inject:** sdom/bracket_parser.go:BracketParser.enclosingCloses
+**Pulled:** 2026-09-25 — rang: the restricted case, the brace left unclosed and the parenthesis's closer read as string text.
+
+## Test: an enclosing closer ends the groups between — the derivation pairs it
+**Purpose:** R357 — `rebuild` pairs an enclosing closer as the parse did
+**Input:** the case table above
+**Expected:** as above
+**Refs:** crc-BracketContext.md, seq-pair.md
+**Code:** sdom/context_test.go
+**Fire alarm:** drop the enclosing-closer branch from `rebuild`. Red: this test, the enclosing closer reported unpaired, and the corpus agreement check, since the independent walk still pairs it.
+**Inject:** sdom/context.go:BracketContext.rebuild
+**Pulled:** 2026-09-25 — rang: three cases (`"( { )" pairs as "(- {- | ) |"`, the nearest-wins case, and Lua's `end` unpaired), and the agreement check (`lang_test.go under rejecting: the two derivations disagree on a closer`).
+
+## Test: an enclosing closer ends the groups between — the derivation stops at a restricted group
+**Purpose:** R357 — the derivation's search never passes below a parse-restricted group
+**Input:** the case table above
+**Expected:** as above
+**Refs:** crc-BracketContext.md, seq-pair.md
+**Code:** sdom/context_test.go
+**Fire alarm:** drop the parse-restricted stop from the derivation's search. Red: the restricted case, the stray parenthesis paired with the outer one through the string.
+**Inject:** sdom/context.go:BracketContext.enclosingCloses
+**Pulled:** 2026-09-25 — rang: the restricted case, the stray parenthesis paired through the string, leaving the string and the brace unclosed.
+
+## Test: an enclosing closer ends the groups between — a closed group encloses nothing
+**Purpose:** R356 — the parser's stack holds only the groups open around the position; a closed group's frame is gone
+**Input:** the case table above, the closed-group case
+**Expected:** as above
+**Refs:** crc-BracketParser.md, seq-parse.md
+**Code:** sdom/context_test.go
+**Fire alarm:** drop the pop after `parseBody` in `open`, so a closed group's frame leaks. Red: the closed-group case, the angle group ended and demoted by the closed brace's closer. Found past the list: before that case existed the leak was silent, since for code brackets the array is the same either way.
+**Inject:** sdom/bracket_parser.go:BracketParser.open
+**Pulled:** 2026-09-25 — rang: `a closed group no longer encloses: "{ } < } >" pairs as "{} | } > | <"`, only that case.
+
+## Test: the independent walk pairs an enclosing closer too
+**Purpose:** R357, R87 — the corpus agreement check reaches the enclosing-closer rule
+**Input:** the corpus agreement check, under every shipped code table and the rejecting table
+**Expected:** the two derivations agree
+**Refs:** crc-BracketContext.md, seq-pair.md
+**Code:** sdom/context_test.go
+**Fire alarm:** drop the enclosing-closer search from the test's own walk. Red: the agreement check alone.
+**Inject:** sdom/context_test.go:independentLinks
+**Pulled:** 2026-09-25 — rang: the agreement check alone, `doc_test.go under shell: the two derivations disagree on a closer`.
+
 ## Test: a rescan per node agrees, on a fixture
 **Purpose:** R87 — the same guarantee by a genuinely different algorithm
 **Input:** for each node, a rescan from the start of the document counting depth,
@@ -78,7 +138,7 @@ mistake common to both.
 **Alarm:** 2
 **Fire alarm:** Remove the `bc.closes(o, n)` condition from `rebuild`, so the stack walk pairs any closer with whatever opener is on top. **This is the real defect, hit while implementing:** on `( { )` the parse emits `)` unpaired via the any-close fallback while the walk pairs it with `{`. Red: the two derivations disagree, on most corpus files under most languages. Every other test stays green, because each derivation is individually self-consistent.
 **Inject:** sdom/context.go:BracketContext.rebuild
-**Pulled:** 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `TestIndexAgreesWithTheIndependentDerivation` — `protocol_test.go under shell: the two derivations disagree on a closer`. `closes` now compares one closer, or the opener's own text for a close-is-open group. Previously 2026-09-02 — re-pulled after Item 6.1 typed the pair fields and rang: `indent.go under shell: the two derivations disagree on a closer`, only that test. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang again, at `stencil_test.go under shell: the parse recorded 655 entries; the independent walk found 664`. **Only this test failed**, both packages otherwise green — the claim that each derivation stays individually self-consistent, confirmed a third time. (That message now says *the parse recorded*; the quotes further down keep the wording actually printed on their own dates.) Previously 2026-08-31 — re-pulled after the index consolidation and rang again,
+**Pulled:** 2026-09-25 — re-pulled after R355 added a branch to `rebuild`; rang: `TestIndexAgreesWithTheIndependentDerivation` (`lang.go under rejecting: the two derivations disagree on a closer`), and now also the R309 and R355 tests, whose rejected run gets paired with its span. Previously 2026-09-05 — re-pulled after backtick-runs Item 1 touched the site; rang: `TestIndexAgreesWithTheIndependentDerivation` — `protocol_test.go under shell: the two derivations disagree on a closer`. `closes` now compares one closer, or the opener's own text for a close-is-open group. Previously 2026-09-02 — re-pulled after Item 6.1 typed the pair fields and rang: `indent.go under shell: the two derivations disagree on a closer`, only that test. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang again, at `stencil_test.go under shell: the parse recorded 655 entries; the independent walk found 664`. **Only this test failed**, both packages otherwise green — the claim that each derivation stays individually self-consistent, confirmed a third time. (That message now says *the parse recorded*; the quotes further down keep the wording actually printed on their own dates.) Previously 2026-08-31 — re-pulled after the index consolidation and rang again,
 disagreeing at the first corpus file it reached: *the scan recorded 192 entries; the
 independent walk found 194*. The message reads differently from the 2026-08-30 pull
 because the comparison is now over whole `BracketInfo` entries rather than two
@@ -105,7 +165,7 @@ independent walk. ~~Red: **not immediately** — the links are right until a str
 edit makes the stamp stale, and then the rebuilt index has none.~~ — **corrected
 2026-08-31 by pulling it:** red **immediately**, and in two places at once. See below.
 **Inject:** sdom/context.go:BracketContext.rebuild
-**Pulled:** 2026-09-02 — re-pulled after Item 6.1 typed the pair fields and rang: in the same three places as before — the cross-check, `separators [], want [in do]`, and `before the edit: 0 separators, want 2`. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang in **three** places rather than two: this test (`separators [], want [in do]`), the corpus cross-check, and `TestSeparatorsRefreshesLikeEveryOtherAccessor`, which did not exist when the two-place record below was written — it came out of Item 11's own inject-past-the-list probe, so that probe is still earning its keep. Previously 2026-08-31 — rang, and **more loudly than predicted, which is the
+**Pulled:** 2026-09-25 — re-pulled after R355 added a branch to `rebuild`, by skipping separators in its default case; rang in the same three places: the cross-check, `separators [], want [in do]`, and `before the edit: 0 separators, want 2`. Previously 2026-09-02 — re-pulled after Item 6.1 typed the pair fields and rang: in the same three places as before — the cross-check, `separators [], want [in do]`, and `before the edit: 0 separators, want 2`. Previously 2026-09-01 — re-pulled after the vocabulary pass and rang in **three** places rather than two: this test (`separators [], want [in do]`), the corpus cross-check, and `TestSeparatorsRefreshesLikeEveryOtherAccessor`, which did not exist when the two-place record below was written — it came out of Item 11's own inject-past-the-list probe, so that probe is still earning its keep. Previously 2026-08-31 — rang, and **more loudly than predicted, which is the
 widened cross-derivation paying off.**
 
 This test failed as designed — `separators [], want [in do]` — and so did
